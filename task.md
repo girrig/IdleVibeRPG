@@ -1,0 +1,28 @@
+# Idle RPG Task List
+
+- [x] Project Setup <!-- id: 0 -->
+  - [x] Initialize Vite + Phaser project <!-- id: 1 -->
+  - [x] Set up basic folder structure (scenes, systems, assets) <!-- id: 2 -->
+- [x] Project Migration <!-- id: 30 -->
+  - [x] Locate new 'idleviberpg' workspace <!-- id: 31 -->
+  - [x] Copy project files to OneDrive/workspace/IdleVibeRPG <!-- id: 32 -->
+- [x] Core Systems <!-- id: 3 -->
+  - [x] Implement Game State Manager (Central data store) <!-- id: 4 -->
+  - [x] Implement Character Class (Stats, Skills, Talents, Gear slots) <!-- id: 5 -->
+  - [x] Implement Inventory System (Shared storage) <!-- id: 6 -->
+- [x] Game Loop & Activities <!-- id: 7 -->
+  - [x] Create Main Scene <!-- id: 8 -->
+  - [x] Implement "Tick" system for idle progression <!-- id: 9 -->
+  - [x] Implement basic Mining activity <!-- id: 10 -->
+  - [ ] Implement basic Fighting activity <!-- id: 11 -->
+- [x] UI Implementation <!-- id: 12 -->
+  - [x] Create HTML/CSS Overlay System <!-- id: 19 -->
+  - [x] Character Dashboard (Glassmorphism panels) <!-- id: 13 -->
+  - [x] Inventory UI (Floating resource counters) <!-- id: 14 -->
+- [x] World Aesthetics (Polish) <!-- id: 26 -->
+  - [x] Generate Ground Tiles (Grass/Dirt) <!-- id: 27 -->
+  - [x] Generate Environment Props (Trees, Rocks) <!-- id: 28 -->
+  - [x] Implement Tiled Background & Decoration <!-- id: 29 -->
+- [ ] Content Expansion (Later) <!-- id: 16 -->
+  - [ ] Add more skills/talents <!-- id: 17 -->
+  - [ ] Add crafting system <!-- id: 18 -->
