@@ -452,31 +452,47 @@ canvas {
   justify-content: center;
   font-size: 0.9rem;
 }
-.inventory-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+  gap: 4px;
   max-height: 300px;
   overflow-y: auto;
+  padding: 4px;
 }
 
-.inv-item {
+.inv-card {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.05);
-  padding: 8px 12px;
-  border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 2px;
+  aspect-ratio: 1 / 1;
+  cursor: help;
+  transition: all 0.2s;
 }
 
-.inv-name {
-  color: #ddd;
-  text-transform: capitalize;
+.inv-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
 }
 
-.inv-count {
+.inv-card-icon {
+  font-size: 20px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.inv-card-count {
+  font-size: 0.7rem;
+  line-height: 1;
   color: #fff;
   font-weight: 600;
+  margin-top: 0;
 }
 
 .empty-msg {
@@ -856,4 +872,47 @@ canvas {
   height: 8px;
   border-radius: 50%;
   box-shadow: 0 0 8px currentColor;
+}
+
+/* Skill Bars in Character Card */
+.skill-row {
+  margin-bottom: 4px;
+  cursor: help;
+}
+
+.skill-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1px;
+  font-size: 11px;
+  color: #ccc;
+}
+
+.skill-bar-bg {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.skill-bar-fill {
+  height: 100%;
+  background: #555; /* Default */
+  width: 0%;
+  transition: width 0.3s ease-out;
+}
+
+.skill-bar-fill.mining {
+  background: linear-gradient(90deg, #78716c, #a8a29e);
+}
+.skill-bar-fill.woodcutting {
+  background: linear-gradient(90deg, #15803d, #22c55e);
+}
+.skill-bar-fill.fishing {
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+}
+.skill-bar-fill.fighting {
+  background: linear-gradient(90deg, #dc2626, #f87171);
 }

@@ -127,20 +127,92 @@ export class UIManager {
     container.className = "mw-content";
 
     // Grid Container
-    const grid = document.createElement("div");
-    grid.className = "hero-grid";
+    let grid = container.querySelector(".hero-grid");
+    if (!grid) {
+      grid = document.createElement("div");
+      grid.className = "hero-grid";
+      container.appendChild(grid);
 
-    gameState.characters.forEach((char, index) => {
-      const card = this.createHeroCard(char, index);
-      grid.appendChild(card);
-    });
+      // Initial Build
+      gameState.characters.forEach((char, index) => {
+        const card = this.createHeroCard(char, index);
+        grid.appendChild(card);
+      });
+    } else {
+      // Update values only
+      gameState.characters.forEach((char, index) => {
+        this.updateHeroCard(char, index);
+      });
+    }
+  }
 
-    container.appendChild(grid);
+  updateHeroCard(char, index) {
+    const card = document.getElementById(`hero-card-${index}`);
+    if (!card) return;
+
+    // Update Status
+    const statusBadge = card.querySelector(".hero-status-badge");
+    const statusDot = card.querySelector(".status-dot");
+    if (statusBadge && statusDot) {
+      const statusText = char.currentActivity
+        ? char.currentActivity.type
+        : "Idle";
+      const statusColor = char.currentActivity ? "#fbbf24" : "#4ade80";
+      // Only update if changed to avoid thrashing (though textContent is cheap)
+      if (statusBadge.innerText.trim() !== statusText) {
+        statusBadge.innerHTML = `<span class="status-dot" style="background: ${statusColor}"></span>${statusText}`;
+        statusBadge.style.color = statusColor;
+      }
+    }
+
+    // Update Active Tab Content
+    // We rely on stable IDs for bars
+    if (card.querySelector('[data-tab="STATS"].active')) {
+      // Update Stats (Simple HTML replace is fine for text, but let's be cleaner if needed.
+      // For now, simple replace of stats body is okay as there are no animations there yet.
+      // actually, let's leave stats as is, or optimize if flickering occurs.
+      const bodyEl = card.querySelector(`#hero-body-${index}`);
+      // Re-rendering body implies destroying it? Yes.
+      // If we want to animate stats later, we need specific IDs.
+      // For now, let's just re-render stats as they are text.
+      // BUT, to be safe, let's check if we can just find spans.
+      // ... skipping for brevity, prioritizing Skills.
+      const lvSpan = bodyEl.querySelector(".stat-lv-val"); // We need to add classes to createHerocard first
+      if (lvSpan) lvSpan.innerText = char.stats.level;
+      // ... implementing full stat update in createHeroCard might be better.
+      // Let's just re-call renderBody if it's STATS tab? No, that breaks the pattern.
+      // Let's assume Stats text update is fast enough.
+
+      // Re-triggering renderBody() IS the old way. We want to avoid it.
+      // Let's hack: The simple way is: do nothing for Stats if not critical, OR rebuild.
+      // Rebuilding stats is cheap. Rebuilding SKILLS is what kills animation.
+      // So:
+      const renderBody = card._renderBody; // We need to attach this function to card or similar
+      if (renderBody) renderBody(true); // true = update mode?
+    }
+
+    if (card.querySelector('[data-tab="SKILLS"].active')) {
+      // Update Skills Bars
+      Object.entries(char.skills).forEach(([id, skill]) => {
+        const bar = card.querySelector(`#skill-fill-${index}-${id}`);
+        const row = card.querySelector(`#skill-row-${index}-${id}`);
+        const lvlSpan = card.querySelector(`#skill-lvl-${index}-${id}`);
+
+        if (bar && row && lvlSpan) {
+          const xpNeeded = skill.level * 100;
+          const percent = Math.min((skill.xp / xpNeeded) * 100, 100);
+          bar.style.width = `${percent}%`;
+          row.title = `${skill.xp} / ${xpNeeded} XP`;
+          lvlSpan.innerText = `Lv ${skill.level}`;
+        }
+      });
+    }
   }
 
   createHeroCard(char, index) {
     const card = document.createElement("div");
     card.className = "hero-card";
+    card.id = `hero-card-${index}`;
     if (index === this.selectedCharIndex) {
       card.classList.add("selected");
     }
@@ -208,26 +280,51 @@ export class UIManager {
     const btnStats = card.querySelector('[data-tab="STATS"]');
     const btnSkills = card.querySelector('[data-tab="SKILLS"]');
 
-    const renderBody = () => {
-      bodyEl.innerHTML = "";
+    const renderBody = (updateMode = false) => {
+      // If updating, only touch DOM if needed. For Stats, we just rebuild for now (text).
+      // For Skills, we build once, then update via updateHeroCard.
+
+      if (!updateMode) bodyEl.innerHTML = ""; // Clear if full render
+
       if (currentTab === "STATS") {
-        bodyEl.innerHTML = `
-                <div class="stat-row"><span>Lv</span><span>${char.stats.level}</span></div>
+        if (!updateMode || bodyEl.innerHTML === "") {
+          bodyEl.innerHTML = `
+                <div class="stat-row"><span>Lv</span><span class="stat-lv-val">${char.stats.level}</span></div>
                 <div class="stat-row"><span>XP</span><span>${char.stats.xp}</span></div>
                 <div class="stat-row"><span>STR</span><span style="color: #f87171">${char.stats.strength}</span></div>
                 <div class="stat-row"><span>DEX</span><span style="color: #4ade80">${char.stats.dexterity}</span></div>
                 <div class="stat-row"><span>INT</span><span style="color: #60a5fa">${char.stats.intelligence}</span></div>
               `;
+        }
       } else {
         // Skills View
-        bodyEl.innerHTML = `
-                <div class="stat-row"><span>Mining</span><span>${char.skills.mining.level}</span></div>
-                <div class="stat-row"><span>Woodcutting</span><span>${char.skills.woodcutting.level}</span></div>
-                <div class="stat-row"><span>Fishing</span><span>${char.skills.fishing.level}</span></div>
-                <div class="stat-row"><span>Fighting</span><span>${char.skills.fighting.level}</span></div>
+        if (!updateMode || bodyEl.innerHTML === "") {
+          bodyEl.innerHTML = `
+                ${Object.entries(char.skills)
+                  .map(([id, skill]) => {
+                    const xpNeeded = skill.level * 100;
+                    const percent = Math.min((skill.xp / xpNeeded) * 100, 100);
+                    const name = id.charAt(0).toUpperCase() + id.slice(1);
+                    return `
+                    <div class="skill-row" id="skill-row-${index}-${id}" title="${skill.xp} / ${xpNeeded} XP">
+                      <div class="skill-info">
+                        <span class="skill-name">${name}</span>
+                        <span class="skill-lvl" id="skill-lvl-${index}-${id}">Lv ${skill.level}</span>
+                      </div>
+                      <div class="skill-bar-bg">
+                        <div class="skill-bar-fill ${id}" id="skill-fill-${index}-${id}" style="width: ${percent}%"></div>
+                      </div>
+                    </div>
+                  `;
+                  })
+                  .join("")}
               `;
+        }
       }
     };
+
+    // Attach renderBody to card for external updates
+    card._renderBody = renderBody;
 
     btnStats.addEventListener("click", () => {
       currentTab = "STATS";
@@ -328,7 +425,7 @@ export class UIManager {
   }
 
   renderInvContent(container) {
-    container.className = "mw-content inventory-list";
+    container.className = "mw-content inventory-grid";
     const items = gameState.inventory.items;
     const entries = Object.entries(items).filter(([_, count]) => count > 0);
 
@@ -336,14 +433,19 @@ export class UIManager {
       container.innerHTML = '<div class="empty-msg">No items</div>';
     } else {
       container.innerHTML = entries
-        .map(
-          ([id, count]) => `
-          <div class="inv-item">
-            <span class="inv-name">${id.replace(/_/g, " ")}</span>
-            <span class="inv-count">${count}</span>
+        .map(([id, count]) => {
+          let icon = "🎒";
+          if (id.includes("copper")) icon = "🪨";
+          if (id.includes("wood")) icon = "🪵";
+          if (id.includes("fish")) icon = "🐟";
+
+          return `
+          <div class="inv-card" title="${id.replace(/_/g, " ")}">
+            <div class="inv-card-icon">${icon}</div>
+            <div class="inv-card-count">${count}</div>
           </div>
-        `
-        )
+        `;
+        })
         .join("");
     }
   }
@@ -467,6 +569,12 @@ export class UIManager {
         // Simple re-render to catch count updates
         // Optimized: only if item count changed? For now, re-render is cheap
         this.renderInvContent(contentEl); // Re-run render
+      }
+    } else if (this.currentView === "HEROES") {
+      const contentEl = this.mainWindow.querySelector(".mw-content");
+      if (contentEl) {
+        // Delegates to updateHeroCard internally if grid exists
+        this.renderHeroesContent(contentEl);
       }
     }
   }

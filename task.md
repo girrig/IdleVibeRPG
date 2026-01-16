@@ -14,9 +14,12 @@
   - [x] Create Main Scene <!-- id: 8 -->
   - [x] Implement "Tick" system for idle progression <!-- id: 9 -->
   - [x] Implement basic Mining activity <!-- id: 10 -->
-  - [ ] Implement basic Fighting activity <!-- id: 11 -->
+  - [x] Implement basic Fighting activity (Rat/Goblin/Wolf) <!-- id: 11 -->
+  - [x] Implement XP & Leveling System <!-- id: 62 -->
 - [x] UI Implementation <!-- id: 12 -->
   - [x] Create HTML/CSS Overlay System <!-- id: 19 -->
+  - [x] Character Dashboard (Glassmorphism panels) <!-- id: 13 -->
+  - [x] XP Progress Bars in Hero Card <!-- id: 63 -->
   - [x] Character Dashboard (Glassmorphism panels) <!-- id: 13 -->
   - [x] Inventory UI (Floating resource counters) <!-- id: 14 -->
   - [x] Implement Sidebar Navigation <!-- id: 20 -->
@@ -54,6 +57,8 @@
   - [x] Fix Sidebar Hover Effect (Simple Scale) <!-- id: 57 -->
   - [x] Enlarge Sidebar Icons (Maximize Space) <!-- id: 58 -->
   - [x] Verify 64x64 Asset Integration (Visual Check) <!-- id: 59 -->
+- [x] Cleanup Unused Files <!-- id: 60 -->
+- [x] Redesign Inventory Grid (Cards) <!-- id: 61 -->
 - [x] World Aesthetics (Polish) <!-- id: 26 -->
   - [x] Generate Ground Tiles (Grass/Dirt) <!-- id: 27 -->
   - [x] Generate Environment Props (Trees, Rocks) <!-- id: 28 -->
