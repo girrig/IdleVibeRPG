@@ -12,6 +12,12 @@ body {
   overflow: hidden; /* Prevent scrollbars */
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 #app {
   width: 100%;
   height: 100%;
@@ -61,11 +67,11 @@ canvas {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 80px;
+  width: 60px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 20px 0;
+  padding: 10px 0;
   justify-content: flex-start;
   align-items: center;
   border-radius: 0;
@@ -73,6 +79,10 @@ canvas {
   border-top: none;
   border-bottom: none;
   z-index: 100; /* Above main window content if needed */
+}
+
+#nav-settings {
+  margin-top: auto;
 }
 
 .sidebar-item {
@@ -154,7 +164,7 @@ canvas {
 .main-window {
   position: absolute;
   top: 0;
-  left: 80px; /* Sidebar width */
+  left: 60px; /* Sidebar width */
   right: 0;
   bottom: 0;
   width: auto;
@@ -737,32 +747,636 @@ canvas {
   margin-bottom: 20px;
 }
 
-/* Equipment Screen Redesign */
+/* Equipment Screen Redesign (Large Pixel) */
 .equipment-layout {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 30px;
+  gap: 40px;
   height: 100%;
-  padding: 10px;
+  padding: 20px;
+  min-height: auto;
 }
 
 .equip-column {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  flex-shrink: 1;
 }
 
 .equip-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
+  flex-shrink: 1;
+  flex: 0;
 }
 
 .equip-avatar-display {
-  width: 300px;
-  height: 300px;
+  width: 350px;
+  height: 350px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+}
+
+.equip-avatar-img {
+  width: 140px;
+  height: 140px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  transform: scale(2.2);
+}
+
+.equip-char-name {
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+.equip-slot-lg {
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.equip-slot-lg:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.equip-slot-lg .slot-icon {
+  font-size: 32px;
+  margin-bottom: 6px;
+}
+
+.equip-slot-lg .slot-label {
+  font-size: 0.9rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.equip-row-dual {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.equip-row-dual .equip-slot-lg {
+  width: 75px;
+  height: 75px;
+}
+.equip-row-dual .equip-slot-lg .slot-icon {
+  font-size: 26px;
+}
+.equip-row-dual .equip-slot-lg .slot-label {
+  display: none;
+}
+.equip-row-dual .equip-slot-lg:hover .slot-label {
+  display: block;
+  position: absolute;
+  bottom: -25px;
+  background: #000;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 10;
+  font-size: 0.8rem;
+}
+
+.equip-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2vh;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.equip-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1vh;
+  flex-shrink: 0;
+  flex: 1; /* Allow taking available space */
+}
+
+.equip-avatar-display {
+  width: 80vh;
+  height: 80vh;
+  background: rgba(0, 0, 0, 0.3);
+  border: 0.5vh solid rgba(255, 255, 255, 0.1);
+  border-radius: 4vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 5vh rgba(0, 0, 0, 0.6);
+  flex-shrink: 0; /* IMPERATIVE */
+}
+
+.equip-avatar-img {
+  width: 40vh;
+  height: 40vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  transform: scale(2.5);
+}
+
+.equip-char-name {
+  font-size: 7vh;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0.5vh 1vh rgba(0, 0, 0, 0.6);
+}
+
+.equip-slot-lg {
+  width: 18vh;
+  height: 18vh;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2.5vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0; /* IMPERATIVE */
+}
+
+.equip-slot-lg:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.equip-slot-lg .slot-icon {
+  font-size: 8vh;
+  margin-bottom: 0.5vh;
+}
+
+.equip-slot-lg .slot-label {
+  font-size: 2.5vh;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.equip-row-dual {
+  display: flex;
+  gap: 1vh;
+  justify-content: center;
+}
+.equip-row-dual .equip-slot-lg {
+  width: 13vh;
+  height: 13vh;
+}
+.equip-row-dual .equip-slot-lg .slot-icon {
+  font-size: 6vh;
+}
+.equip-row-dual .equip-slot-lg .slot-label {
+  display: none;
+}
+.equip-row-dual .equip-slot-lg:hover .slot-label {
+  display: block;
+  position: absolute;
+  bottom: -3vh;
+  background: #000;
+  padding: 0.5vh 1vh;
+  border-radius: 0.5vh;
+  z-index: 10;
+  font-size: 1.5vh;
+}
+
+.equip-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5vh;
+}
+
+.equip-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1vh;
+}
+
+.equip-avatar-display {
+  width: 75vh;
+  height: 75vh;
+  background: rgba(0, 0, 0, 0.3);
+  border: 0.5vh solid rgba(255, 255, 255, 0.1);
+  border-radius: 4vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 5vh rgba(0, 0, 0, 0.6);
+}
+
+.equip-avatar-img {
+  width: 35vh;
+  height: 35vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  transform: scale(2.2);
+}
+
+.equip-char-name {
+  font-size: 6vh;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0.5vh 1vh rgba(0, 0, 0, 0.6);
+}
+
+.equip-slot-lg {
+  width: 16vh;
+  height: 16vh;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.equip-slot-lg:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.equip-slot-lg .slot-icon {
+  font-size: 7vh;
+  margin-bottom: 0.5vh;
+}
+
+.equip-slot-lg .slot-label {
+  font-size: 2vh;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.equip-row-dual {
+  display: flex;
+  gap: 1vh;
+  justify-content: center;
+}
+.equip-row-dual .equip-slot-lg {
+  width: 12vh;
+  height: 12vh;
+}
+.equip-row-dual .equip-slot-lg .slot-icon {
+  font-size: 5vh;
+}
+.equip-row-dual .equip-slot-lg .slot-label {
+  display: none;
+}
+.equip-row-dual .equip-slot-lg:hover .slot-label {
+  display: block;
+  position: absolute;
+  bottom: -3vh;
+  background: #000;
+  padding: 0.5vh 1vh;
+  border-radius: 0.5vh;
+  z-index: 10;
+  font-size: 1.5vh;
+}
+
+.equip-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5vh;
+}
+
+.equip-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2vh;
+}
+
+.equip-avatar-display {
+  width: 65vh;
+  height: 65vh;
+  background: rgba(0, 0, 0, 0.3);
+  border: 0.5vh solid rgba(255, 255, 255, 0.1);
+  border-radius: 4vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 5vh rgba(0, 0, 0, 0.6);
+}
+
+.equip-avatar-img {
+  width: 30vh;
+  height: 30vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  transform: scale(2);
+}
+
+.equip-char-name {
+  font-size: 5vh;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0.5vh 1vh rgba(0, 0, 0, 0.6);
+}
+
+.equip-slot-lg {
+  width: 14vh;
+  height: 14vh;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.equip-slot-lg:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.equip-slot-lg .slot-icon {
+  font-size: 6vh;
+  margin-bottom: 0.5vh;
+}
+
+.equip-slot-lg .slot-label {
+  font-size: 1.8vh;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.equip-row-dual {
+  display: flex;
+  gap: 1vh;
+  justify-content: center;
+}
+.equip-row-dual .equip-slot-lg {
+  width: 10vh;
+  height: 10vh;
+}
+.equip-row-dual .equip-slot-lg .slot-icon {
+  font-size: 4.5vh;
+}
+.equip-row-dual .equip-slot-lg .slot-label {
+  display: none;
+}
+.equip-row-dual .equip-slot-lg:hover .slot-label {
+  display: block;
+  position: absolute;
+  bottom: -3vh;
+  background: #000;
+  padding: 0.5vh 1vh;
+  border-radius: 0.5vh;
+  z-index: 10;
+  font-size: 1.5vh;
+}
+
+.equip-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5vh;
+}
+
+.equip-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2vh;
+}
+
+.equip-avatar-display {
+  width: 55vh;
+  height: 55vh;
+  background: rgba(0, 0, 0, 0.3);
+  border: 0.5vh solid rgba(255, 255, 255, 0.1);
+  border-radius: 4vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 5vh rgba(0, 0, 0, 0.6);
+}
+
+.equip-avatar-img {
+  width: 25vh;
+  height: 25vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  transform: scale(2);
+}
+
+.equip-char-name {
+  font-size: 4vh;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0.5vh 1vh rgba(0, 0, 0, 0.6);
+}
+
+.equip-slot-lg {
+  width: 12vh;
+  height: 12vh;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.equip-slot-lg:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.equip-slot-lg .slot-icon {
+  font-size: 5vh;
+  margin-bottom: 0.5vh;
+}
+
+.equip-slot-lg .slot-label {
+  font-size: 1.5vh;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.equip-row-dual {
+  display: flex;
+  gap: 1vh;
+  justify-content: center;
+}
+.equip-row-dual .equip-slot-lg {
+  width: 9vh;
+  height: 9vh;
+}
+.equip-row-dual .equip-slot-lg .slot-icon {
+  font-size: 4vh;
+}
+.equip-row-dual .equip-slot-lg .slot-label {
+  display: none;
+}
+.equip-row-dual .equip-slot-lg:hover .slot-label {
+  display: block;
+  position: absolute;
+  bottom: -3vh;
+  background: #000;
+  padding: 0.5vh 1vh;
+  border-radius: 0.5vh;
+  z-index: 10;
+  font-size: 1.5vh;
+}
+
+.equip-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.equip-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.equip-avatar-display {
+  width: 400px;
+  height: 400px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+}
+
+.equip-avatar-img {
+  width: 160px;
+  height: 160px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  transform: scale(2.4);
+}
+
+.equip-char-name {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+.equip-slot-lg {
+  width: 130px;
+  height: 130px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.equip-slot-lg:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.equip-slot-lg .slot-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.equip-slot-lg .slot-label {
+  font-size: 1rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.equip-row-dual {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+.equip-row-dual .equip-slot-lg {
+  width: 90px;
+  height: 90px;
+}
+.equip-row-dual .equip-slot-lg .slot-icon {
+  font-size: 32px;
+}
+.equip-row-dual .equip-slot-lg .slot-label {
+  display: none;
+}
+.equip-row-dual .equip-slot-lg:hover .slot-label {
+  display: block;
+  position: absolute;
+  bottom: -30px;
+  background: #000;
+  padding: 2px 8px;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.equip-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Restored closer to original 25px */
+}
+
+.equip-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px; /* Restored to original */
+}
+
+.equip-avatar-display {
+  width: 340px; /* Restored to original */
+  height: 340px; /* Restored to original */
   background: rgba(0, 0, 0, 0.3);
   border: 4px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
@@ -779,22 +1393,218 @@ canvas {
   background-repeat: no-repeat;
   background-position: center;
   image-rendering: pixelated;
-  transform: scale(2);
+  transform: scale(2.2); /* Restored to original */
 }
 
 .equip-char-name {
-  font-size: 1.8rem;
+  font-size: 2rem; /* Restored to original */
   font-weight: bold;
   color: #fff;
   text-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
 }
 
 .equip-slot-lg {
-  width: 80px;
-  height: 80px;
+  width: 110px; /* Restored to original */
+  height: 110px; /* Restored to original */
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.equip-slot-lg:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.equip-slot-lg .slot-icon {
+  font-size: 36px; /* Restored to original */
+  margin-bottom: 8px;
+}
+
+.equip-slot-lg .slot-label {
+  font-size: 0.9rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.equip-row-dual {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.equip-row-dual .equip-slot-lg {
+  width: 80px; /* Larger for duals too */
+  height: 80px;
+}
+.equip-row-dual .equip-slot-lg .slot-icon {
+  font-size: 28px;
+}
+.equip-row-dual .equip-slot-lg .slot-label {
+  display: none;
+}
+.equip-row-dual .equip-slot-lg:hover .slot-label {
+  display: block;
+  position: absolute;
+  bottom: -25px;
+  background: #000;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.equip-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* Restored to 12px */
+}
+
+.equip-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px; /* Restored to 16px */
+}
+
+.equip-avatar-display {
+  width: 300px; /* Restored to 300px */
+  height: 300px; /* Restored to 300px */
+  background: rgba(0, 0, 0, 0.3);
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+}
+
+.equip-avatar-img {
+  width: 128px; /* Restored to 128px */
+  height: 128px; /* Restored to 128px */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  transform: scale(2);
+}
+
+.equip-char-name {
+  font-size: 1.8rem; /* Restored to 1.8rem */
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+.equip-slot-lg {
+  width: 80px; /* Restored to 80px */
+  height: 80px; /* Restored to 80px */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.equip-slot-lg:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.equip-slot-lg .slot-icon {
+  font-size: 28px; /* Restored to 28px */
+  margin-bottom: 4px;
+}
+
+.equip-slot-lg .slot-label {
+  font-size: 0.9rem; /* Restored to 0.9rem */
+  color: #888;
+  text-transform: uppercase;
+}
+
+.equip-row-dual {
+  display: flex;
+  gap: 12px; /* Restored to 12px */
+  justify-content: center;
+}
+.equip-row-dual .equip-slot-lg {
+  width: 64px; /* Slightly smaller for duals is fine, or match 80px? Let's keep 64px for duals to avoid width overflow relative to 80px single */
+  height: 64px;
+}
+.equip-row-dual .equip-slot-lg .slot-icon {
+  font-size: 24px;
+}
+.equip-row-dual .equip-slot-lg .slot-label {
+  display: none;
+}
+.equip-row-dual .equip-slot-lg:hover .slot-label {
+  display: block;
+  position: absolute;
+  bottom: -20px;
+  background: #000;
+  padding: 2px 4px;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.equip-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Reduced from 12px */
+}
+
+.equip-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px; /* Reduced from 16px */
+}
+
+.equip-avatar-display {
+  width: 220px; /* Reduced from 300px */
+  height: 220px; /* Reduced from 300px */
+  background: rgba(0, 0, 0, 0.3);
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.equip-avatar-img {
+  width: 96px; /* Reduced from 128px */
+  height: 96px; /* Reduced from 128px */
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  transform: scale(2);
+}
+
+.equip-char-name {
+  font-size: 1.5rem; /* Reduced from 1.8rem */
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.equip-slot-lg {
+  width: 64px; /* Reduced from 80px */
+  height: 64px; /* Reduced from 80px */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -811,21 +1621,21 @@ canvas {
 }
 
 .equip-slot-lg .slot-icon {
-  font-size: 28px;
-  margin-bottom: 4px;
+  font-size: 24px; /* Reduced from 28px */
+  margin-bottom: 2px; /* Reduced from 8px */
 }
 
 .equip-row-dual {
   display: flex;
-  gap: 10px;
+  gap: 8px; /* Reduced from 10px */
   justify-content: center;
 }
 .equip-row-dual .equip-slot-lg {
-  width: 60px;
-  height: 60px;
+  width: 64px; /* Match standard size now */
+  height: 64px;
 }
 .equip-row-dual .equip-slot-lg .slot-icon {
-  font-size: 22px;
+  font-size: 24px;
   margin-bottom: 0px;
 }
 /* Hide labels slightly better for duals */
@@ -836,16 +1646,16 @@ canvas {
   display: block;
   font-size: 0.7rem;
   position: absolute;
-  bottom: -25px;
+  bottom: -20px;
   background: rgba(0, 0, 0, 0.8);
-  padding: 4px 6px;
+  padding: 2px 4px;
   border-radius: 4px;
   color: #fff;
   z-index: 20;
   white-space: nowrap;
 }
 .equip-slot-lg .slot-label {
-  font-size: 0.75rem;
+  font-size: 0.75rem; /* Reduced from 0.75rem (no change, but was in instruction) */
   color: #888;
   text-transform: uppercase;
 }
@@ -915,4 +1725,154 @@ canvas {
 }
 .skill-bar-fill.fighting {
   background: linear-gradient(90deg, #dc2626, #f87171);
+}
+
+/* Sidebar Skills Modal Redesign */
+.skills-modal-layout {
+  display: flex;
+  padding: 0;
+  gap: 0;
+  height: 100%;
+}
+
+.skills-category-sidebar {
+  width: 140px;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  gap: 8px;
+}
+
+.skill-category-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.2s;
+  color: #888;
+}
+
+.skill-category-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ccc;
+}
+
+.skill-category-tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-weight: bold;
+}
+
+.tab-icon {
+  font-size: 1.2rem;
+}
+
+.skills-options-area {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.skills-options-header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 10px;
+}
+
+.skills-options-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.header-lvl {
+  font-size: 1rem;
+  color: #aaa;
+  font-weight: normal;
+  margin-left: auto;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.skills-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.skill-action-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.skill-action-card:hover:not(.locked) {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.skill-action-card.locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+}
+
+.action-icon {
+  font-size: 3rem;
+  margin-bottom: 4px;
+}
+
+.action-details {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.action-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.action-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.action-req {
+  color: #ef4444; /* Warning color if low? Or just neutral */
+}
+.skill-action-card:not(.locked) .action-req {
+  color: #4ade80; /* Green if unlocked */
+}
+
+.lock-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 1.5rem;
+  opacity: 0.5;
 }

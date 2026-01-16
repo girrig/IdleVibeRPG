@@ -5,7 +5,7 @@ import { getSkillDefinition } from "./SkillRegistry";
 class GameState {
   constructor() {
     this.characters = [];
-    this.inventory = new Inventory();
+    this.inventory = new Inventory(() => this.notifyListeners());
     this.lastTick = Date.now();
     this.tickRate = 1000; // 1 second
     this.listeners = [];

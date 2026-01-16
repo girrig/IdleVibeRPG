@@ -301,6 +301,7 @@ export class UIManager {
         if (!updateMode || bodyEl.innerHTML === "") {
           bodyEl.innerHTML = `
                 ${Object.entries(char.skills)
+                  .sort(([a], [b]) => a.localeCompare(b))
                   .map(([id, skill]) => {
                     const xpNeeded = skill.level * 100;
                     const percent = Math.min((skill.xp / xpNeeded) * 100, 100);
@@ -451,47 +452,86 @@ export class UIManager {
   }
 
   renderSkillContent(container) {
-    container.className = "mw-content";
+    container.className = "mw-content skills-modal-layout";
     const char = gameState.characters[this.selectedCharIndex];
+
+    // Skill Categories Sidebar
+    const sidebar = document.createElement("div");
+    sidebar.className = "skills-category-sidebar";
+
+    // Main Content Area
+    const contentArea = document.createElement("div");
+    contentArea.className = "skills-options-area";
+
+    // State for internal tab selection (simple local var or instance var if persistence needed)
+    // For now, default to mining or current persisted tab
+    if (!this.activeSkillTab) this.activeSkillTab = "MINING";
+
     Object.values(SKILL_DEFINITIONS).forEach((skill) => {
-      const skillSection = document.createElement("div");
-      skillSection.className = "skill-section";
-
-      const skillTitle = document.createElement("h3");
-      const currentLvl =
-        char && char.skills[skill.id.toLowerCase()]
-          ? char.skills[skill.id.toLowerCase()].level
-          : 1;
-      skillTitle.innerText = `${skill.name} (Lvl ${currentLvl})`;
-      skillSection.appendChild(skillTitle);
-
-      const optionsGrid = document.createElement("div");
-      optionsGrid.className = "skill-options";
-
-      Object.entries(skill.options).forEach(([key, opt]) => {
-        const btn = document.createElement("button");
-        btn.className = "skill-option-btn";
-        btn.innerHTML = `
-          <div class="opt-name">${opt.name}</div>
-          <div class="opt-level">Lvl ${opt.level} (XP: ${opt.xp})</div>
+      // Create Sidebar Item
+      const tabBtn = document.createElement("div");
+      tabBtn.className = `skill-category-tab ${
+        this.activeSkillTab === skill.id ? "active" : ""
+      }`;
+      tabBtn.innerHTML = `
+            <span class="tab-icon">${skill.icon}</span>
+            <span class="tab-name">${skill.name}</span>
         `;
-        if (currentLvl < opt.level) {
-          btn.style.opacity = "0.5";
-          btn.style.cursor = "not-allowed";
-        }
 
-        btn.addEventListener("click", () => {
-          if (currentLvl >= opt.level) {
-            this.handleStartActivity(skill.id, key);
-            this.renderMainWindow(); // Refresh? or just Activity starts
-          }
-        });
-        optionsGrid.appendChild(btn);
+      tabBtn.addEventListener("click", () => {
+        this.activeSkillTab = skill.id;
+        this.renderMainWindow(); // Full re-render to update UI
       });
 
-      skillSection.appendChild(optionsGrid);
-      container.appendChild(skillSection);
+      sidebar.appendChild(tabBtn);
     });
+
+    // Render Options for Active Tab
+    const activeSkill = SKILL_DEFINITIONS[this.activeSkillTab];
+    if (activeSkill) {
+      const header = document.createElement("div");
+      header.className = "skills-options-header";
+      const currentLvl =
+        char && char.skills[activeSkill.id.toLowerCase()]
+          ? char.skills[activeSkill.id.toLowerCase()].level
+          : 1;
+      header.innerHTML = `<h2>${activeSkill.icon} ${activeSkill.name} <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
+      contentArea.appendChild(header);
+
+      const grid = document.createElement("div");
+      grid.className = "skills-actions-grid";
+
+      Object.entries(activeSkill.options).forEach(([key, opt]) => {
+        const card = document.createElement("div");
+        const isLocked = currentLvl < opt.level;
+        card.className = `skill-action-card ${isLocked ? "locked" : ""}`;
+
+        card.innerHTML = `
+                <div class="action-icon">${opt.icon || "❓"}</div>
+                <div class="action-details">
+                    <div class="action-name">${opt.name}</div>
+                    <div class="action-meta">
+                        <span class="action-req">Req: Lv ${opt.level}</span>
+                        <span class="action-xp">${opt.xp} XP</span>
+                    </div>
+                </div>
+                ${isLocked ? '<div class="lock-overlay">🔒</div>' : ""}
+             `;
+
+        if (!isLocked) {
+          card.addEventListener("click", () => {
+            this.handleStartActivity(activeSkill.id, key);
+            this.renderMainWindow();
+          });
+        }
+
+        grid.appendChild(card);
+      });
+      contentArea.appendChild(grid);
+    }
+
+    container.appendChild(sidebar);
+    container.appendChild(contentArea);
   }
 
   renderSettingsContent(container) {
@@ -563,8 +603,9 @@ export class UIManager {
     if (!this.container) return;
 
     // Refresh Inv if active
+    // Refresh Inv if active
     if (this.currentView === "INV") {
-      const contentEl = this.mainWindow.querySelector(".inventory-list");
+      const contentEl = this.mainWindow.querySelector("#mw-content");
       if (contentEl) {
         // Simple re-render to catch count updates
         // Optimized: only if item count changed? For now, re-render is cheap

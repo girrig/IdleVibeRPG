@@ -2,10 +2,11 @@ export const SKILL_DEFINITIONS = {
   MINING: {
     id: "MINING",
     name: "Mining",
+    icon: "⛏️",
     options: {
-      copper_ore: { name: "Copper Ore", level: 1, xp: 10 },
-      iron_ore: { name: "Iron Ore", level: 5, xp: 20 },
-      coal: { name: "Coal", level: 10, xp: 30 },
+      copper_ore: { name: "Copper Ore", level: 1, xp: 10, icon: "🪨" },
+      iron_ore: { name: "Iron Ore", level: 5, xp: 20, icon: "⛓️" },
+      coal: { name: "Coal", level: 10, xp: 30, icon: "⚫" },
     },
     interval: 1000,
     action: (gameState, char) => {
@@ -18,10 +19,11 @@ export const SKILL_DEFINITIONS = {
   WOODCUTTING: {
     id: "WOODCUTTING",
     name: "Woodcutting",
+    icon: "🪓",
     options: {
-      oak_log: { name: "Oak Log", level: 1, xp: 10 },
-      willow_log: { name: "Willow Log", level: 5, xp: 20 },
-      maple_log: { name: "Maple Log", level: 10, xp: 30 },
+      oak_log: { name: "Oak Log", level: 1, xp: 10, icon: "🪵" },
+      willow_log: { name: "Willow Log", level: 5, xp: 20, icon: "🌿" },
+      maple_log: { name: "Maple Log", level: 10, xp: 30, icon: "🍁" },
     },
     interval: 1000,
     action: (gameState, char) => {
@@ -34,10 +36,11 @@ export const SKILL_DEFINITIONS = {
   FISHING: {
     id: "FISHING",
     name: "Fishing",
+    icon: "🎣",
     options: {
-      raw_trout: { name: "Raw Trout", level: 1, xp: 10 },
-      raw_salmon: { name: "Raw Salmon", level: 5, xp: 20 },
-      raw_tuna: { name: "Raw Tuna", level: 10, xp: 30 },
+      raw_trout: { name: "Raw Trout", level: 1, xp: 10, icon: "🐟" },
+      raw_salmon: { name: "Raw Salmon", level: 5, xp: 20, icon: "🐠" },
+      raw_tuna: { name: "Raw Tuna", level: 10, xp: 30, icon: "🦈" },
     },
     interval: 1000,
     action: (gameState, char) => {
@@ -50,10 +53,17 @@ export const SKILL_DEFINITIONS = {
   FIGHTING: {
     id: "FIGHTING",
     name: "Fighting",
+    icon: "⚔️",
     options: {
-      rat: { name: "Rat", level: 1, xp: 10, drop: "rat_bones" },
-      goblin: { name: "Goblin", level: 5, xp: 20, drop: "goblin_mail" },
-      wolf: { name: "Wolf", level: 10, xp: 30, drop: "wolf_fur" },
+      rat: { name: "Rat", level: 1, xp: 10, drop: "rat_bones", icon: "🐀" },
+      goblin: {
+        name: "Goblin",
+        level: 5,
+        xp: 20,
+        drop: "goblin_mail",
+        icon: "👹",
+      },
+      wolf: { name: "Wolf", level: 10, xp: 30, drop: "wolf_fur", icon: "🐺" },
     },
     interval: 1000,
     action: (gameState, char) => {
