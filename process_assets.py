@@ -1,51 +1,76 @@
 import os
+import shutil
 
 from PIL import Image
 
+# Configuration
+RAW_DIR = "raw_assets"
+DEST_DIR = "src/assets"
+BG_COLOR_KEY = (255, 0, 255)  # Magenta (Reference)
 
-def remove_magenta(input_path, output_path):
+# Transparency Heuristics
+
+
+def is_transparent_candidate(r, g, b, a):
+    # Already transparent?
+    if a == 0:
+        return False
+
+    # Heuristic: Magenta-ish?
+    # Condition: Green is significantly lower than Red and Blue (Purple/Pink/Magenta range)
+    # And Red/Blue are relatively balanced (avoiding pure Red or Pure Blue)
+    diff_rb = abs(r - b)
+    if (g + 40 < r) and (g + 40 < b) and (diff_rb < 80):
+        return True
+    return False
+
+
+def process_image(filename):
+    src_path = os.path.join(RAW_DIR, filename)
+    dest_path = os.path.join(DEST_DIR, filename)
+
+    print(f"Processing {filename}...")
+
     try:
-        img = Image.open(input_path)
-        img = img.convert("RGBA")
-        datas = img.getdata()
+        img = Image.open(src_path).convert("RGBA")
 
-        new_data = []
-        # Target Magenta: 255, 0, 255
-        # We allow a small tolerance in case of compression artifacts, but pixel art should be sharp.
-        for item in datas:
-            # Check for Magenta-ish (R>200, G<50, B>200)
-            if item[0] > 200 and item[1] < 50 and item[2] > 200:
-                new_data.append((255, 255, 255, 0))  # Transparent
-            else:
-                new_data.append(item)
+        # 1. Apply Transparency (Unless explicitly skipped or already transparent source)
+        # raw_fish.png is known to be pre-processed transparently
+        if filename != "raw_fish.png":
+            pixels = img.load()
+            width, height = img.size
 
-        img.putdata(new_data)
-        img.save(output_path, "PNG")
-        print(f"Processed {input_path} -> {output_path}")
+            for x in range(width):
+                for y in range(height):
+                    r, g, b, a = pixels[x, y]
+                    if is_transparent_candidate(r, g, b, a):
+                        pixels[x, y] = (0, 0, 0, 0)  # Transparent
+
+        # 2. Save (No Resize)
+        img.save(dest_path)
+        print(f"  Saved to {dest_path}")
+
     except Exception as e:
-        print(f"Failed to process {input_path}: {e}")
+        print(f"FAILED to process {filename}: {e}")
 
 
-assets = {
-    'raw_character_magenta_1768195738841.png': 'src/assets/character.png',
-    'raw_tree_magenta_1768195751294.png': 'src/assets/tree.png',
-    'raw_tent_magenta_1768195763043.png': 'src/assets/tent.png',
-    # Will need to fill in timestamps for campfire/ore after generation
-}
+def main():
+    if not os.path.exists(DEST_DIR):
+        os.makedirs(DEST_DIR)
 
-# Scan directory for 'raw_campfire' and 'raw_copper_ore' to find the exact filenames
-brain_dir = r"C:\Users\girri\.gemini\antigravity\brain\b2e51056-3d10-4ea8-8957-033f2c61a43a"
-for f in os.listdir(brain_dir):
-    full_path = os.path.join(brain_dir, f)
-    if "raw_campfire_magenta" in f:
-        assets[f] = 'src/assets/campfire.png'  # Single frame overwrite
-    if "raw_copper_ore_magenta" in f:
-        assets[f] = 'src/assets/copper_ore.png'
+    if not os.path.exists(RAW_DIR):
+        print(f"Error: {RAW_DIR} directory not found.")
+        return
 
-print("Starting processing...")
-for src_name, dest_rel in assets.items():
-    src_full = os.path.join(brain_dir, src_name)
-    if os.path.exists(src_full):
-        remove_magenta(src_full, dest_rel)
-    else:
-        print(f"Source not found: {src_full}")
+    files = [f for f in os.listdir(RAW_DIR) if f.lower().endswith(".png")]
+
+    print(f"Found {len(files)} assets in {RAW_DIR}")
+
+    for f in files:
+        process_image(f)
+
+    print("Done!")
+
+
+if __name__ == "__main__":
+    main()

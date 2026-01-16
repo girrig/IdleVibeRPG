@@ -1,17 +1,28 @@
 import Phaser from "phaser";
 import { gameState } from "../core/GameState";
+import { uiManager } from "../ui/UIManager";
 import CHARACTER_IMG from "../assets/character.png";
 import COPPER_ORE_IMG from "../assets/copper_ore.png";
 import GRASS_IMG from "../assets/grass.png";
 import TREE_IMG from "../assets/tree.png";
-import CAMPFIRE_IMG from "../assets/campfire.png"; // Static image
+import CAMPFIRE_IMG from "../assets/campfire.png";
 import TENT_IMG from "../assets/tent.png";
-import { uiManager } from "../ui/UIManager";
+import POND_IMG from "../assets/pond.png";
+import HAT_IMG from "../assets/hat.png";
+import SHIRT_IMG from "../assets/shirt.png";
+import PANTS_IMG from "../assets/pants.png";
+import SHOES_IMG from "../assets/shoes.png";
+import ICON_HEROES_IMG from "../assets/icon_heroes.png";
+import ICON_EQUIP_IMG from "../assets/icon_equip.png";
+import ICON_SKILLS_IMG from "../assets/icon_skills.png";
+import ICON_INV_IMG from "../assets/icon_inv.png";
+import ICON_SETTINGS_IMG from "../assets/icon_settings.png";
 
 export class MainScene extends Phaser.Scene {
   constructor() {
     super("MainScene");
-    this.charVisuals = new Map();
+    this.currentSceneType = null;
+    this.sceneObjects = []; // Track objects to destroy on switch
   }
 
   preload() {
@@ -21,75 +32,173 @@ export class MainScene extends Phaser.Scene {
     this.load.image("tree", TREE_IMG);
     this.load.image("campfire", CAMPFIRE_IMG);
     this.load.image("tent", TENT_IMG);
+    this.load.image("pond", POND_IMG);
+    this.load.image("hat", HAT_IMG);
+    this.load.image("shirt", SHIRT_IMG);
+    this.load.image("pants", PANTS_IMG);
+    this.load.image("shoes", SHOES_IMG);
+    this.load.image("icon_heroes", ICON_HEROES_IMG);
+    this.load.image("icon_equip", ICON_EQUIP_IMG);
+    this.load.image("icon_skills", ICON_SKILLS_IMG);
+    this.load.image("icon_inv", ICON_INV_IMG);
+    this.load.image("icon_settings", ICON_SETTINGS_IMG);
   }
 
   create() {
     console.log("MainScene started");
     gameState.initialize();
-
     uiManager.initialize();
 
-    // 1. Tiled Background
-    this.add.tileSprite(0, 0, 2048, 1536, "grass").setOrigin(0, 0);
+    // Centered on the "World Origin" of our scene objects (512, 384)
+    this.cameras.main.centerOn(512, 384);
 
-    // 2. Base Camp
-    this.add
-      .image(512, 350, "tent")
-      .setScale(2)
-      .setOrigin(0.5, 1)
-      .setDepth(350);
-    this.add.image(512, 400, "campfire").setScale(2).setDepth(400);
+    // Initial listeners
+    this.scale.on("resize", this.handleResize, this);
+    this.handleResize(this.scale.gameSize);
+  }
 
-    // 3. Decorate World
-    // Using a group for trees to ensure they don't duplicate on HMR if Logic was outside
-    // But create() clears scene, so simplistic approach is fine.
-    for (let i = 0; i < 30; i++) {
-      const x = Phaser.Math.Between(50, 974);
-      const y = Phaser.Math.Between(50, 718);
-      if (Phaser.Math.Distance.Between(x, y, 512, 400) > 150) {
-        this.add
-          .image(x, y, "tree")
-          .setScale(1.5)
-          .setOrigin(0.5, 1)
-          .setDepth(y);
-      }
+  handleResize(gameSize) {
+    const width = gameSize.width;
+    const height = gameSize.height;
+
+    // Standard Full Screen Viewport
+    this.cameras.main.setViewport(0, 0, width, height);
+    this.cameras.main.centerOn(512, 384);
+    this.cameras.main.setZoom(1);
+
+    // Ensure background covers the new visible area
+    if (this.bg) {
+      this.bg.setSize(width, height);
     }
-
-    // Ore
-    this.add.image(200, 600, "copper_ore").setScale(2).setDepth(600);
-
-    // Listeners
-    gameState.addListener(() => this.updateVisuals());
-    this.updateVisuals();
   }
 
   update(time, delta) {
     gameState.tick();
+    this.updateSceneContext();
   }
 
-  updateVisuals() {
-    gameState.characters.forEach((char) => {
-      let visual = this.charVisuals.get(char.id);
+  updateSceneContext() {
+    const char = gameState.characters[uiManager.selectedCharIndex];
 
-      if (!visual) {
-        // Create Visual
-        const container = this.add.container(512, 420);
-        const sprite = this.add.sprite(0, 0, "character").setScale(2);
-        container.add([sprite]);
-        this.charVisuals.set(char.id, { container });
-        visual = { container };
-      }
+    let targetType = "IDLE";
+    if (char && char.currentActivity) {
+      targetType = char.currentActivity.type;
+    }
 
-      // Update State
-      if (char.currentActivity && char.currentActivity.type === "MINING") {
-        visual.container.x = 200;
-        visual.container.y = 600;
-        visual.container.setDepth(601); // In front of ore
-      } else {
-        visual.container.x = 560;
-        visual.container.y = 420;
-        visual.container.setDepth(420);
-      }
-    });
+    if (this.currentSceneType !== targetType) {
+      this.switchScene(targetType);
+    }
+  }
+
+  switchScene(type) {
+    console.log(`Switching Scene to: ${type}`);
+    this.currentSceneType = type;
+    this.clearScene();
+
+    const ASSET_SCALE = 1;
+
+    // Common Background (could be different per type)
+    // For now, Green Grass for outdoors, maybe Grey for Mine?
+    // Let's us tint the grass for Mining to look like Cave floor.
+
+    let bgTint = 0xffffff;
+    if (type === "MINING") bgTint = 0x888888; // Darker/Grey
+
+    this.bg = this.add
+      .tileSprite(0, 0, this.scale.width, this.scale.height, "grass")
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setTint(bgTint);
+    this.bg.setTileScale(ASSET_SCALE, ASSET_SCALE);
+    this.sceneObjects.push(this.bg);
+
+    // Render Specifics
+    switch (type) {
+      case "IDLE":
+        this.renderIdleScene(ASSET_SCALE);
+        break;
+      case "MINING":
+        this.renderMiningScene(ASSET_SCALE);
+        break;
+      case "WOODCUTTING":
+        this.renderWoodcuttingScene(ASSET_SCALE);
+        break;
+      case "FISHING":
+        this.renderFishingScene(ASSET_SCALE);
+        break;
+      default:
+        this.renderIdleScene(ASSET_SCALE);
+        break;
+    }
+  }
+
+  clearScene() {
+    this.sceneObjects.forEach((obj) => obj.destroy());
+    this.sceneObjects = [];
+  }
+
+  renderIdleScene(scale) {
+    // Campfire & Tent
+    const tent = this.add
+      .image(512, 360, "tent")
+      .setScale(scale)
+      .setOrigin(0.5, 1);
+    const camp = this.add.image(512, 400, "campfire").setScale(scale);
+
+    this.sceneObjects.push(tent, camp);
+  }
+
+  renderMiningScene(scale) {
+    // Big Ore Rock in center
+    // Maybe some scattered small rocks (ores)
+    const ore = this.add.image(512, 384, "copper_ore").setScale(scale * 1.5); // Slightly larger as focus
+
+    // Props
+    const rock1 = this.add
+      .image(400, 300, "copper_ore")
+      .setScale(scale * 0.8)
+      .setTint(0x666666);
+    const rock2 = this.add
+      .image(600, 450, "copper_ore")
+      .setScale(scale * 0.7)
+      .setTint(0x555555);
+
+    this.sceneObjects.push(ore, rock1, rock2);
+  }
+
+  renderWoodcuttingScene(scale) {
+    // Forest loop
+    // Center tree
+    const centerTree = this.add
+      .image(512, 384, "tree")
+      .setScale(scale * 1.2)
+      .setOrigin(0.5, 1);
+    this.sceneObjects.push(centerTree);
+
+    // Surrounding trees
+    for (let i = 0; i < 8; i++) {
+      const x = 512 + Math.cos(i) * 100;
+      const y = 384 + Math.sin(i) * 80; // Ellipse
+      // Offset Y because origin is bottom
+      const tree = this.add
+        .image(x, y + 50, "tree") // shift down
+        .setScale(scale * 0.9 + Math.random() * 0.2 * scale)
+        .setOrigin(0.5, 1)
+        .setDepth(y); // simple depth sorting
+      this.sceneObjects.push(tree);
+    }
+  }
+
+  renderFishingScene(scale) {
+    // Pond
+    const pond = this.add.image(512, 384, "pond").setScale(scale * 1.5);
+    this.sceneObjects.push(pond);
+
+    // Maybe a tree on the bank
+    const tree = this.add
+      .image(450, 300, "tree")
+      .setScale(scale)
+      .setOrigin(0.5, 1);
+    this.sceneObjects.push(tree);
   }
 }

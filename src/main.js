@@ -11,8 +11,8 @@ const config = {
   // Fallback background color if tiles fail
   backgroundColor: "#2d5e2e",
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Phaser.Scale.RESIZE,
+    autoCenter: Phaser.Scale.NO_CENTER,
   },
   physics: {
     default: "arcade",

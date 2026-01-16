@@ -19,6 +19,41 @@
   - [x] Create HTML/CSS Overlay System <!-- id: 19 -->
   - [x] Character Dashboard (Glassmorphism panels) <!-- id: 13 -->
   - [x] Inventory UI (Floating resource counters) <!-- id: 14 -->
+  - [x] Implement Sidebar Navigation <!-- id: 20 -->
+  - [x] Implement Inventory Modal <!-- id: 21 -->
+  - [x] Multi-Hero Support (Switching logic) <!-- id: 22 -->
+  - [x] Randomize Hero Names <!-- id: 24 -->
+  - [x] Implement Heroes Panel (Overview & Selection) <!-- id: 23 -->
+  - [x] Refactor UI: Universal Main Window (Sidebar switches views) <!-- id: 30 -->
+  - [x] Full Screen Layout Polish (Sidebar & Main Window) <!-- id: 31 -->
+  - [x] Implement Sidebar Toggle (Open/Close Main Window) <!-- id: 32 -->
+  - [x] Fix Asset Scaling (Downscale 1024px assets to target size) <!-- id: 33 -->
+  - [x] Default View: Closed (No panels open on start) <!-- id: 34 -->
+  - [x] Refactor Background: Reflect Active Skill (Remove Characters) <!-- id: 35 -->
+  - [x] Refactor: Isolated Per-Skill Scenes (Replace Open World) <!-- id: 36 -->
+  - [x] Redesign Heroes Tab (Cards with Stats/Skills Toggle & Equipment) <!-- id: 37 -->
+  - [x] Resize Hero Cards (Compact Mode: Fit 8 on screen) <!-- id: 38 -->
+  - [x] Refine Hero Cards: Ultra-Compact Layout (Min Width 180px) <!-- id: 39 -->
+  - [x] Remove HUD Character Card (Bottom Left) <!-- id: 40 -->
+  - [-] Refactor: Low Resolution Target (320x180) & UI Scaling <!-- id: 41 -->
+  - [-] Refactor: Full Screen Adapter (Dynamic Width / Fixed Height 180px) <!-- id: 42 -->
+  - [x] Revert: Restore Full Screen Layout (Standard Res) <!-- id: 43 -->
+  - [x] Restore Native Asset Scale (1x) <!-- id: 44 -->
+  - [x] Refactor: Hero Tab Avatars for 32x32 Assets <!-- id: 45 -->
+  - [x] Refactor: Fix Hero Tab Width (Prevent Stretching) <!-- id: 46 -->
+  - [x] Refactor: Enforce 2x4 Hero Grid Layout <!-- id: 47 -->
+  - [x] Add 6 Test Characters (Verify Full Grid) <!-- id: 48 -->
+  - [x] Refactor: Maximize Grid Screen Usage (Remove Constraints) <!-- id: 49 -->
+  - [x] Implement Settings Menu (Graphics, Audio, Gameplay) <!-- id: 50 -->
+  - [x] Add Settings Disclaimer (Placeholder Notice) <!-- id: 51 -->
+  - [x] Remove Map Sidebar Option <!-- id: 52 -->
+  - [x] Redesign Equipment Screen (Paper Doll Layout) <!-- id: 53 -->
+  - [x] Scale Up Equipment UI (Bold Layout) <!-- id: 54 -->
+  - [x] Refine Equipment Layout (Fit Screen) <!-- id: 55 -->
+  - [x] Move Status to Top Right of Card <!-- id: 56 -->
+  - [x] Fix Sidebar Hover Effect (Simple Scale) <!-- id: 57 -->
+  - [x] Enlarge Sidebar Icons (Maximize Space) <!-- id: 58 -->
+  - [x] Verify 64x64 Asset Integration (Visual Check) <!-- id: 59 -->
 - [x] World Aesthetics (Polish) <!-- id: 26 -->
   - [x] Generate Ground Tiles (Grass/Dirt) <!-- id: 27 -->
   - [x] Generate Environment Props (Trees, Rocks) <!-- id: 28 -->

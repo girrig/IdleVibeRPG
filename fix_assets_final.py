@@ -15,7 +15,7 @@ def process_image(src_path, dest_path, target_height):
             # High tolerance for Magenta detection since generation might not be perfect
             # But strict enough to not eat the art
             if item[0] > 230 and item[1] < 30 and item[2] > 230:
-                new_data.append((0, 0, 0, 0))  # Transparent
+                ew_data.append((0, 0, 0, 0))  # Transparent
             else:
                 new_data.append(item)
 
