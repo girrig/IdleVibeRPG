@@ -2,7 +2,9 @@ export class Character {
   constructor(id, name, type = "WARRIOR") {
     this.id = id;
     this.name = name;
-    this.type = type;
+    this.type = type; // WARRIOR or RANGER
+    this.gender = Math.random() > 0.5 ? "MALE" : "FEMALE";
+    this.sprite = this.gender === "MALE" ? "character" : "character_female";
     this.stats = {
       level: 1,
       xp: 0,

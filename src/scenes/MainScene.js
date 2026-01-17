@@ -2,12 +2,16 @@ import Phaser from "phaser";
 import { gameState } from "../core/GameState";
 import { uiManager } from "../ui/UIManager";
 import CHARACTER_IMG from "../assets/character.png";
+import CHARACTER_FEMALE_IMG from "../assets/character_female.png";
 import COPPER_ORE_IMG from "../assets/copper_ore.png";
 import GRASS_IMG from "../assets/grass.png";
 import TREE_IMG from "../assets/tree.png";
 import CAMPFIRE_IMG from "../assets/campfire.png";
 import TENT_IMG from "../assets/tent.png";
 import POND_IMG from "../assets/pond.png";
+import ENEMY_RAT_IMG from "../assets/enemy_rat.png";
+import ENEMY_GOBLIN_IMG from "../assets/enemy_goblin.png";
+import ENEMY_WOLF_IMG from "../assets/enemy_wolf.png";
 import HAT_IMG from "../assets/hat.png";
 import SHIRT_IMG from "../assets/shirt.png";
 import PANTS_IMG from "../assets/pants.png";
@@ -27,12 +31,17 @@ export class MainScene extends Phaser.Scene {
 
   preload() {
     this.load.image("character", CHARACTER_IMG);
+    this.load.image("character_female", CHARACTER_FEMALE_IMG);
     this.load.image("copper_ore", COPPER_ORE_IMG);
     this.load.image("grass", GRASS_IMG);
     this.load.image("tree", TREE_IMG);
     this.load.image("campfire", CAMPFIRE_IMG);
     this.load.image("tent", TENT_IMG);
+    this.load.image("tent", TENT_IMG);
     this.load.image("pond", POND_IMG);
+    this.load.image("enemy_rat", ENEMY_RAT_IMG);
+    this.load.image("enemy_goblin", ENEMY_GOBLIN_IMG);
+    this.load.image("enemy_wolf", ENEMY_WOLF_IMG);
     this.load.image("hat", HAT_IMG);
     this.load.image("shirt", SHIRT_IMG);
     this.load.image("pants", PANTS_IMG);
@@ -126,6 +135,9 @@ export class MainScene extends Phaser.Scene {
       case "FISHING":
         this.renderFishingScene(ASSET_SCALE);
         break;
+      case "FIGHTING":
+        this.renderFightingScene(ASSET_SCALE);
+        break;
       default:
         this.renderIdleScene(ASSET_SCALE);
         break;
@@ -164,6 +176,27 @@ export class MainScene extends Phaser.Scene {
       .setTint(0x555555);
 
     this.sceneObjects.push(ore, rock1, rock2);
+  }
+
+  renderFightingScene(scale) {
+    const char = gameState.characters[uiManager.selectedCharIndex];
+    let enemyKey = "enemy_rat"; // Default
+    if (char && char.currentActivity && char.currentActivity.target) {
+      if (char.currentActivity.target === "goblin") enemyKey = "enemy_goblin";
+      if (char.currentActivity.target === "wolf") enemyKey = "enemy_wolf";
+    }
+
+    // Render Enemy in Center
+    const enemy = this.add.image(512, 384, enemyKey).setScale(scale);
+
+    // Add some "terrain" based on enemy?
+    // For now, duplicate grass or add rocks
+    const rock = this.add
+      .image(400, 420, "copper_ore")
+      .setScale(0.5)
+      .setTint(0x555555);
+
+    this.sceneObjects.push(rock, enemy);
   }
 
   renderWoodcuttingScene(scale) {

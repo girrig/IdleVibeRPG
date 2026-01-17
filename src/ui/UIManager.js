@@ -1,6 +1,10 @@
 import { gameState } from "../core/GameState";
 import { SKILL_DEFINITIONS } from "../core/SkillRegistry";
 import CHAR_IMG_URL from "../assets/character.png";
+import CHAR_FEMALE_IMG_URL from "../assets/character_female.png";
+import ENEMY_RAT_URL from "../assets/enemy_rat.png";
+import ENEMY_GOBLIN_URL from "../assets/enemy_goblin.png";
+import ENEMY_WOLF_URL from "../assets/enemy_wolf.png";
 import ICON_HEROES from "../assets/icon_heroes.png";
 import ICON_EQUIP from "../assets/icon_equip.png";
 import ICON_SKILLS from "../assets/icon_skills.png";
@@ -14,6 +18,11 @@ export class UIManager {
     this.charPanel = null;
     this.selectedCharIndex = 0;
     this.currentView = null; // Default closed
+  }
+
+  getAvatarUrl(spriteKey) {
+    if (spriteKey === "character_female") return CHAR_FEMALE_IMG_URL;
+    return CHAR_IMG_URL;
   }
 
   initialize() {
@@ -235,7 +244,9 @@ export class UIManager {
         <div class="hero-header">
            <div class="hero-avatar-box">
            <!-- Using background image for avatar -->
-              <div class="hero-avatar-img" style="background-image: url('${CHAR_IMG_URL}')"></div>
+              <div class="hero-avatar-img" style="background-image: url('${this.getAvatarUrl(
+                char.sprite
+              )}')"></div>
            </div>
            <div class="hero-info">
               <h3>${char.name}</h3>
@@ -385,7 +396,9 @@ export class UIManager {
             <!-- Center: Avatar -->
             <div class="equip-center">
                  <div class="equip-avatar-display">
-                    <div class="equip-avatar-img" style="background-image: url('${CHAR_IMG_URL}')"></div>
+                    <div class="equip-avatar-img" style="background-image: url('${this.getAvatarUrl(
+                      char.sprite
+                    )}')"></div>
                  </div>
                  <div class="equip-char-name">${char ? char.name : "Hero"}</div>
             </div>
@@ -421,24 +434,37 @@ export class UIManager {
                     </div>
                 </div>
             </div>
+
+            <!-- Far Right: Inventory Panel -->
+            <div class="equip-inv-panel">
+                <div class="equip-inv-header">Inventory</div>
+                <div class="equip-inv-grid">
+                    ${this.getInventoryHTML()}
+                </div>
+            </div>
         </div>
     `;
   }
 
   renderInvContent(container) {
     container.className = "mw-content inventory-grid";
+    container.innerHTML = this.getInventoryHTML();
+  }
+
+  getInventoryHTML() {
     const items = gameState.inventory.items;
     const entries = Object.entries(items).filter(([_, count]) => count > 0);
 
     if (entries.length === 0) {
-      container.innerHTML = '<div class="empty-msg">No items</div>';
+      return '<div class="empty-msg">No items</div>';
     } else {
-      container.innerHTML = entries
+      return entries
         .map(([id, count]) => {
           let icon = "🎒";
           if (id.includes("copper")) icon = "🪨";
           if (id.includes("wood")) icon = "🪵";
           if (id.includes("fish")) icon = "🐟";
+          // Add more icons later
 
           return `
           <div class="inv-card" title="${id.replace(/_/g, " ")}">
@@ -506,8 +532,18 @@ export class UIManager {
         const isLocked = currentLvl < opt.level;
         card.className = `skill-action-card ${isLocked ? "locked" : ""}`;
 
+        let iconHtml = `<div class="action-icon">${opt.icon || "❓"}</div>`;
+        if (activeSkill.id === "FIGHTING") {
+          if (key === "rat")
+            iconHtml = `<img src="${ENEMY_RAT_URL}" class="action-icon-img" />`;
+          if (key === "goblin")
+            iconHtml = `<img src="${ENEMY_GOBLIN_URL}" class="action-icon-img" />`;
+          if (key === "wolf")
+            iconHtml = `<img src="${ENEMY_WOLF_URL}" class="action-icon-img" />`;
+        }
+
         card.innerHTML = `
-                <div class="action-icon">${opt.icon || "❓"}</div>
+                ${iconHtml}
                 <div class="action-details">
                     <div class="action-name">${opt.name}</div>
                     <div class="action-meta">

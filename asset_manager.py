@@ -1,3 +1,4 @@
+from collections import Counter
 import os
 import shutil
 import sys
@@ -36,9 +37,10 @@ def auto_trim(img):
     try:
         width, height = img.size
 
-        # 2. SAFETY CROP (5%)
-        margin = int(width * 0.05)
-        img = img.crop((margin, margin, width - margin, height - margin))
+        # 2. SAFETY CROP REMOVED (User requested no blind cropping)
+        # We rely solely on the background color tolerance below.
+        # margin = int(width * 0.01)
+        # img = img.crop((margin, margin, width - margin, height - margin))
 
         # 3. AUTO-TRIM (Tolerance)
         corner_color = img.getpixel((0, 0))
@@ -66,12 +68,12 @@ def auto_trim(img):
         return img
 
 
-def quantize_image(img):
+def quantize_image(img, n_colors=32):
     """
     Applies pixel-art palette and binary alpha.
     """
-    # 1. Quantize to 32 colors (Fast Octree)
-    img = img.quantize(colors=32, method=2, kmeans=1, dither=Image.NONE)
+    # 1. Quantize to n_colors (Fast Octree)
+    img = img.quantize(colors=n_colors, method=2, kmeans=1, dither=Image.NONE)
 
     # 2. Convert back to RGBA to fixing alpha
     img = img.convert("RGBA")
@@ -88,12 +90,49 @@ def quantize_image(img):
     return img
 
 
+def smart_downscale(img, target_size):
+    """
+    Downscales using 'Mode' (Most Frequent Color) sampling.
+    Best for cleaning up messy AI pixel art.
+    """
+    width, height = img.size
+    tgt_w, tgt_h = target_size
+
+    # Calculate block size
+    block_w = width // tgt_w
+    block_h = height // tgt_h
+
+    # Create new image
+    res = Image.new("RGBA", target_size)
+    pixels = res.load()
+    src_pixels = img.load()
+
+    for x in range(tgt_w):
+        for y in range(tgt_h):
+            # Collect colors in the block
+            colors = []
+            start_x = x * block_w
+            start_y = y * block_h
+
+            # Sample center area to speed up
+            for bx in range(block_w):
+                for by in range(block_h):
+                    colors.append(src_pixels[start_x + bx, start_y + by])
+
+            # Find most common color
+            if colors:
+                most_common = Counter(colors).most_common(1)[0][0]
+                pixels[x, y] = most_common
+
+    return res
+
+
 def process_and_save(src_path, dest_path):
     """
     Full Pipeline:
     1. Load High-Res
-    2. Auto-Trim (Zoom)
-    3. Resize to 64x64
+    2. Auto-Trim (Zoom) - DISABLED
+    3. Resize to 64x64 using SMART DOWNSCALE (Pixel Snapper)
     4. Remove Background (Magenta -> Transparent)
     5. Quantize (Pixel Art Look)
     """
@@ -101,15 +140,31 @@ def process_and_save(src_path, dest_path):
         print(f"  Processing {os.path.basename(src_path)}...")
         img = Image.open(src_path).convert("RGBA")
 
-        # Step 2: Auto-Trim (Zoom In)
-        # Only trim if it's huge (likely a raw generation)
-        if img.width > 256:
-            img = auto_trim(img)
-
-        # Step 3: Resize to 64x64
+        # Step 3: Resize (Preserve Aspect Ratio)
         if img.size != TARGET_SIZE:
-            print(f"    Resizing from {img.size} to {TARGET_SIZE}...")
-            img = img.resize(TARGET_SIZE, Image.NEAREST)
+            # Create a blank 64x64 container
+            container = Image.new("RGBA", TARGET_SIZE, (0, 0, 0, 0))
+
+            # We want to fit into 64x64 preserving aspect ratio
+            ratio = min(TARGET_SIZE[0] / img.width, TARGET_SIZE[1] / img.height)
+            dest_w = int(img.width * ratio)
+            dest_h = int(img.height * ratio)
+
+            # Use Smart Downscale if possible (if we are shrinking)
+            if dest_w > 0 and dest_h > 0:
+                if img.width >= dest_w:
+                    img = smart_downscale(img, (dest_w, dest_h))
+                else:
+                    img = img.resize((dest_w, dest_h), Image.NEAREST)
+
+            # Center the image
+            offset_x = (TARGET_SIZE[0] - img.width) // 2
+            offset_y = (TARGET_SIZE[1] - img.height) // 2
+
+            container.paste(img, (offset_x, offset_y))
+            img = container  # Use the centered result
+
+            print(f"    Resized to {img.size} (using Pixel Snapper Logic)...")
 
         # Step 4: Magenta Transparency
         pixels = img.load()
