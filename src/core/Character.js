@@ -1,13 +1,17 @@
+import { getTalentDefinition } from "./TalentRegistry";
+
+import { gameState } from "./GameState";
+
 export class Character {
   constructor(id, name, type = "WARRIOR") {
     this.id = id;
     this.name = name;
     this.type = type; // WARRIOR or RANGER
-    this.gender = Math.random() > 0.5 ? "MALE" : "FEMALE";
-    this.sprite = this.gender === "MALE" ? "character" : "character_female";
+    this.gender = "MALE";
+    this.sprite = "character";
     this.stats = {
       level: 1,
-      xp: 0,
+
       strength: 10,
       dexterity: 10,
       intelligence: 10,
@@ -32,7 +36,44 @@ export class Character {
       woodcutting: { level: 1, xp: 0 },
       fishing: { level: 1, xp: 0 },
     };
+    this.talents = {}; // { talentId: true }
+    this.talentPoints = 3; // Start with 3 for testing
     this.currentActivity = null; // e.g. { type: 'MINING', target: 'copper_ore', startTime: 12345 }
+  }
+
+  static fromData(data) {
+    const char = new Character(data.id, data.name, data.type);
+    Object.assign(char, data);
+    // Deep merge stats and skills to ensure defaults are preserved if missing in data
+    char.stats = { ...new Character(0, "").stats, ...(data.stats || {}) };
+    char.skills = { ...new Character(0, "").skills, ...(data.skills || {}) };
+    char.talents = { ...(data.talents || {}) };
+    if (data.talentPoints === undefined) char.talentPoints = 3; // Retroactive grant for old saves
+    return char;
+  }
+
+  unlockTalent(talentId) {
+    if (this.talents[talentId]) return false; // Already unlocked
+    if (this.talentPoints <= 0) return false;
+
+    const def = getTalentDefinition(talentId);
+    if (!def) return false;
+
+    // Check Prerequisites
+    for (const req of def.prerequisites) {
+      if (!this.talents[req]) return false;
+    }
+
+    // Unlock
+    this.talentPoints -= def.cost;
+    this.talents[talentId] = true;
+
+    // Apply Effect
+    if (def.effect) {
+      def.effect(this);
+    }
+    console.log(`Unlocked talent ${talentId} for ${this.name}`);
+    return true;
   }
 
   startActivity(type, target) {
@@ -41,12 +82,24 @@ export class Character {
       target,
       startTime: Date.now(),
     };
-    console.log(`${this.name} started ${type} on ${target}`);
+    if (
+      gameState.settings &&
+      gameState.settings.notifications.master &&
+      gameState.settings.notifications.activity
+    ) {
+      console.log(`${this.name} started ${type} on ${target}`);
+    }
   }
 
   stopActivity() {
     this.currentActivity = null;
-    console.log(`${this.name} stopped activity`);
+    if (
+      gameState.settings &&
+      gameState.settings.notifications.master &&
+      gameState.settings.notifications.activity
+    ) {
+      console.log(`${this.name} stopped activity`);
+    }
   }
 
   gainXp(skillId, amount) {
@@ -64,7 +117,13 @@ export class Character {
     if (skill.xp >= xpNeeded) {
       skill.xp -= xpNeeded;
       skill.level++;
-      console.log(`Level Up! ${skillId} is now level ${skill.level}`);
+      if (
+        gameState.settings &&
+        gameState.settings.notifications.master &&
+        gameState.settings.notifications.levelUp
+      ) {
+        console.log(`Level Up! ${skillId} is now level ${skill.level}`);
+      }
       // TODO: Notify UI of level up (via GameState listeners)
     }
   }

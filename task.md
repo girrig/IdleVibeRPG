@@ -57,6 +57,8 @@
   - [x] Fix Sidebar Hover Effect (Simple Scale) <!-- id: 57 -->
   - [x] Enlarge Sidebar Icons (Maximize Space) <!-- id: 58 -->
   - [x] Verify 64x64 Asset Integration (Visual Check) <!-- id: 59 -->
+  - [x] Redesign Skills Sidebar (Tabbed Dashboard) <!-- id: 64 -->
+  - [x] Implement Skill Icons & List View <!-- id: 65 -->
 - [x] Cleanup Unused Files <!-- id: 60 -->
 - [x] Redesign Inventory Grid (Cards) <!-- id: 61 -->
 - [x] World Aesthetics (Polish) <!-- id: 26 -->
@@ -66,3 +68,16 @@
 - [ ] Content Expansion (Later) <!-- id: 16 -->
   - [ ] Add more skills/talents <!-- id: 17 -->
   - [ ] Add crafting system <!-- id: 18 -->
+
+- [ ] Asset Pipeline Management <!-- id: 80 -->
+  - [x] Read ASSET_PIPELINE.md and process scripts <!-- id: 81 -->
+  - [x] Audit and refine existing assets <!-- id: 83 -->
+  - [x] Audit and refine existing assets <!-- id: 83 -->
+  - [x] Execute asset generation workflow <!-- id: 82 -->
+    - [x] Environment (Trees, Pond, Rocks, Ore)
+    - [x] Equipment (Sword)
+    - [x] Items (Fish)
+    - [x] Characters (Male only)
+    - [-] UI Icons (Heroes, Equip, Skills, Inv, Settings) - PAUSED
+    - [ ] Armor Set (Hat, Shirt, Pants, Shoes) - PAUSED
+    - [x] Camp (Removed Features)

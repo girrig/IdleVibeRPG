@@ -68,3 +68,10 @@ The goal is to maintain a consistent **16-bit Dragon Quest SNES** aesthetic with
 - **Target Size:** 64x64 pixels.
 - **Magenta Constraint:** Always use `#FF00FF` for backgrounds in prompts to ensure easy removal.
 - **Grid Lines:** Always include negative prompts (`No grid lines`, `No borders`) to prevent post-processing issues.
+
+## Review Process
+
+- **Artifact Embedding:** When creating review artifacts (markdown), **ALWAYS use the ABSOLUTE PATH** for images.
+  - Invalid: `![Label](image.png)`
+  - Valid: `![Label](C:/Users/name/.../image.png)`
+  - _Reasoning:_ VS Code markdown preview require absolute paths or strict workspace relative paths that are often unreliable in this workflow. Absolute paths are the only 100% reliable method.

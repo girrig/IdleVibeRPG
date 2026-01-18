@@ -11,6 +11,13 @@ export class Inventory {
     // console.log(`Added ${qty} ${itemId}. Total: ${this.items[itemId]}`);
   }
 
+  loadData(data) {
+    if (data && data.items) {
+      this.items = { ...data.items };
+      if (this.onUpdate) this.onUpdate();
+    }
+  }
+
   removeItem(itemId, qty = 1) {
     if (!this.items[itemId] || this.items[itemId] < qty) return false;
     this.items[itemId] -= qty;

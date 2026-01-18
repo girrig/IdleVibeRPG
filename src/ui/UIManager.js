@@ -1,17 +1,96 @@
 import { gameState } from "../core/GameState";
 import { SKILL_DEFINITIONS } from "../core/SkillRegistry";
-import CHAR_IMG_URL from "../assets/character.png";
-import CHAR_FEMALE_IMG_URL from "../assets/character_female.png";
-import ENEMY_RAT_URL from "../assets/enemy_rat.png";
-import ENEMY_GOBLIN_URL from "../assets/enemy_goblin.png";
-import ENEMY_WOLF_URL from "../assets/enemy_wolf.png";
-import ICON_HEROES from "../assets/icon_heroes.png";
-import ICON_EQUIP from "../assets/icon_equip.png";
-import ICON_SKILLS from "../assets/icon_skills.png";
-import ICON_INV from "../assets/icon_inv.png";
-import ICON_SETTINGS from "../assets/icon_settings.png";
+
+import { TALENT_DEFINITIONS } from "../core/TalentRegistry";
 
 export class UIManager {
+  renderTalentsContent(container) {
+    container.className = "mw-content talent-tree-layout";
+    const char = gameState.characters[this.selectedCharIndex];
+    if (!char) return;
+
+    container.innerHTML = `
+        <div class="talents-header">
+            <h3>Talent Tree</h3>
+            <span class="talent-points">Points: ${char.talentPoints}</span>
+        </div>
+        <div class="talents-grid">
+            ${this.renderTalentColumns(char)}
+        </div>
+      `;
+
+    // bind events
+    container.querySelectorAll(".talent-node").forEach((node) => {
+      node.addEventListener("click", () => {
+        const id = node.dataset.id;
+        if (char.unlockTalent(id)) {
+          gameState.saveGame(); // optimize later
+          this.renderMainWindow();
+        }
+      });
+    });
+  }
+
+  renderTalentColumns(char) {
+    // Simple 3-column layout based on definition
+    // Group by column (Strength=0, Dex=1, Int=2)
+    const cols = [[], [], []];
+    Object.values(TALENT_DEFINITIONS).forEach((def) => {
+      if (def.position && def.position.col !== undefined) {
+        if (!cols[def.position.col]) cols[def.position.col] = [];
+        cols[def.position.col].push(def);
+      }
+    });
+
+    return cols
+      .map((colTalents, colIndex) => {
+        return `
+            <div class="talent-col">
+                <div class="talent-col-header">${["Strength", "Dexterity", "Intelligence"][colIndex]}</div>
+                ${colTalents
+                  .sort((a, b) => a.position.row - b.position.row)
+                  .map((def) => {
+                    const unlocked = char.talents[def.id];
+                    const prereqMet = def.prerequisites.every(
+                      (id) => char.talents[id],
+                    );
+                    const affordable = char.talentPoints >= def.cost;
+                    const locked = !unlocked && (!prereqMet || !affordable);
+                    // Actually, "locked" visually usually means "cannot buy yet".
+                    // "Available" means can buy.
+
+                    let statusClass = "locked";
+                    if (unlocked) statusClass = "unlocked";
+                    else if (prereqMet) statusClass = "available";
+
+                    if (unlocked) statusClass += " purchased";
+
+                    return `
+                        <div class="talent-node ${statusClass}" data-id="${def.id}" title="${def.name}: ${def.description} (Cost: ${def.cost})">
+                            <div class="talent-icon">${def.icon}</div>
+                            <div class="talent-name">${def.name}</div>
+                            ${unlocked ? '<div class="check">✔</div>' : ""}
+                        </div>
+                        ${this.renderConnector(def, colTalents)}
+                    `;
+                  })
+                  .join("")}
+            </div>
+          `;
+      })
+      .join("");
+  }
+
+  renderConnector(def, colTalents) {
+    // Check if there is a next node in this column
+    const next = colTalents.find(
+      (t) => t.position.row === def.position.row + 1,
+    );
+    if (next && next.prerequisites.includes(def.id)) {
+      return `<div class="talent-connector"></div>`;
+    }
+    return "";
+  }
   constructor() {
     this.container = null;
     this.mainWindow = null;
@@ -21,7 +100,6 @@ export class UIManager {
   }
 
   getAvatarUrl(spriteKey) {
-    if (spriteKey === "character_female") return CHAR_FEMALE_IMG_URL;
     return CHAR_IMG_URL;
   }
 
@@ -43,11 +121,12 @@ export class UIManager {
     this.sidebar = document.createElement("div");
     this.sidebar.className = "hud-panel sidebar";
     this.sidebar.innerHTML = `
-      <div class="sidebar-item" id="nav-heroes" title="Heroes" style="background-image: url('${ICON_HEROES}')"></div>
-      <div class="sidebar-item" id="nav-equip" title="Equipment" style="background-image: url('${ICON_EQUIP}')"></div>
-      <div class="sidebar-item" id="nav-skills" title="Skills" style="background-image: url('${ICON_SKILLS}')"></div>
-      <div class="sidebar-item" id="nav-inv" title="Inventory" style="background-image: url('${ICON_INV}')"></div>
-      <div class="sidebar-item" id="nav-settings" title="Settings" style="background-image: url('${ICON_SETTINGS}')"></div>
+      <div class="sidebar-item" id="nav-heroes" title="Heroes" style="font-size: 24px;">🦸</div>
+      <div class="sidebar-item" id="nav-equip" title="Equipment" style="font-size: 24px;">🛡️</div>
+      <div class="sidebar-item" id="nav-skills" title="Skills" style="font-size: 24px;">⭐</div>
+      <div class="sidebar-item" id="nav-talents" title="Talents" style="font-size: 24px;">🌳</div>
+      <div class="sidebar-item" id="nav-inv" title="Inventory" style="font-size: 24px;">🎒</div>
+      <div class="sidebar-item" id="nav-settings" title="Settings" style="font-size: 24px;">⚙️</div>
     `;
     this.container.appendChild(this.sidebar);
 
@@ -83,6 +162,9 @@ export class UIManager {
       .querySelector("#nav-skills")
       .addEventListener("click", () => this.switchView("SKILLS"));
     this.sidebar
+      .querySelector("#nav-talents")
+      .addEventListener("click", () => this.switchView("TALENTS"));
+    this.sidebar
       .querySelector("#nav-settings")
       .addEventListener("click", () => this.switchView("SETTINGS"));
   }
@@ -100,6 +182,12 @@ export class UIManager {
     const titleEl = this.mainWindow.querySelector("#mw-title");
     const contentEl = this.mainWindow.querySelector("#mw-content");
     contentEl.innerHTML = "";
+
+    // Cleanup settings interval when switching away
+    if (this.settingsInterval) {
+      clearInterval(this.settingsInterval);
+      this.settingsInterval = null;
+    }
 
     if (!this.currentView) {
       this.mainWindow.classList.add("hidden");
@@ -119,6 +207,9 @@ export class UIManager {
     } else if (this.currentView === "SKILLS") {
       titleEl.innerText = "Skills";
       this.renderSkillContent(contentEl);
+    } else if (this.currentView === "TALENTS") {
+      titleEl.innerText = "Talents";
+      this.renderTalentsContent(contentEl);
     } else if (this.currentView === "SETTINGS") {
       titleEl.innerText = "Settings";
       this.renderSettingsContent(contentEl);
@@ -141,17 +232,59 @@ export class UIManager {
       grid = document.createElement("div");
       grid.className = "hero-grid";
       container.appendChild(grid);
+    }
 
-      // Initial Build
-      gameState.characters.forEach((char, index) => {
-        const card = this.createHeroCard(char, index);
+    // Clear and Rebuild (simplest way to handle dynamic additions correctly without complex diffing for now)
+    // Or, better: synchronize children.
+    // For recruitment, simple clear/rebuild is safer to avoid dupes or ordering issues.
+    // But updateHeroCard relies on existing DOM.
+    // Hybrid approach:
+
+    // 1. Update existing cards
+    gameState.characters.forEach((char, index) => {
+      let card = document.getElementById(`hero-card-${index}`);
+      if (!card) {
+        card = this.createHeroCard(char, index);
+        grid.insertBefore(card, grid.lastElementChild); // Insert before recruit btn if exists? No, just append for now.
+        // Actually, if we clear grid, we lose state.
+        // Let's do:
         grid.appendChild(card);
-      });
-    } else {
-      // Update values only
-      gameState.characters.forEach((char, index) => {
+      } else {
+        // Determine if card is already in grid (it should be)
+        if (!grid.contains(card)) grid.appendChild(card);
         this.updateHeroCard(char, index);
-      });
+      }
+    });
+
+    // 2. Handle Recruit Card
+    let recruitCard = document.getElementById("hero-recruit-card");
+    if (gameState.characters.length < 8) {
+      if (!recruitCard) {
+        recruitCard = document.createElement("div");
+        recruitCard.className = "hero-card recruit-card";
+        recruitCard.id = "hero-recruit-card";
+        recruitCard.innerHTML = `
+                <div class="recruit-content">
+                    <div class="recruit-icon">+</div>
+                    <div class="recruit-text">Recruit Hero</div>
+                    <div class="recruit-cost">FREE</div> 
+                </div>
+            `;
+        recruitCard.addEventListener("click", () => {
+          if (gameState.recruitCharacter()) {
+            // Refresh view
+            this.renderMainWindow();
+          }
+        });
+        grid.appendChild(recruitCard);
+      } else {
+        // Move to end if needed (only if not already the last child)
+        if (grid.lastElementChild !== recruitCard) {
+          grid.appendChild(recruitCard);
+        }
+      }
+    } else {
+      if (recruitCard) recruitCard.remove();
     }
   }
 
@@ -227,7 +360,7 @@ export class UIManager {
     }
 
     // Internal State for Tab
-    let currentTab = "STATS";
+    let currentTab = "SKILLS";
 
     // Activity Color/Text
     const statusText = char.currentActivity
@@ -243,10 +376,8 @@ export class UIManager {
         </div>
         <div class="hero-header">
            <div class="hero-avatar-box">
-           <!-- Using background image for avatar -->
-              <div class="hero-avatar-img" style="background-image: url('${this.getAvatarUrl(
-                char.sprite
-              )}')"></div>
+           <!-- Using emoji for avatar -->
+              <div class="hero-avatar-img" style="font-size: 32px; display: flex; justify-content: center; align-items: center;">👤</div>
            </div>
            <div class="hero-info">
               <h3>${char.name}</h3>
@@ -255,21 +386,13 @@ export class UIManager {
         </div>
         
         <div class="hero-tabs">
-           <button class="hero-tab-btn active" data-tab="STATS">Stats</button>
-           <button class="hero-tab-btn" data-tab="SKILLS">Skills</button>
+           <button class="hero-tab-btn active" data-tab="SKILLS">Skills</button>
+           <button class="hero-tab-btn" data-tab="EQUIP">Equip</button>
+           <button class="hero-tab-btn" data-tab="STATS">Stats</button>
         </div>
         
         <div class="hero-body" id="hero-body-${index}">
            <!-- Dynamic Content -->
-        </div>
-        
-        <div class="hero-equip-window">
-           <div class="hero-equip-title">Equipment</div>
-           <div class="equip-slots-mini">
-              <div class="equip-slot-mini" title="Main Hand">⚔️</div>
-              <div class="equip-slot-mini" title="Off Hand">🛡️</div>
-              <div class="equip-slot-mini" title="Armor">👕</div>
-           </div>
         </div>
       `;
 
@@ -290,24 +413,25 @@ export class UIManager {
     const bodyEl = card.querySelector(`#hero-body-${index}`);
     const btnStats = card.querySelector('[data-tab="STATS"]');
     const btnSkills = card.querySelector('[data-tab="SKILLS"]');
+    const btnEquip = card.querySelector('[data-tab="EQUIP"]');
 
     const renderBody = (updateMode = false) => {
       // If updating, only touch DOM if needed. For Stats, we just rebuild for now (text).
       // For Skills, we build once, then update via updateHeroCard.
 
-      if (!updateMode) bodyEl.innerHTML = ""; // Clear if full render
+      if (!updateMode) bodyEl.innerHTML = ""; // Clear if full render, unless optimized update
 
       if (currentTab === "STATS") {
         if (!updateMode || bodyEl.innerHTML === "") {
           bodyEl.innerHTML = `
                 <div class="stat-row"><span>Lv</span><span class="stat-lv-val">${char.stats.level}</span></div>
-                <div class="stat-row"><span>XP</span><span>${char.stats.xp}</span></div>
+
                 <div class="stat-row"><span>STR</span><span style="color: #f87171">${char.stats.strength}</span></div>
                 <div class="stat-row"><span>DEX</span><span style="color: #4ade80">${char.stats.dexterity}</span></div>
                 <div class="stat-row"><span>INT</span><span style="color: #60a5fa">${char.stats.intelligence}</span></div>
               `;
         }
-      } else {
+      } else if (currentTab === "SKILLS") {
         // Skills View
         if (!updateMode || bodyEl.innerHTML === "") {
           bodyEl.innerHTML = `
@@ -332,6 +456,21 @@ export class UIManager {
                   .join("")}
               `;
         }
+      } else if (currentTab === "EQUIP") {
+        if (!updateMode || bodyEl.innerHTML === "") {
+          bodyEl.innerHTML = `
+               <div class="equip-slots-mini" style="flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px;">
+                  <div class="equip-slot-mini" title="Head">🧢</div>
+                  <div class="equip-slot-mini" title="Chest">👕</div>
+                  <div class="equip-slot-mini" title="Belt">🥋</div>
+                  <div class="equip-slot-mini" title="Gloves">🧤</div>
+                  <div class="equip-slot-mini" title="Legs">👖</div>
+                  <div class="equip-slot-mini" title="Feet">👢</div>
+                  <div class="equip-slot-mini" title="Main Hand">⚔️</div>
+                  <div class="equip-slot-mini" title="Off Hand">🛡️</div>
+               </div>
+          `;
+        }
       }
     };
 
@@ -342,7 +481,7 @@ export class UIManager {
       currentTab = "STATS";
       btnStats.classList.add("active");
       btnSkills.classList.remove("active");
-      btnSkills.classList.remove("active"); // duplicate remove for safety? no
+      btnEquip.classList.remove("active");
       renderBody();
     });
 
@@ -350,6 +489,15 @@ export class UIManager {
       currentTab = "SKILLS";
       btnSkills.classList.add("active");
       btnStats.classList.remove("active");
+      btnEquip.classList.remove("active");
+      renderBody();
+    });
+
+    btnEquip.addEventListener("click", () => {
+      currentTab = "EQUIP";
+      btnEquip.classList.add("active");
+      btnStats.classList.remove("active");
+      btnSkills.classList.remove("active");
       renderBody();
     });
 
@@ -396,9 +544,7 @@ export class UIManager {
             <!-- Center: Avatar -->
             <div class="equip-center">
                  <div class="equip-avatar-display">
-                    <div class="equip-avatar-img" style="background-image: url('${this.getAvatarUrl(
-                      char.sprite
-                    )}')"></div>
+                    <div class="equip-avatar-img" style="font-size: 128px; display: flex; justify-content: center; align-items: center;">👤</div>
                  </div>
                  <div class="equip-char-name">${char ? char.name : "Hero"}</div>
             </div>
@@ -533,14 +679,6 @@ export class UIManager {
         card.className = `skill-action-card ${isLocked ? "locked" : ""}`;
 
         let iconHtml = `<div class="action-icon">${opt.icon || "❓"}</div>`;
-        if (activeSkill.id === "FIGHTING") {
-          if (key === "rat")
-            iconHtml = `<img src="${ENEMY_RAT_URL}" class="action-icon-img" />`;
-          if (key === "goblin")
-            iconHtml = `<img src="${ENEMY_GOBLIN_URL}" class="action-icon-img" />`;
-          if (key === "wolf")
-            iconHtml = `<img src="${ENEMY_WOLF_URL}" class="action-icon-img" />`;
-        }
 
         card.innerHTML = `
                 ${iconHtml}
@@ -573,50 +711,158 @@ export class UIManager {
   renderSettingsContent(container) {
     container.className = "mw-content settings-panel";
     container.innerHTML = `
-        <div class="settings-disclaimer">
-            ⚠️ Disclaimer: These settings are currently placeholders and do not affect the game.
-        </div>
-        <div class="setting-category">
-            <h3>Audio</h3>
-            <div class="setting-row">
-                <span class="setting-label">Master Volume</span>
-                <input type="range" class="setting-slider" min="0" max="100" value="80">
-            </div>
-            <div class="setting-row">
-                <span class="setting-label">Music</span>
-                <input type="checkbox" checked>
-            </div>
-            <div class="setting-row">
-                <span class="setting-label">SFX</span>
-                <input type="checkbox" checked>
-            </div>
-        </div>
         <div class="setting-category">
             <h3>Gameplay</h3>
             <div class="setting-row">
-                <span class="setting-label">Auto-Save</span>
-                <input type="checkbox" checked>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="setting-label">Auto-Save</span>
+                    <span id="autosave-timer" class="setting-note" style="font-size: 0.8em; color: #888; min-width: 80px; display: inline-block;"></span>
+                </div>
+                <input type="checkbox" id="setting-autosave">
             </div>
-             <div class="setting-row">
-                <span class="setting-label">Show Particles</span>
-                <input type="checkbox" checked>
-            </div>
-             <div class="setting-row">
-                <span class="setting-label">Notifications</span>
-                <input type="checkbox">
+             <div class="setting-row" style="align-items: flex-start; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <span class="setting-label">Notifications</span>
+                    <input type="checkbox" id="setting-notifications-master">
+                </div>
+                <!-- Sub settings -->
+                <div id="notif-sub-settings" style="display: flex; flex-direction: column; gap: 8px; padding-left: 20px; width: 100%; box-sizing: border-box; border-left: 2px solid rgba(255,255,255,0.1);">
+                    <div class="setting-row" style="margin:0;">
+                        <span class="setting-label" style="font-size: 0.9em; color: #aaa;">Level Up</span>
+                        <input type="checkbox" id="setting-notifications-levelup">
+                    </div>
+                    <div class="setting-row" style="margin:0;">
+                        <span class="setting-label" style="font-size: 0.9em; color: #aaa;">Activities</span>
+                        <input type="checkbox" id="setting-notifications-activity">
+                    </div>
+                     <div class="setting-row" style="margin:0;">
+                        <span class="setting-label" style="font-size: 0.9em; color: #aaa;">Auto-Save Log</span>
+                        <input type="checkbox" id="setting-notifications-autosave">
+                    </div>
+                </div>
             </div>
         </div>
         <div class="setting-category">
             <h3>Account</h3>
-             <div class="setting-row">
-               <button class="btn-setting">Save Game</button>
-               <button class="btn-setting">Load Game</button>
+             <div class="setting-row" style="justify-content: center;">
+               <button class="btn-setting" id="btn-save-game">Save Game</button>
             </div>
             <div class="setting-row">
-               <button class="btn-setting danger">Reset Progress</button>
+               <button class="btn-setting danger" id="btn-reset-game">Reset Progress</button>
             </div>
         </div>
     `;
+
+    setTimeout(() => {
+      const btnSave = container.querySelector("#btn-save-game");
+      const btnReset = container.querySelector("#btn-reset-game");
+      const chkAutoSave = container.querySelector("#setting-autosave");
+      const chkNotifMaster = container.querySelector(
+        "#setting-notifications-master",
+      );
+      const chkNotifLevelUp = container.querySelector(
+        "#setting-notifications-levelup",
+      );
+      const chkNotifActivity = container.querySelector(
+        "#setting-notifications-activity",
+      );
+      const chkNotifAutoSave = container.querySelector(
+        "#setting-notifications-autosave",
+      );
+      const timerSpan = container.querySelector("#autosave-timer");
+
+      // Clear previous interval if any
+      if (this.settingsInterval) clearInterval(this.settingsInterval);
+
+      if (chkAutoSave) {
+        chkAutoSave.checked = gameState.settings.autoSave;
+
+        const updateTimer = () => {
+          if (!gameState.settings.autoSave) {
+            timerSpan.innerText = "(Paused)";
+            return;
+          }
+          const left = Math.max(
+            0,
+            Math.ceil((gameState.nextAutoSaveTime - Date.now()) / 1000),
+          );
+          timerSpan.innerText = `(Next in ${left}s)`;
+        };
+
+        // Initial call
+        updateTimer();
+
+        // Start Interval
+        this.settingsInterval = setInterval(updateTimer, 1000);
+
+        chkAutoSave.addEventListener("change", (e) => {
+          gameState.toggleAutoSave(e.target.checked);
+          updateTimer(); // Update immediately
+        });
+      }
+
+      // Notification Handlers
+      if (chkNotifMaster) {
+        // Safety: ensure notifications object exists (legacy migration handled in load, but just in case)
+        if (!gameState.settings.notifications) {
+          gameState.settings.notifications = {
+            master: true,
+            levelUp: true,
+            activity: true,
+            autoSave: true,
+          };
+        }
+
+        chkNotifMaster.checked = gameState.settings.notifications.master;
+        chkNotifLevelUp.checked = gameState.settings.notifications.levelUp;
+        chkNotifActivity.checked = gameState.settings.notifications.activity;
+        chkNotifAutoSave.checked = gameState.settings.notifications.autoSave;
+
+        const toggleSub = (disabled) => {
+          const subDiv = container.querySelector("#notif-sub-settings");
+          if (disabled) {
+            subDiv.style.opacity = 0.5;
+            subDiv.style.pointerEvents = "none";
+          } else {
+            subDiv.style.opacity = 1;
+            subDiv.style.pointerEvents = "auto";
+          }
+        };
+
+        toggleSub(!chkNotifMaster.checked);
+
+        chkNotifMaster.addEventListener("change", (e) => {
+          gameState.toggleNotifications(e.target.checked, "master");
+          toggleSub(!e.target.checked);
+        });
+
+        chkNotifLevelUp.addEventListener("change", (e) =>
+          gameState.toggleNotifications(e.target.checked, "levelUp"),
+        );
+        chkNotifActivity.addEventListener("change", (e) =>
+          gameState.toggleNotifications(e.target.checked, "activity"),
+        );
+        chkNotifAutoSave.addEventListener("change", (e) =>
+          gameState.toggleNotifications(e.target.checked, "autoSave"),
+        );
+      }
+
+      if (btnSave) {
+        btnSave.addEventListener("click", () => {
+          if (gameState.saveGame()) {
+            alert("Game Saved!");
+          }
+        });
+      }
+
+      if (btnReset) {
+        btnReset.addEventListener("click", () => {
+          if (confirm("Are you sure you want to reset ALL progress?")) {
+            gameState.resetGame();
+          }
+        });
+      }
+    }, 0);
   }
 
   handleStartActivity(skillId, targetId) {

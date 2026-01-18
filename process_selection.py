@@ -76,28 +76,59 @@ def process_selection(grid_path, selection, dest_path):
     img = Image.open(grid_path).convert("RGBA")
     w, h = img.size
 
-    # Calculate crop coordinates for 2x2 grid
-    # Assuming standard 1024x1024 input -> 512x512 cells
-    cell_w = w // 2
-    cell_h = h // 2
-
+    # Calculate crop coordinates
     crop_box = None
-    if selection == 'TL':
-        crop_box = (0, 0, cell_w, cell_h)
-    elif selection == 'TR':
-        crop_box = (cell_w, 0, w, cell_h)
-    elif selection == 'BL':
-        crop_box = (0, cell_h, cell_w, h)
-    elif selection == 'BR':
-        crop_box = (cell_w, cell_h, w, h)
-    else:
-        print(f"Invalid selection '{selection}'. Use TL, TR, BL, BR.")
-        return
+    
+    # Check for 3x3 syntax (e.g., "R1C1", "R2C3")
+    if len(selection) == 4 and selection.startswith('R') and 'C' in selection:
+        try:
+            row = int(selection[1])
+            col = int(selection[3])
+            
+            # 3x3 Grid
+            cell_w = w // 3
+            cell_h = h // 3
+            
+            # 1-based index to 0-based
+            x_idx = col - 1
+            y_idx = row - 1
+            
+            if 0 <= x_idx < 3 and 0 <= y_idx < 3:
+                crop_box = (
+                    x_idx * cell_w,
+                    y_idx * cell_h,
+                    (x_idx + 1) * cell_w,
+                    (y_idx + 1) * cell_h
+                )
+            else:
+                 print(f"Index out of bounds for 3x3 grid: {selection}")
+                 return
+                 
+        except ValueError:
+            pass
+
+    # Fallback to 2x2 Standard Syntax
+    if crop_box is None:
+        # Standard 2x2
+        cell_w = w // 2
+        cell_h = h // 2
+        
+        if selection == 'TL':
+            crop_box = (0, 0, cell_w, cell_h)
+        elif selection == 'TR':
+            crop_box = (cell_w, 0, w, cell_h)
+        elif selection == 'BL':
+            crop_box = (0, cell_h, cell_w, h)
+        elif selection == 'BR':
+            crop_box = (cell_w, cell_h, w, h)
+        else:
+            print(f"Invalid selection '{selection}'. Use TL, TR, BL, BR or R[1-3]C[1-3].")
+            return
 
     print(f"Processing {os.path.basename(grid_path)} -> {selection}...")
 
     # 0. Fixed Palette Quantization
-    # Crop first (The missing line was here)
+    # Crop first
     crop = img.crop(crop_box)
 
     # Load the master palette
