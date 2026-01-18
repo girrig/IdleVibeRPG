@@ -78,7 +78,6 @@ export class EquipmentView {
 
             <!-- Far Right: Inventory Panel -->
             <div class="equip-inv-panel">
-                <div class="equip-inv-header">Inventory</div>
                 <div class="equip-inv-grid">
                     ${InventoryView.getInventoryHTML()}
                 </div>
