@@ -1,0 +1,73 @@
+/* Notifications */
+.notification-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 9999;
+  pointer-events: none; /* Let clicks pass through */
+}
+
+.game-notification {
+  background: rgba(20, 25, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 4px solid #4ade80;
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  animation:
+    slideIn 0.3s ease-out forwards,
+    fadeOut 0.5s ease-in 3.5s forwards;
+  pointer-events: auto; /* Allow closing if we add close btn */
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.game-notification.error {
+  border-left-color: #f87171;
+}
+
+.game-notification.warning {
+  border-left-color: #fbbf24;
+}
+
+.game-notification.info {
+  border-left-color: #60a5fa;
+}
+
+.game-notification.levelUp {
+  border-left-color: #a78bfa;
+  background: linear-gradient(
+    90deg,
+    rgba(167, 139, 250, 0.2),
+    rgba(20, 25, 40, 0.95)
+  );
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
