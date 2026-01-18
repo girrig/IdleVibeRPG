@@ -4,8 +4,8 @@ export const SKILL_DEFINITIONS = {
     name: "Mining",
     icon: "⛏️",
     options: {
-      copper_ore: { name: "Copper Ore", level: 1, xp: 10, icon: "🪨" },
-      iron_ore: { name: "Iron Ore", level: 5, xp: 20, icon: "⛓️" },
+      copper_ore: { name: "Copper Ore", level: 1, xp: 10, icon: "🟠" },
+      iron_ore: { name: "Iron Ore", level: 5, xp: 20, icon: "⚪" },
       coal: { name: "Coal", level: 10, xp: 30, icon: "⚫" },
     },
     interval: 1000,
@@ -21,7 +21,7 @@ export const SKILL_DEFINITIONS = {
     name: "Woodcutting",
     icon: "🪓",
     options: {
-      oak_log: { name: "Oak Log", level: 1, xp: 10, icon: "🪵" },
+      oak_log: { name: "Oak Log", level: 1, xp: 10, icon: "🌳" },
       willow_log: { name: "Willow Log", level: 5, xp: 20, icon: "🌿" },
       maple_log: { name: "Maple Log", level: 10, xp: 30, icon: "🍁" },
     },

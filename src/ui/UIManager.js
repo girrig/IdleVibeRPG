@@ -2,6 +2,7 @@ import { gameState } from "../core/GameState";
 import { SKILL_DEFINITIONS } from "../core/SkillRegistry";
 
 import { TALENT_DEFINITIONS } from "../core/TalentRegistry";
+import { getItemDefinition } from "../core/ItemRegistry";
 
 export class UIManager {
   renderTalentsContent(container) {
@@ -107,7 +108,37 @@ export class UIManager {
     this.createOverlay();
     // Subscribe to game state
     gameState.addListener(() => this.update());
+
+    // Subscribe to notifications
+    gameState.addNotificationListener((msg, type) =>
+      this.showNotification(msg, type),
+    );
+
     this.update(); // Initial sync
+  }
+
+  showNotification(message, type = "info") {
+    if (!this.container) return;
+
+    let container = this.container.querySelector(".notification-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.className = "notification-container";
+      this.container.appendChild(container);
+    }
+
+    const notif = document.createElement("div");
+    notif.className = `game-notification ${type}`;
+    notif.innerText = message;
+
+    // Auto remove logic is handled by CSS animation for fade out visual,
+    // but we should remove from DOM.
+    // CSS fadeOut takes 3.5s delay + 0.5s duration = 4s.
+    container.appendChild(notif);
+
+    setTimeout(() => {
+      if (notif.parentNode) notif.parentNode.removeChild(notif);
+    }, 4500);
   }
 
   createOverlay() {
@@ -121,11 +152,11 @@ export class UIManager {
     this.sidebar = document.createElement("div");
     this.sidebar.className = "hud-panel sidebar";
     this.sidebar.innerHTML = `
-      <div class="sidebar-item" id="nav-heroes" title="Heroes" style="font-size: 24px;">🦸</div>
+      <div class="sidebar-item" id="nav-characters" title="Characters" style="font-size: 24px;">🦸</div>
+      <div class="sidebar-item" id="nav-inv" title="Inventory" style="font-size: 24px;">🎒</div>
       <div class="sidebar-item" id="nav-equip" title="Equipment" style="font-size: 24px;">🛡️</div>
       <div class="sidebar-item" id="nav-skills" title="Skills" style="font-size: 24px;">⭐</div>
       <div class="sidebar-item" id="nav-talents" title="Talents" style="font-size: 24px;">🌳</div>
-      <div class="sidebar-item" id="nav-inv" title="Inventory" style="font-size: 24px;">🎒</div>
       <div class="sidebar-item" id="nav-settings" title="Settings" style="font-size: 24px;">⚙️</div>
     `;
     this.container.appendChild(this.sidebar);
@@ -135,7 +166,7 @@ export class UIManager {
     this.mainWindow.className = "hud-panel main-window";
     this.mainWindow.innerHTML = `
       <div class="mw-header">
-        <h2 id="mw-title">Heroes</h2>
+        <h2 id="mw-title">Characters</h2>
       </div>
       <div class="mw-content" id="mw-content">
          <!-- Dynamic Content -->
@@ -150,8 +181,8 @@ export class UIManager {
   bindEvents() {
     // Sidebar Switching
     this.sidebar
-      .querySelector("#nav-heroes")
-      .addEventListener("click", () => this.switchView("HEROES"));
+      .querySelector("#nav-characters")
+      .addEventListener("click", () => this.switchView("CHARACTERS"));
     this.sidebar
       .querySelector("#nav-equip")
       .addEventListener("click", () => this.switchView("EQUIP"));
@@ -195,9 +226,9 @@ export class UIManager {
     }
     this.mainWindow.classList.remove("hidden");
 
-    if (this.currentView === "HEROES") {
-      titleEl.innerText = "Heroes";
-      this.renderHeroesContent(contentEl);
+    if (this.currentView === "CHARACTERS") {
+      titleEl.innerText = "Characters";
+      this.renderCharactersContent(contentEl);
     } else if (this.currentView === "EQUIP") {
       titleEl.innerText = "Equipment";
       this.renderEquipContent(contentEl);
@@ -223,7 +254,7 @@ export class UIManager {
     this.update();
   }
 
-  renderHeroesContent(container) {
+  renderCharactersContent(container) {
     container.className = "mw-content";
 
     // Grid Container
@@ -606,14 +637,11 @@ export class UIManager {
     } else {
       return entries
         .map(([id, count]) => {
-          let icon = "🎒";
-          if (id.includes("copper")) icon = "🪨";
-          if (id.includes("wood")) icon = "🪵";
-          if (id.includes("fish")) icon = "🐟";
-          // Add more icons later
+          const def = getItemDefinition(id);
+          const icon = def.icon;
 
           return `
-          <div class="inv-card" title="${id.replace(/_/g, " ")}">
+          <div class="inv-card" title="${def.name}">
             <div class="inv-card-icon">${icon}</div>
             <div class="inv-card-count">${count}</div>
           </div>
@@ -893,11 +921,11 @@ export class UIManager {
         // Optimized: only if item count changed? For now, re-render is cheap
         this.renderInvContent(contentEl); // Re-run render
       }
-    } else if (this.currentView === "HEROES") {
+    } else if (this.currentView === "CHARACTERS") {
       const contentEl = this.mainWindow.querySelector(".mw-content");
       if (contentEl) {
         // Delegates to updateHeroCard internally if grid exists
-        this.renderHeroesContent(contentEl);
+        this.renderCharactersContent(contentEl);
       }
     }
   }

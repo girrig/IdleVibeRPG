@@ -72,7 +72,10 @@ export class Character {
     if (def.effect) {
       def.effect(this);
     }
-    console.log(`Unlocked talent ${talentId} for ${this.name}`);
+    // console.log(`Unlocked talent ${talentId} for ${this.name}`);
+    // No specific notification type for talents yet, defaulting to info/master or maybe add 'talent' later
+    // For now, let's just show it.
+    gameState.triggerNotification(`Unlocked talent: ${def.name}`, "master");
     return true;
   }
 
@@ -82,24 +85,15 @@ export class Character {
       target,
       startTime: Date.now(),
     };
-    if (
-      gameState.settings &&
-      gameState.settings.notifications.master &&
-      gameState.settings.notifications.activity
-    ) {
-      console.log(`${this.name} started ${type} on ${target}`);
-    }
+    gameState.triggerNotification(
+      `${this.name} started ${type} on ${target}`,
+      "activity",
+    );
   }
 
   stopActivity() {
     this.currentActivity = null;
-    if (
-      gameState.settings &&
-      gameState.settings.notifications.master &&
-      gameState.settings.notifications.activity
-    ) {
-      console.log(`${this.name} stopped activity`);
-    }
+    gameState.triggerNotification(`${this.name} stopped activity`, "activity");
   }
 
   gainXp(skillId, amount) {
@@ -117,13 +111,10 @@ export class Character {
     if (skill.xp >= xpNeeded) {
       skill.xp -= xpNeeded;
       skill.level++;
-      if (
-        gameState.settings &&
-        gameState.settings.notifications.master &&
-        gameState.settings.notifications.levelUp
-      ) {
-        console.log(`Level Up! ${skillId} is now level ${skill.level}`);
-      }
+      gameState.triggerNotification(
+        `Level Up! ${skillId} is now level ${skill.level}`,
+        "levelUp",
+      );
       // TODO: Notify UI of level up (via GameState listeners)
     }
   }

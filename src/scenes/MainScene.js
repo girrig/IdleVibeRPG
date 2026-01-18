@@ -123,9 +123,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   renderMiningScene() {
-    this.addEmoji(512, 384, "🪨", 96); // Big Rock
-    this.addEmoji(400, 300, "🪨", 48);
-    this.addEmoji(600, 450, "🪨", 32);
+    this.addEmoji(512, 384, "⛰️", 96); // Big Rock
+    this.addEmoji(400, 300, "⛰️", 48);
+    this.addEmoji(600, 450, "⛰️", 32);
   }
 
   renderFightingScene() {
@@ -141,19 +141,19 @@ export class MainScene extends Phaser.Scene {
   }
 
   renderWoodcuttingScene() {
-    this.addEmoji(512, 384, "🌲", 96); // Main Tree
+    this.addEmoji(512, 384, "🌳", 96); // Main Tree
 
     // Forest
     for (let i = 0; i < 8; i++) {
       const x = 512 + Math.cos(i) * 150;
       const y = 384 + Math.sin(i) * 100;
-      this.addEmoji(x, y, "🌲", 48 + Math.random() * 24);
+      this.addEmoji(x, y, "🌳", 48 + Math.random() * 24);
     }
   }
 
   renderFishingScene() {
     this.addEmoji(512, 384, "💧", 128); // Pond representation
-    this.addEmoji(450, 300, "🌲", 64);
+    this.addEmoji(450, 300, "🌳", 64);
     this.addEmoji(550, 400, "🐟", 32); // Fish jumping?
   }
 }

@@ -22,6 +22,7 @@ class GameState {
       },
     };
     this.listeners = [];
+    this.notificationListeners = [];
   }
 
   initialize() {
@@ -63,16 +64,12 @@ class GameState {
     this.autoSaveTimer = setInterval(() => {
       this.saveGame();
       this.nextAutoSaveTime = Date.now() + this.autoSaveInterval;
-      if (this.settings.notifications) {
-        console.log("Auto-saving game...");
-      }
+      this.triggerNotification("Game Auto-Saved", "autoSave");
     }, this.autoSaveInterval);
   }
 
   saveGame() {
     const data = {
-      characters: this.characters,
-      inventory: this.inventory.items,
       characters: this.characters,
       inventory: this.inventory.items,
       lastTick: this.lastTick,
@@ -172,8 +169,27 @@ class GameState {
     this.listeners.push(callback);
   }
 
+  addNotificationListener(callback) {
+    this.notificationListeners.push(callback);
+  }
+
   notifyListeners() {
     this.listeners.forEach((cb) => cb(this));
+  }
+
+  triggerNotification(message, type = "info") {
+    // Check master switch
+    if (!this.settings.notifications.master) return;
+
+    // Check specific type switch if exists
+    if (
+      this.settings.notifications[type] !== undefined &&
+      this.settings.notifications[type] === false
+    ) {
+      return;
+    }
+
+    this.notificationListeners.forEach((cb) => cb(message, type));
   }
 
   tick() {
