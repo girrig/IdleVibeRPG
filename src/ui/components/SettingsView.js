@@ -32,6 +32,10 @@ export class SettingsView {
                         <span class="setting-label" style="font-size: 0.9em; color: #aaa;">Auto-Save Log</span>
                         <input type="checkbox" id="setting-notifications-autosave">
                     </div>
+                    <div class="setting-row" style="margin:0;">
+                        <span class="setting-label" style="font-size: 0.9em; color: #aaa;">Item Drops</span>
+                        <input type="checkbox" id="setting-notifications-item">
+                    </div>
                 </div>
             </div>
         </div>
@@ -67,6 +71,7 @@ export class SettingsView {
     const chkNotifAutoSave = container.querySelector(
       "#setting-notifications-autosave",
     );
+    const chkNotifItem = container.querySelector("#setting-notifications-item");
     const timerSpan = container.querySelector("#autosave-timer");
 
     // Clear previous interval if any - handled by caller if needed, but here we can manage it if we had instance
@@ -132,6 +137,7 @@ export class SettingsView {
       chkNotifLevelUp.checked = gameState.settings.notifications.levelUp;
       chkNotifActivity.checked = gameState.settings.notifications.activity;
       chkNotifAutoSave.checked = gameState.settings.notifications.autoSave;
+      chkNotifItem.checked = gameState.settings.notifications.item;
 
       const toggleSub = (disabled) => {
         const subDiv = container.querySelector("#notif-sub-settings");
@@ -159,6 +165,9 @@ export class SettingsView {
       );
       chkNotifAutoSave.addEventListener("change", (e) =>
         gameState.toggleNotifications(e.target.checked, "autoSave"),
+      );
+      chkNotifItem.addEventListener("change", (e) =>
+        gameState.toggleNotifications(e.target.checked, "item"),
       );
     }
 

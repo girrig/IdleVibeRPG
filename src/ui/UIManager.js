@@ -92,6 +92,13 @@ export class UIManager {
     `;
     this.container.appendChild(this.mainWindow);
 
+    // Global Save Button
+    const saveBtn = document.createElement("button");
+    saveBtn.id = "global-save-btn";
+    saveBtn.className = "btn-save-global";
+    saveBtn.innerText = "Save";
+    this.container.appendChild(saveBtn);
+
     this.bindEvents();
     this.renderMainWindow(); // Initial Render
   }
@@ -116,6 +123,26 @@ export class UIManager {
     this.sidebar
       .querySelector("#nav-settings")
       .addEventListener("click", () => this.switchView("SETTINGS"));
+
+    // Save Button Logic
+    const saveBtn = this.container.querySelector("#global-save-btn");
+    saveBtn.addEventListener("click", () => {
+      const now = Date.now();
+      const lastSave = this.lastManualSave || 0;
+      if (now - lastSave >= 10000) {
+        if (gameState.saveGame()) {
+          this.showNotification("Game Saved!", "success");
+          this.lastManualSave = now;
+          saveBtn.disabled = true;
+          saveBtn.innerText = "Saved";
+
+          setTimeout(() => {
+            saveBtn.disabled = false;
+            saveBtn.innerText = "Save";
+          }, 10000);
+        }
+      }
+    });
   }
 
   switchView(viewName) {

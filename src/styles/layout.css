@@ -138,6 +138,9 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 16px;
   margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .mw-header h2 {
@@ -145,6 +148,42 @@
   font-weight: 300;
   color: #fff;
   letter-spacing: 1px;
+}
+
+.btn-save-global {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(40, 167, 69, 0.2);
+  border: 1px solid rgba(40, 167, 69, 0.5);
+  color: #4cd137;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+  pointer-events: auto; /* Required since parent has none */
+  z-index: 200;
+}
+
+.btn-save-global:hover {
+  background: rgba(40, 167, 69, 0.4);
+  box-shadow: 0 0 10px rgba(40, 167, 69, 0.2);
+}
+
+.btn-save-global:active {
+  transform: scale(0.95);
+}
+
+.btn-save-global:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #888;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .mw-content {
