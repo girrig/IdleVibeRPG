@@ -18,12 +18,6 @@ export class MainScene extends Phaser.Scene {
     gameState.initialize();
     uiManager.initialize();
 
-    // Generate programmatic background texture
-    const bgGraphics = this.make.graphics({ x: 0, y: 0, add: false });
-    bgGraphics.fillStyle(0x4ade80); // Light green
-    bgGraphics.fillRect(0, 0, 32, 32);
-    bgGraphics.generateTexture("grass", 32, 32);
-
     // Centered on the "World Origin" of our scene objects (512, 384)
     this.cameras.main.centerOn(512, 384);
 
@@ -42,9 +36,6 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.setZoom(1);
 
     // Ensure background covers the new visible area
-    if (this.bg) {
-      this.bg.setSize(width, height);
-    }
   }
 
   update(time, delta) {
@@ -71,15 +62,10 @@ export class MainScene extends Phaser.Scene {
     this.clearScene();
 
     // Common Background
-    let bgTint = 0xffffff;
-    if (type === "MINING") bgTint = 0x888888; // Grey for mines
+    let bgColor = 0x4ade80; // Default Light Green
+    if (type === "MINING") bgColor = 0x888888; // Grey for mines
 
-    this.bg = this.add
-      .tileSprite(0, 0, this.scale.width, this.scale.height, "grass")
-      .setOrigin(0, 0)
-      .setScrollFactor(0)
-      .setTint(bgTint);
-    this.sceneObjects.push(this.bg);
+    this.cameras.main.setBackgroundColor(bgColor);
 
     // Render Specifics
     switch (type) {
