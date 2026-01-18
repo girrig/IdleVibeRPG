@@ -84,6 +84,7 @@ export class Character {
       type,
       target,
       startTime: Date.now(),
+      lastActionTime: Date.now(),
     };
     gameState.triggerNotification(
       `${this.name} started ${type} on ${target}`,

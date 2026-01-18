@@ -1,8 +1,14 @@
 import { gameState } from "../core/GameState";
 import { SKILL_DEFINITIONS } from "../core/SkillRegistry";
+import { goalManager } from "../core/GoalManager";
+import { ITEM_DEFINITIONS } from "../core/ItemRegistry";
 
 import { TALENT_DEFINITIONS } from "../core/TalentRegistry";
-import { getItemDefinition } from "../core/ItemRegistry";
+
+// Helper
+function getItemDefinition(id) {
+  return ITEM_DEFINITIONS[id] || { name: id, icon: "❓" };
+}
 
 export class UIManager {
   renderTalentsContent(container) {
@@ -106,11 +112,16 @@ export class UIManager {
 
   initialize() {
     this.createOverlay();
+
+    // Unsubscribe previous listeners if any
+    if (this.unsubscribeState) this.unsubscribeState();
+    if (this.unsubscribeNotif) this.unsubscribeNotif();
+
     // Subscribe to game state
-    gameState.addListener(() => this.update());
+    this.unsubscribeState = gameState.addListener(() => this.update());
 
     // Subscribe to notifications
-    gameState.addNotificationListener((msg, type) =>
+    this.unsubscribeNotif = gameState.addNotificationListener((msg, type) =>
       this.showNotification(msg, type),
     );
 
@@ -144,6 +155,11 @@ export class UIManager {
   createOverlay() {
     // Parent container
     const app = document.getElementById("app");
+
+    // Cleanup existing overlay if any (prevents duplication on hot-reload)
+    const existing = document.getElementById("ui-layer");
+    if (existing) existing.remove();
+
     this.container = document.createElement("div");
     this.container.id = "ui-layer";
     app.appendChild(this.container);
@@ -255,68 +271,284 @@ export class UIManager {
   }
 
   renderCharactersContent(container) {
-    container.className = "mw-content";
+    container.className = "mw-content char-split-layout";
+    console.log(
+      "Rendering Characters Content. Count:",
+      gameState.characters.length,
+    );
 
-    // Grid Container
-    let grid = container.querySelector(".hero-grid");
-    if (!grid) {
-      grid = document.createElement("div");
-      grid.className = "hero-grid";
-      container.appendChild(grid);
-    }
+    // Sidebar for Characters
+    const sidebar = document.createElement("div");
+    sidebar.className = "char-sidebar-list";
 
-    // Clear and Rebuild (simplest way to handle dynamic additions correctly without complex diffing for now)
-    // Or, better: synchronize children.
-    // For recruitment, simple clear/rebuild is safer to avoid dupes or ordering issues.
-    // But updateHeroCard relies on existing DOM.
-    // Hybrid approach:
-
-    // 1. Update existing cards
+    // Character List Items
     gameState.characters.forEach((char, index) => {
-      let card = document.getElementById(`hero-card-${index}`);
-      if (!card) {
-        card = this.createHeroCard(char, index);
-        grid.insertBefore(card, grid.lastElementChild); // Insert before recruit btn if exists? No, just append for now.
-        // Actually, if we clear grid, we lose state.
-        // Let's do:
-        grid.appendChild(card);
-      } else {
-        // Determine if card is already in grid (it should be)
-        if (!grid.contains(card)) grid.appendChild(card);
-        this.updateHeroCard(char, index);
-      }
+      const item = document.createElement("div");
+      item.id = `char-list-item-${index}`;
+      item.className = `char-list-item ${
+        index === this.selectedCharIndex ? "active" : ""
+      }`;
+
+      // Determine status badge
+      const activity = char.currentActivity
+        ? char.currentActivity.type
+        : "Idle";
+      const badgeColor = char.currentActivity
+        ? "rgba(251, 191, 36, 0.2)"
+        : "rgba(148, 163, 184, 0.2)"; // Amber/Slate bg
+      const badgeTextColor = char.currentActivity ? "#fbbf24" : "#94a3b8";
+
+      item.innerHTML = `
+            <div class="char-list-avatar">👤</div>
+            <div class="char-list-info">
+                <div class="char-list-name">${char.name}</div>
+                <div class="char-list-status">Lv ${char.stats.level} ${char.type}</div>
+            </div>
+            <div class="char-list-badge" style="background: ${badgeColor}; color: ${badgeTextColor};">${activity}</div>
+        `;
+      item.addEventListener("click", () => {
+        this.selectedCharIndex = index;
+        this.renderMainWindow(); // Full Re-render
+      });
+      sidebar.appendChild(item);
     });
 
-    // 2. Handle Recruit Card
-    let recruitCard = document.getElementById("hero-recruit-card");
+    // Recruit Button
     if (gameState.characters.length < 8) {
-      if (!recruitCard) {
-        recruitCard = document.createElement("div");
-        recruitCard.className = "hero-card recruit-card";
-        recruitCard.id = "hero-recruit-card";
-        recruitCard.innerHTML = `
-                <div class="recruit-content">
-                    <div class="recruit-icon">+</div>
-                    <div class="recruit-text">Recruit Hero</div>
-                    <div class="recruit-cost">FREE</div> 
-                </div>
-            `;
-        recruitCard.addEventListener("click", () => {
-          if (gameState.recruitCharacter()) {
-            // Refresh view
-            this.renderMainWindow();
-          }
-        });
-        grid.appendChild(recruitCard);
-      } else {
-        // Move to end if needed (only if not already the last child)
-        if (grid.lastElementChild !== recruitCard) {
-          grid.appendChild(recruitCard);
+      const recruitBtn = document.createElement("div");
+      recruitBtn.className = "char-list-item recruit";
+      recruitBtn.innerHTML = `
+             <div class="char-list-avatar" style="background:transparent; border: 1px dashed #666;">+</div>
+             <div class="char-list-info">
+                <div class="char-list-name">Recruit New</div>
+             </div>
+        `;
+      recruitBtn.addEventListener("click", () => {
+        if (gameState.recruitCharacter()) {
+          this.renderMainWindow();
         }
-      }
-    } else {
-      if (recruitCard) recruitCard.remove();
+      });
+      sidebar.appendChild(recruitBtn);
     }
+
+    container.appendChild(sidebar);
+
+    // Detail Panel
+    const detailPanel = document.createElement("div");
+    detailPanel.className = "char-detail-panel";
+
+    const char = gameState.characters[this.selectedCharIndex];
+    if (char) {
+      this.renderCharacterDetail(detailPanel, char);
+    }
+
+    container.appendChild(detailPanel);
+  }
+
+  renderCharacterDetail(container, char) {
+    // Header
+    const header = document.createElement("div");
+    header.className = "char-detail-header";
+    header.innerHTML = `
+        <div class="char-detail-avatar">👤</div>
+        <div class="char-detail-title">
+            <h2>${char.name}</h2>
+            <span>Level ${char.stats.level} ${char.type}</span>
+        </div>
+    `;
+    container.appendChild(header);
+
+    // Dashboard Grid
+    const dashboard = document.createElement("div");
+    dashboard.className = "char-dashboard-layout";
+    container.appendChild(dashboard);
+
+    // -- LEFT COLUMN (Main) --
+    const leftCol = document.createElement("div");
+    leftCol.className = "dash-col-main";
+    dashboard.appendChild(leftCol);
+
+    // Goal Section (Appended to Left)
+    const goalSection = document.createElement("div");
+    goalSection.className = "char-detail-section char-goal-section";
+
+    // Logic for goal content (Same as before)
+    if (char.activeGoal) {
+      const goal = char.activeGoal;
+      const targetDef = getItemDefinition(goal.targetItem);
+      goalSection.innerHTML = `
+            <div class="section-title">Current Objective</div>
+            <div class="active-goal-card">
+                 <div class="goal-info">
+                    <span class="goal-icon">${targetDef.icon}</span>
+                    <span class="goal-name">Get ${targetDef.name}</span>
+                </div>
+                <div class="goal-status">
+                    Status: <span style="color: #fbbf24">${goal.status}</span>
+                </div>
+                <button class="btn-cancel-goal">Cancel Goal</button>
+            </div>
+        `;
+      goalSection
+        .querySelector(".btn-cancel-goal")
+        .addEventListener("click", () => {
+          goalManager.clearGoal(char);
+          this.renderMainWindow();
+        });
+    } else {
+      goalSection.innerHTML = `
+            <div class="section-title">Current Objective</div>
+            <div class="no-goal-state">
+                <div>No active goal</div>
+                <button class="btn-set-goal">Select Item Target</button>
+            </div>
+        `;
+      goalSection
+        .querySelector(".btn-set-goal")
+        .addEventListener("click", () => {
+          this.showItemSelectionModal((itemId) => {
+            goalManager.setGoal(char, itemId);
+            this.renderMainWindow();
+          });
+        });
+    }
+    leftCol.appendChild(goalSection);
+
+    // Skills Section (Appended to Left)
+    const skillsSection = document.createElement("div");
+    skillsSection.className = "char-detail-section char-skills-section";
+    skillsSection.innerHTML = `
+        <div class="section-title">Skills</div>
+        <div class="skills-grid-detail">
+             ${Object.entries(char.skills)
+               .map(([id, skill]) => ({
+                 id,
+                 skill,
+                 name: id.charAt(0).toUpperCase() + id.slice(1),
+               }))
+               .sort((a, b) => a.name.localeCompare(b.name))
+               .map(({ id, skill, name }) => {
+                 const xpNeeded = skill.level * 100;
+                 const percent = Math.min((skill.xp / xpNeeded) * 100, 100);
+                 return `
+                <div class="skill-row-compact" title="${skill.xp} / ${xpNeeded} XP">
+                    <div class="skill-info-compact">
+                    <span class="skill-name-compact">${name}</span>
+                    <span class="skill-lvl-compact">Lv ${skill.level}</span>
+                    </div>
+                    <div class="skill-bar-bg-compact">
+                    <div class="skill-bar-fill-compact ${id}" style="width: ${percent}%"></div>
+                    </div>
+                </div>
+                `;
+               })
+               .join("")}
+        </div>
+    `;
+    leftCol.appendChild(skillsSection);
+
+    // -- RIGHT COLUMN (Side) --
+    const rightCol = document.createElement("div");
+    rightCol.className = "dash-col-side";
+    dashboard.appendChild(rightCol);
+
+    // Attributes Panel (New)
+    const statsSection = document.createElement("div");
+    statsSection.className = "char-detail-section char-stats-section";
+    statsSection.innerHTML = `
+        <div class="section-title">Attributes</div>
+        <div class="stats-grid-visual">
+             <div class="stat-box">
+                <div class="stat-label" style="color:#f87171">STR</div>
+                <div class="stat-value stat-pill">${char.stats.strength}</div>
+             </div>
+             <div class="stat-box">
+                <div class="stat-label" style="color:#4ade80">DEX</div>
+                <div class="stat-value stat-pill">${char.stats.dexterity}</div>
+             </div>
+             <div class="stat-box">
+                <div class="stat-label" style="color:#60a5fa">INT</div>
+                <div class="stat-value stat-pill">${char.stats.intelligence}</div>
+             </div>
+        </div>
+    `;
+    rightCol.appendChild(statsSection);
+
+    // Equipment Section (Appended to Right)
+    const equipSection = document.createElement("div");
+    equipSection.className = "char-detail-section char-equip-section";
+    equipSection.innerHTML = `
+         <div class="section-title">Equipment</div>
+         <div class="equip-slots-layout">
+            <div class="equip-row">
+                <div class="equip-slot-mini" title="Head">🧢</div>
+            </div>
+            <div class="equip-row">
+                <div class="equip-slot-mini" title="Main Hand">⚔️</div>
+                <div class="equip-slot-mini" title="Chest">👕</div>
+                <div class="equip-slot-mini" title="Off Hand">🛡️</div>
+            </div>
+            <div class="equip-row">
+                 <div class="equip-slot-mini" title="Gloves">🧤</div>
+                 <div class="equip-slot-mini" title="Legs">👖</div>
+                 <div class="equip-slot-mini" title="Belt">🥋</div>
+            </div>
+             <div class="equip-row">
+                 <div class="equip-slot-mini" title="Ring">💍</div>
+                 <div class="equip-slot-mini" title="Feet">👢</div>
+                 <div class="equip-slot-mini" title="Trinket">🧿</div>
+            </div>
+        </div>
+    `;
+    rightCol.appendChild(equipSection);
+  }
+
+  showItemSelectionModal(onSelect) {
+    const modal = document.createElement("div");
+    modal.className = "game-modal";
+    modal.innerHTML = `
+        <div class="modal-content" style="width: 600px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h2>Select Target Item</h2>
+                <button class="btn-close">×</button>
+            </div>
+             <div class="goals-grid" style="overflow-y: auto; padding: 10px;">
+                ${Object.entries(ITEM_DEFINITIONS)
+                  .sort(([, a], [, b]) => a.name.localeCompare(b.name))
+                  .map(
+                    ([id, def]) => `
+                    <div class="goal-item-card" data-id="${id}">
+                        <div class="goal-item-icon">${def.icon}</div>
+                        <div class="goal-item-name">${def.name}</div>
+                    </div>
+                `,
+                  )
+                  .join("")}
+            </div>
+        </div>
+     `;
+
+    document.body.appendChild(modal);
+
+    // Close events
+    const close = () => {
+      modal.classList.add("hidden");
+      setTimeout(() => modal.remove(), 200);
+    };
+
+    modal.querySelector(".btn-close").addEventListener("click", close);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) close();
+    });
+
+    // Item Click
+    modal.querySelectorAll(".goal-item-card").forEach((el) => {
+      el.addEventListener("click", () => {
+        const id = el.dataset.id;
+        onSelect(id);
+        close();
+      });
+    });
   }
 
   updateHeroCard(char, index) {
@@ -630,7 +862,9 @@ export class UIManager {
 
   getInventoryHTML() {
     const items = gameState.inventory.items;
-    const entries = Object.entries(items).filter(([_, count]) => count > 0);
+    const entries = Object.entries(items)
+      .filter(([_, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1]); // Sort by quantity desc
 
     if (entries.length === 0) {
       return '<div class="empty-msg">No items</div>';
@@ -913,7 +1147,6 @@ export class UIManager {
     if (!this.container) return;
 
     // Refresh Inv if active
-    // Refresh Inv if active
     if (this.currentView === "INV") {
       const contentEl = this.mainWindow.querySelector("#mw-content");
       if (contentEl) {
@@ -923,11 +1156,132 @@ export class UIManager {
       }
     } else if (this.currentView === "CHARACTERS") {
       const contentEl = this.mainWindow.querySelector(".mw-content");
-      if (contentEl) {
-        // Delegates to updateHeroCard internally if grid exists
-        this.renderCharactersContent(contentEl);
+      if (contentEl && contentEl.classList.contains("char-split-layout")) {
+        this.updateCharactersContent(contentEl);
+      } else {
+        this.renderMainWindow();
+      }
+    } else if (this.currentView === "EQUIP") {
+      const invGrid = this.mainWindow.querySelector(".equip-inv-grid");
+      if (invGrid) {
+        invGrid.innerHTML = this.getInventoryHTML();
       }
     }
+  }
+
+  updateCharactersContent(container) {
+    const char = gameState.characters[this.selectedCharIndex];
+    if (!char) return;
+
+    // Update Sidebar Status
+    gameState.characters.forEach((c, i) => {
+      const item = container.querySelector(`#char-list-item-${i}`);
+      if (item) {
+        const status = item.querySelector(".char-list-status");
+        if (status) status.innerText = `Lv ${c.stats.level} ${c.type}`;
+
+        const badge = item.querySelector(".char-list-badge");
+        if (badge) {
+          const activity = c.currentActivity ? c.currentActivity.type : "Idle";
+          const badgeColor = c.currentActivity
+            ? "rgba(251, 191, 36, 0.2)"
+            : "rgba(148, 163, 184, 0.2)";
+          const badgeTextColor = c.currentActivity ? "#fbbf24" : "#94a3b8";
+
+          badge.style.background = badgeColor;
+          badge.style.color = badgeTextColor;
+          badge.innerText = activity;
+        }
+
+        if (i === this.selectedCharIndex) item.classList.add("active");
+        else item.classList.remove("active");
+      }
+    });
+
+    // Update Detail Header
+    const lvlSpan = container.querySelector(".char-detail-title span");
+    if (lvlSpan) lvlSpan.innerText = `Level ${char.stats.level} ${char.type}`;
+
+    // Update Attributes
+    // We now have distinct boxes. We can query by .stat-box index or just .stat-value
+    const statValues = container.querySelectorAll(".stat-value.stat-pill");
+    if (statValues.length >= 3) {
+      statValues[0].innerText = char.stats.strength;
+      statValues[1].innerText = char.stats.dexterity;
+      statValues[2].innerText = char.stats.intelligence;
+    }
+
+    // Update Goal Section
+    const goalSection = container.querySelector(".char-goal-section");
+    if (goalSection) {
+      const currentGoalInfo = char.activeGoal
+        ? `Goal-${char.activeGoal.targetItem}-${char.activeGoal.status}`
+        : "No-Goal";
+      const lastGoalInfo = goalSection.dataset.lastState;
+
+      if (currentGoalInfo !== lastGoalInfo) {
+        goalSection.dataset.lastState = currentGoalInfo;
+        if (char.activeGoal) {
+          const goal = char.activeGoal;
+          const targetDef = getItemDefinition(goal.targetItem);
+          goalSection.innerHTML = `
+                    <div class="section-title">Current Objective</div>
+                    <div class="active-goal-card">
+                        <div class="goal-info">
+                            <span class="goal-icon">${targetDef.icon}</span>
+                            <span class="goal-name">Get ${targetDef.name}</span>
+                        </div>
+                        <div class="goal-status">
+                            Status: <span style="color: #fbbf24">${goal.status}</span>
+                        </div>
+                        <button class="btn-cancel-goal">Cancel Goal</button>
+                    </div>
+                `;
+          goalSection
+            .querySelector(".btn-cancel-goal")
+            .addEventListener("click", () => {
+              goalManager.clearGoal(char);
+              this.renderMainWindow();
+            });
+        } else {
+          goalSection.innerHTML = `
+                    <div class="section-title">Current Objective</div>
+                    <div class="no-goal-state">
+                        <div>No active goal</div>
+                        <button class="btn-set-goal">Select Item Target</button>
+                    </div>
+                `;
+          goalSection
+            .querySelector(".btn-set-goal")
+            .addEventListener("click", () => {
+              this.showItemSelectionModal((itemId) => {
+                goalManager.setGoal(char, itemId);
+                this.renderMainWindow();
+              });
+            });
+        }
+      } else {
+        if (char.activeGoal) {
+          const statusSpan = goalSection.querySelector(".goal-status span");
+          if (statusSpan) statusSpan.innerText = char.activeGoal.status;
+        }
+      }
+    }
+
+    // Update Skills
+    Object.entries(char.skills).forEach(([id, skill]) => {
+      const bar = container.querySelector(`.skill-bar-fill-compact.${id}`);
+      const row = bar ? bar.closest(".skill-row-compact") : null;
+      if (bar && row) {
+        const xpNeeded = skill.level * 100;
+        const percent = Math.min((skill.xp / xpNeeded) * 100, 100);
+        bar.style.width = `${percent}%`;
+
+        const lvl = row.querySelector(".skill-lvl-compact");
+        if (lvl) lvl.innerText = `Lv ${skill.level}`;
+        row.title = `${skill.xp} / ${xpNeeded} XP`;
+      }
+    });
   }
 }
 

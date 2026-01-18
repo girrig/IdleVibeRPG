@@ -8,7 +8,7 @@ export const SKILL_DEFINITIONS = {
       iron_ore: { name: "Iron Ore", level: 5, xp: 20, icon: "⚪" },
       coal: { name: "Coal", level: 10, xp: 30, icon: "⚫" },
     },
-    interval: 1000,
+    interval: 3000,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.MINING.options[targetId];
@@ -25,7 +25,7 @@ export const SKILL_DEFINITIONS = {
       willow_log: { name: "Willow Log", level: 5, xp: 20, icon: "🌿" },
       maple_log: { name: "Maple Log", level: 10, xp: 30, icon: "🍁" },
     },
-    interval: 1000,
+    interval: 3000,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.WOODCUTTING.options[targetId];
@@ -42,7 +42,7 @@ export const SKILL_DEFINITIONS = {
       raw_salmon: { name: "Raw Salmon", level: 5, xp: 20, icon: "🐠" },
       raw_tuna: { name: "Raw Tuna", level: 10, xp: 30, icon: "🦈" },
     },
-    interval: 1000,
+    interval: 3000,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.FISHING.options[targetId];
@@ -65,7 +65,7 @@ export const SKILL_DEFINITIONS = {
       },
       wolf: { name: "Wolf", level: 10, xp: 30, drop: "wolf_fur", icon: "🐺" },
     },
-    interval: 1000,
+    interval: 3000,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.FIGHTING.options[targetId];

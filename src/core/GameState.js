@@ -2,11 +2,16 @@ import { Character } from "./Character";
 import { Inventory } from "./Inventory";
 import { getSkillDefinition } from "./SkillRegistry";
 import { SaveManager } from "./SaveManager";
+import { goalManager } from "./GoalManager";
+import { getItemDefinition } from "./ItemRegistry";
 
 class GameState {
   constructor() {
     this.characters = [];
-    this.inventory = new Inventory(() => this.notifyListeners());
+    this.inventory = new Inventory(
+      () => this.notifyListeners(),
+      (itemId, qty) => this.handleItemAdded(itemId, qty),
+    );
     this.lastTick = Date.now();
     this.tickRate = 1000; // 1 second
     this.autoSaveInterval = 60000; // 60 seconds
@@ -19,6 +24,7 @@ class GameState {
         levelUp: true,
         activity: true,
         autoSave: true,
+        item: true,
       },
     };
     this.listeners = [];
@@ -115,6 +121,7 @@ class GameState {
           levelUp: val,
           activity: val,
           autoSave: val,
+          item: val,
         };
       }
     }
@@ -160,6 +167,7 @@ class GameState {
   }
 
   addCharacter(char) {
+    console.log("Adding Character:", char.name);
     this.characters.push(char);
     this.notifyListeners();
   }
@@ -167,10 +175,19 @@ class GameState {
   // Basic subscription system for UI updates
   addListener(callback) {
     this.listeners.push(callback);
+    // Return unsubscribe function
+    return () => {
+      this.listeners = this.listeners.filter((cb) => cb !== callback);
+    };
   }
 
   addNotificationListener(callback) {
     this.notificationListeners.push(callback);
+    return () => {
+      this.notificationListeners = this.notificationListeners.filter(
+        (cb) => cb !== callback,
+      );
+    };
   }
 
   notifyListeners() {
@@ -190,6 +207,15 @@ class GameState {
     }
 
     this.notificationListeners.forEach((cb) => cb(message, type));
+  }
+
+  handleItemAdded(itemId, qty) {
+    const def = getItemDefinition(itemId);
+    const name = def ? def.name : itemId;
+    const icon = def ? def.icon : "";
+    // Only show +1 if qty is 1, etc.
+    const sign = qty > 0 ? "+" : ""; // though usually we only add positive amounts here
+    this.triggerNotification(`${sign}${qty} ${name} ${icon}`, "item");
   }
 
   tick() {
@@ -226,11 +252,18 @@ class GameState {
       if (char.currentActivity) {
         const skillDef = getSkillDefinition(char.currentActivity.type);
         if (skillDef) {
-          // TODO: Check for time interval, for now 1 tick = 1 action if tickrate matches
-          skillDef.action(this, char);
+          const now = Date.now();
+          const lastTime = char.currentActivity.lastActionTime || 0; // fallback
+          if (now - lastTime >= skillDef.interval) {
+            skillDef.action(this, char);
+            char.currentActivity.lastActionTime = now;
+          }
         }
       }
     });
+
+    // Update Goals
+    goalManager.update(this);
   }
 }
 
