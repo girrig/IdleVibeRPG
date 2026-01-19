@@ -98,12 +98,29 @@
 
 .talents-grid {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   flex: 1;
   overflow-x: auto;
   overflow-y: auto;
   gap: 40px;
-  padding: 30px; /* More padding inside */
+  padding: 10px 30px 30px; /* Reduced top padding as header is separate now */
+  position: relative; /* Context for SVG */
+}
+
+.talent-connections-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Let clicks pass through to nodes */
+  z-index: 1; /* Below nodes */
+}
+
+/* Ensure nodes are above lines */
+.talent-node-wrapper {
+  z-index: 2;
+  position: relative;
 }
 
 .talent-col {
@@ -128,19 +145,21 @@
   font-size: 0.9rem;
 }
 
-/* Sidebar Points Display */
-.sidebar-points-display {
+/* Main Points Display */
+.main-points-display {
   background: rgba(251, 191, 36, 0.1);
   border: 1px solid rgba(251, 191, 36, 0.2);
   color: #fbbf24;
-  padding: 10px;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
   text-align: center;
   font-weight: 600;
-  margin-bottom: 10px;
+  margin: 10px 0 0 20px; /* Top left */
   text-transform: uppercase;
   font-size: 0.9rem;
   letter-spacing: 1px;
+  width: fit-content;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .points-val {
@@ -216,20 +235,7 @@
   font-weight: 500;
 }
 
-.talent-connector {
-  width: 3px;
-  height: 25px; /* Longer connector for more gap */
-  background: #444;
-  margin-top: -8px;
-  margin-bottom: -8px;
-  z-index: 1;
-  transition: background 0.3s;
-}
-
-.talent-node.unlocked + .talent-connector {
-  background: #4ade80;
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
-}
+/* Old connector styles removed */
 
 .check {
   position: absolute;

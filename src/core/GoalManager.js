@@ -7,7 +7,7 @@ export class GoalManager {
   }
 
   // Assign a goal to a character
-  setGoal(character, itemId) {
+  setGoal(character, itemId, quantity = 1) {
     const source = sourceRegistry.getSource(itemId);
 
     // Validation
@@ -22,6 +22,7 @@ export class GoalManager {
     // Create Goal Object
     character.activeGoal = {
       targetItem: itemId,
+      targetQuantity: quantity,
       source: source,
       startTime: Date.now(),
       startCount: gameState.inventory.getCount(itemId),
@@ -30,7 +31,7 @@ export class GoalManager {
     };
 
     gameState.triggerNotification(
-      `${character.name} goal set: Get ${itemId}`,
+      `${character.name} goal set: Get ${quantity} ${itemId}`,
       "info",
     );
 
@@ -59,10 +60,12 @@ export class GoalManager {
 
     // Check if obtained
     const currentCount = gameState.inventory.getCount(goal.targetItem);
-    if (currentCount > goal.startCount) {
+    const targetTotal = goal.startCount + goal.targetQuantity;
+
+    if (currentCount >= targetTotal) {
       // Objective Complete!
       gameState.triggerNotification(
-        `${char.name} obtained ${goal.targetItem}!`,
+        `${char.name} obtained ${goal.targetQuantity} ${goal.targetItem}!`,
         "success",
       );
 

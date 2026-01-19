@@ -7,13 +7,13 @@
 }
 
 .active-goal-card {
-  background: rgba(251, 191, 36, 0.1);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  border-radius: 12px;
-  padding: 16px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .goal-header {
@@ -28,18 +28,57 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
 }
 
 .goal-icon {
-  font-size: 32px;
+  font-size: 28px;
+  background: #0f172a;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid #334155;
 }
 
 .goal-status {
-  font-size: 14px;
-  color: #aaa;
+  font-size: 12px;
+  color: #94a3b8;
+  border-top: 1px solid #334155;
+  padding-top: 8px;
+}
+
+.goal-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.goal-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.goal-progress-text {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.goal-progress-bar-bg {
+  height: 6px;
+  background: #0f172a;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.goal-progress-bar-fill {
+  height: 100%;
+  background: #fbbf24;
+  transition: width 0.3s ease;
 }
 
 .btn-cancel-goal {

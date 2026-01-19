@@ -7,7 +7,7 @@ export class TalentsView {
     this.uiManager = uiManager;
     this.activeCategory = "Fighting";
     this.categories = [
-      { id: "Fighting", label: "Fighting", icon: "⚔️", columns: [6] },
+      { id: "Fighting", label: "Fighting", icon: "⚔️", columns: [6, 7] },
       { id: "Fishing", label: "Fishing", icon: "🎣", columns: [5] },
       { id: "Mining", label: "Mining", icon: "⛏️", columns: [3] },
       { id: "Woodcutting", label: "Woodcutting", icon: "🪓", columns: [4] },
@@ -40,9 +40,7 @@ export class TalentsView {
     container.innerHTML = `
         <div class="talents-body">
             <div class="talents-sidebar">
-                <div class="sidebar-points-display">
-                    ${pointLabel}: <span class="points-val">${pointValue}</span>
-                </div>
+
                 ${this.categories
                   .map(
                     (cat) => `
@@ -55,6 +53,9 @@ export class TalentsView {
                   .join("")}
             </div>
             <div class="talents-main">
+                <div class="main-points-display">
+                    ${pointLabel}: <span class="points-val">${pointValue}</span>
+                </div>
                 <div class="talents-grid">
                     ${this.renderTalentColumns(char)}
                 </div>
@@ -75,12 +76,27 @@ export class TalentsView {
     container.querySelectorAll(".talent-node").forEach((node) => {
       node.addEventListener("click", () => {
         const id = node.dataset.id;
-        if (char.unlockTalent(id)) {
-          gameState.saveGame(); // optimize later
-          this.uiManager.renderMainWindow();
+
+        if (char.talents[id]) {
+          // Already unlocked -> Refund
+          if (char.refundTalent(id)) {
+            gameState.saveGame();
+            this.uiManager.renderMainWindow();
+          }
+        } else {
+          // Locked -> Unlock
+          if (char.unlockTalent(id)) {
+            gameState.saveGame(); // optimize later
+            this.uiManager.renderMainWindow();
+          }
         }
       });
     });
+
+    // Draw connectors after a brief delay to ensure layout is settled
+    setTimeout(() => this.drawConnectors(), 0);
+    // Also redraw on window resize
+    window.addEventListener("resize", () => this.drawConnectors());
   }
 
   renderTalentColumns(char) {
@@ -96,7 +112,8 @@ export class TalentsView {
       "Mining",
       "Woodcutting",
       "Fishing",
-      "Fighting",
+      "Fighting (Offense)",
+      "Fighting (Defense)",
     ];
 
     // Collect talents for active columns
@@ -112,11 +129,12 @@ export class TalentsView {
       }
     });
 
-    return validCols
+    // Render columns
+    const columnsHtml = validCols
       .map((colIndex) => {
         const colTalents = cols[colIndex] || [];
         return `
-            <div class="talent-col">
+            <div class="talent-col" data-col="${colIndex}">
                 <div class="talent-col-header">${headers[colIndex] || "Unknown"}</div>
                 ${colTalents
                   .sort((a, b) => a.position.row - b.position.row)
@@ -126,7 +144,6 @@ export class TalentsView {
                       (id) => char.talents[id],
                     );
                     const affordable = char.talentPoints >= def.cost;
-                    const locked = !unlocked && (!prereqMet || !affordable);
 
                     let statusClass = "locked";
                     if (unlocked) statusClass = "unlocked";
@@ -135,12 +152,13 @@ export class TalentsView {
                     if (unlocked) statusClass += " purchased";
 
                     return `
-                        <div class="talent-node ${statusClass}" data-id="${def.id}" title="${def.name}: ${def.description} (Cost: ${def.cost})">
-                            <div class="talent-icon">${def.icon}</div>
-                            <div class="talent-name">${def.name}</div>
-                            ${unlocked ? '<div class="check">✔</div>' : ""}
+                        <div class="talent-node-wrapper">
+                            <div class="talent-node ${statusClass}" id="talent-node-${def.id}" data-id="${def.id}" title="${def.name}: ${def.description} (Cost: ${def.cost})">
+                                <div class="talent-icon">${def.icon}</div>
+                                <div class="talent-name">${def.name}</div>
+                                ${unlocked ? '<div class="check">✔</div>' : ""}
+                            </div>
                         </div>
-                        ${this.renderConnector(def, colTalents)}
                     `;
                   })
                   .join("")}
@@ -148,16 +166,77 @@ export class TalentsView {
           `;
       })
       .join("");
+
+    return `
+        <svg class="talent-connections-svg"></svg>
+        ${columnsHtml}
+      `;
   }
 
-  renderConnector(def, colTalents) {
-    // Check if there is a next node in this column
-    const next = colTalents.find(
-      (t) => t.position.row === def.position.row + 1,
-    );
-    if (next && next.prerequisites.includes(def.id)) {
-      return `<div class="talent-connector"></div>`;
-    }
-    return "";
+  drawConnectors() {
+    const svg = document.querySelector(".talent-connections-svg");
+    if (!svg) return;
+
+    // Clear existing
+    svg.innerHTML = "";
+
+    // Set SVG size to match grid scroll area
+    const grid = document.querySelector(".talents-grid");
+    if (!grid) return;
+
+    svg.setAttribute("width", grid.scrollWidth);
+    svg.setAttribute("height", grid.scrollHeight);
+
+    const char = gameState.characters[this.uiManager.selectedCharIndex];
+    if (!char) return;
+
+    Object.values(TALENT_DEFINITIONS).forEach((def) => {
+      const node = document.getElementById(`talent-node-${def.id}`);
+      // Only draw for visible nodes
+      if (!node) return;
+
+      def.prerequisites.forEach((preId) => {
+        const preNode = document.getElementById(`talent-node-${preId}`);
+        if (preNode) {
+          this.drawConnectorLine(
+            svg,
+            preNode,
+            node,
+            char.talents[def.id] || false,
+          );
+        }
+      });
+    });
+  }
+
+  drawConnectorLine(svg, startEl, endEl, isUnlocked) {
+    const gridRect = document
+      .querySelector(".talents-grid")
+      .getBoundingClientRect();
+    const startRect = startEl.getBoundingClientRect();
+    const endRect = endEl.getBoundingClientRect();
+
+    // Calculate center points relative to the grid container
+    // We add scroll values because the SVG covers the full scrollable area
+    const gridScrollLeft = document.querySelector(".talents-grid").scrollLeft;
+    const gridScrollTop = document.querySelector(".talents-grid").scrollTop;
+
+    const x1 =
+      startRect.left - gridRect.left + startRect.width / 2 + gridScrollLeft;
+    const y1 =
+      startRect.top - gridRect.top + startRect.height / 2 + gridScrollTop;
+    const x2 =
+      endRect.left - gridRect.left + endRect.width / 2 + gridScrollLeft;
+    const y2 = endRect.top - gridRect.top + endRect.height / 2 + gridScrollTop;
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", x1);
+    line.setAttribute("y1", y1);
+    line.setAttribute("x2", x2);
+    line.setAttribute("y2", y2);
+    line.setAttribute("stroke", isUnlocked ? "#4ade80" : "#444");
+    line.setAttribute("stroke-width", "3");
+
+    svg.appendChild(line);
   }
 }

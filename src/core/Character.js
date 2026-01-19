@@ -1,4 +1,4 @@
-import { getTalentDefinition } from "./TalentRegistry";
+import { getTalentDefinition, TALENT_DEFINITIONS } from "./TalentRegistry";
 
 import { gameState } from "./GameState";
 
@@ -72,26 +72,32 @@ export class Character {
 
     if (!isAttribute) {
       // Find which skill corresponds to this talent
-      // Simple mapping based on known structure or we could add 'skillId' to talent def
-      // Current mapping: 3->Mining, 4->Woodcutting, 5->Fishing, 6->Fighting
+      // Simple mapping based on known structure
       if (def.position.col === 3) skillIdForPoints = "mining";
       else if (def.position.col === 4) skillIdForPoints = "woodcutting";
       else if (def.position.col === 5) skillIdForPoints = "fishing";
-      else if (def.position.col === 6) skillIdForPoints = "fighting";
+      else if (def.position.col === 6 || def.position.col === 7)
+        skillIdForPoints = "fighting";
     }
 
+    // Check Resources (Do not deduct yet)
     if (isAttribute) {
       if (this.talentPoints < def.cost) return false;
-      this.talentPoints -= def.cost;
     } else {
       if (!skillIdForPoints || !this.skills[skillIdForPoints]) return false;
       if (this.skills[skillIdForPoints].talentPoints < def.cost) return false;
-      this.skills[skillIdForPoints].talentPoints -= def.cost;
     }
 
     // Check Prerequisites
     for (const req of def.prerequisites) {
       if (!this.talents[req]) return false;
+    }
+
+    // All checks passed. Deduct cost and unlock.
+    if (isAttribute) {
+      this.talentPoints -= def.cost;
+    } else {
+      this.skills[skillIdForPoints].talentPoints -= def.cost;
     }
 
     // Unlock
@@ -101,10 +107,54 @@ export class Character {
     if (def.effect) {
       def.effect(this);
     }
-    // console.log(`Unlocked talent ${talentId} for ${this.name}`);
-    // No specific notification type for talents yet, defaulting to info/master or maybe add 'talent' later
-    // For now, let's just show it.
+
     gameState.triggerNotification(`Unlocked talent: ${def.name}`, "master");
+    return true;
+  }
+
+  refundTalent(talentId) {
+    if (!this.talents[talentId]) return false; // Not unlocked
+
+    const def = getTalentDefinition(talentId);
+    if (!def) return false;
+
+    // 1. Recursive Refund of Dependents
+    // Find talents that require this one
+    const dependents = Object.values(TALENT_DEFINITIONS).filter(
+      (d) => d.prerequisites.includes(talentId) && this.talents[d.id],
+    );
+
+    dependents.forEach((dep) => {
+      this.refundTalent(dep.id);
+    });
+
+    // 2. Remove Effect
+    if (def.removeEffect) {
+      def.removeEffect(this);
+    }
+
+    // 3. Refund Cost
+    const isAttribute = def.position.col <= 2;
+    if (isAttribute) {
+      this.talentPoints += def.cost;
+    } else {
+      let skillIdForPoints = null;
+      if (def.position.col === 3) skillIdForPoints = "mining";
+      else if (def.position.col === 4) skillIdForPoints = "woodcutting";
+      else if (def.position.col === 5) skillIdForPoints = "fishing";
+      else if (def.position.col === 6 || def.position.col === 7)
+        skillIdForPoints = "fighting";
+
+      if (skillIdForPoints && this.skills[skillIdForPoints]) {
+        this.skills[skillIdForPoints].talentPoints += def.cost;
+      }
+    }
+
+    // 4. Remove Talent
+    delete this.talents[talentId];
+
+    gameState.triggerNotification(`Refunded talent: ${def.name}`, "info");
+
     return true;
   }
 
@@ -147,11 +197,15 @@ export class Character {
       skill.xp -= xpNeeded;
       skill.level++;
 
-      // Award Skill Talent Point EVERY level
+      // Award Skill Talent Point EVERY 5 levels
       if (skill.talentPoints === undefined) skill.talentPoints = 0;
-      skill.talentPoints++;
 
-      let msg = `Level Up! ${skillId} is now level ${skill.level}. +1 ${skillId} Talent Point!`;
+      let msg = `Level Up! ${skillId} is now level ${skill.level}.`;
+
+      if (skill.level % 5 === 0) {
+        skill.talentPoints++;
+        msg += ` +1 ${skillId} Talent Point!`;
+      }
 
       gameState.triggerNotification(msg, "levelUp");
       // TODO: Notify UI of level up (via GameState listeners)

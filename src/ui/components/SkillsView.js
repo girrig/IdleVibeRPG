@@ -74,6 +74,7 @@ export class SkillsView {
                     <div class="action-meta">
                         <span class="action-req">Req: Lv ${opt.level}</span>
                         <span class="action-xp">${opt.xp} XP</span>
+                        <span class="action-time">⏱️ ${(opt.interval || activeSkill.interval || 3000) / 1000}s</span>
                     </div>
                 </div>
                 ${isLocked ? '<div class="lock-overlay">🔒</div>' : ""}
@@ -84,6 +85,7 @@ export class SkillsView {
             this.uiManager.handleStartActivity(activeSkill.id, key);
             this.uiManager.renderMainWindow();
           });
+          card.dataset.hasListener = "true";
         }
 
         grid.appendChild(card);
@@ -93,5 +95,72 @@ export class SkillsView {
 
     container.appendChild(sidebar);
     container.appendChild(contentArea);
+  }
+
+  update(container) {
+    if (!this.activeSkillTab) return;
+
+    // Find the header level element
+    const headerLvl = container.querySelector(".header-lvl");
+    const activeSkill = SKILL_DEFINITIONS[this.activeSkillTab];
+    const char = gameState.characters[this.uiManager.selectedCharIndex];
+
+    if (activeSkill && char) {
+      const currentLvl = char.skills[activeSkill.id.toLowerCase()]?.level || 1;
+
+      // Update Header Text
+      if (headerLvl) {
+        headerLvl.innerText = `Lvl ${currentLvl}`;
+      }
+
+      // Update Card Locks
+      const cards = container.querySelectorAll(".skill-action-card");
+      let cardIndex = 0;
+      Object.entries(activeSkill.options).forEach(([key, opt]) => {
+        if (cardIndex >= cards.length) return;
+        const card = cards[cardIndex];
+        const isLocked = currentLvl < opt.level;
+
+        // Toggle locked class
+        if (isLocked) {
+          card.classList.add("locked");
+          if (!card.querySelector(".lock-overlay")) {
+            // Re-add lock overlay if missing
+            const overlay = document.createElement("div");
+            overlay.className = "lock-overlay";
+            overlay.innerText = "🔒";
+            card.appendChild(overlay);
+
+            // Remove click listener if needed (though difficult to remove anonymous fn,
+            // css pointer-events: none usually handles this for locked items or we can clone node)
+          }
+        } else {
+          card.classList.remove("locked");
+          const overlay = card.querySelector(".lock-overlay");
+          if (overlay) overlay.remove();
+
+          // Re-binding click listener is tricky if we don't track it.
+          // A safer full re-render approach might be needed if we want to enable clicking on unlock.
+          // BUT, for now, let's just assume the user will likely switch tabs or we can just attach the listener
+          // initially but gate it logic-wise?
+          // Actually, the initial render adds listener ONLY if !isLocked.
+          // So if it unlocks, we need to add the listener.
+          // Simplest fix for "Unlock on the fly" without full re-render:
+          // Just verify if it HAS a listener.
+          // Actually, cloning the node to strip listeners and re-adding is a nuclear option.
+          // Let's rely on checking if it WAS locked.
+
+          if (!card.dataset.hasListener) {
+            card.addEventListener("click", () => {
+              if (card.classList.contains("locked")) return; // double check
+              this.uiManager.handleStartActivity(activeSkill.id, key);
+              this.uiManager.renderMainWindow();
+            });
+            card.dataset.hasListener = "true";
+          }
+        }
+        cardIndex++;
+      });
+    }
   }
 }

@@ -4,9 +4,21 @@ export const SKILL_DEFINITIONS = {
     name: "Mining",
     icon: "⛏️",
     options: {
-      copper_ore: { name: "Copper Ore", level: 1, xp: 10, icon: "🟠" },
-      iron_ore: { name: "Iron Ore", level: 5, xp: 20, icon: "⚪" },
-      coal: { name: "Coal", level: 10, xp: 30, icon: "⚫" },
+      copper_ore: {
+        name: "Copper Ore",
+        level: 1,
+        xp: 10,
+        icon: "🟠",
+        interval: 2000,
+      },
+      iron_ore: {
+        name: "Iron Ore",
+        level: 5,
+        xp: 20,
+        icon: "⚪",
+        interval: 4000,
+      },
+      coal: { name: "Coal", level: 10, xp: 30, icon: "⚫", interval: 6000 },
     },
     interval: 3000,
     action: (gameState, char) => {

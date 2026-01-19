@@ -112,17 +112,30 @@ export class CharacterDetail {
     if (char.activeGoal) {
       const goal = char.activeGoal;
       const targetDef = getItemDefinition(goal.targetItem);
+
+      const currentCount = gameState.inventory.getCount(goal.targetItem);
+      const startCount = goal.startCount || 0;
+      const targetQuantity = goal.targetQuantity || 1;
+      const collected = Math.max(0, currentCount - startCount);
+      const progressPercent = Math.min(100, (collected / targetQuantity) * 100);
+
       goalSection.innerHTML = `
-            <div class="section-title">Current Objective</div>
+            <div class="section-title">Current Task</div>
             <div class="active-goal-card">
                  <div class="goal-info">
                     <span class="goal-icon">${targetDef.icon}</span>
-                    <span class="goal-name">Get ${targetDef.name}</span>
+                    <div class="goal-text">
+                        <div class="goal-name">Get ${targetQuantity} ${targetDef.name}</div>
+                        <div class="goal-progress-text">${collected} / ${targetQuantity}</div>
+                    </div>
+                </div>
+                <div class="goal-progress-bar-bg">
+                    <div class="goal-progress-bar-fill" style="width: ${progressPercent}%"></div>
                 </div>
                 <div class="goal-status">
                     Status: <span style="color: #fbbf24">${goal.status}</span>
                 </div>
-                <button class="btn-cancel-goal">Cancel Goal</button>
+                <button class="btn-cancel-goal">Cancel Task</button>
             </div>
         `;
       goalSection
@@ -133,17 +146,17 @@ export class CharacterDetail {
         });
     } else {
       goalSection.innerHTML = `
-            <div class="section-title">Current Objective</div>
+            <div class="section-title">Current Task</div>
             <div class="no-goal-state">
-                <div>No active goal</div>
+                <div>No active task</div>
                 <button class="btn-set-goal">Select Item Target</button>
             </div>
         `;
       goalSection
         .querySelector(".btn-set-goal")
         .addEventListener("click", () => {
-          this.uiManager.showItemSelectionModal((itemId) => {
-            goalManager.setGoal(char, itemId);
+          this.uiManager.showItemSelectionModal((itemId, quantity) => {
+            goalManager.setGoal(char, itemId, quantity);
             this.uiManager.renderMainWindow();
           });
         });
@@ -283,22 +296,101 @@ export class CharacterDetail {
     // Update Goal Section
     const goalSection = container.querySelector(".char-goal-section");
     if (goalSection) {
-      const currentGoalInfo = char.activeGoal
-        ? `Goal-${char.activeGoal.targetItem}-${char.activeGoal.status}`
-        : "No-Goal";
-      const lastGoalInfo = goalSection.dataset.lastState;
+      const hasActiveGoal = !!char.activeGoal;
+      const isShowingActive = !!goalSection.querySelector(".active-goal-card");
 
-      if (currentGoalInfo !== lastGoalInfo) {
-        // Re-render handled by full update usually, but here we can force it
-        // Actually, simpler to just access the goalManager and re-render if state changed meaningfully
-        // For now, let's trust the UIManager loop to handle heavy updates via renderMainWindow()
-        // if structure changes.
-        // But wait, updateContent is called on tick.
-        // If goal status changes, we update text.
-        if (char.activeGoal) {
-          const statusSpan = goalSection.querySelector(".goal-status span");
-          if (statusSpan) statusSpan.innerText = char.activeGoal.status;
+      // State mismatch detection: Re-render section if needed
+      if (hasActiveGoal !== isShowingActive) {
+        // Re-render this section completely
+        // Actually, we can just use the same logic as renderDetailContent's goal part.
+        // Or better, let's just delegate to a helper or just rewrite innerHTML here.
+        // Since we are in a static method, we don't have easy access to 'this'.
+        // But we can reproduce the render logic since it's short.
+
+        if (hasActiveGoal) {
+          // Render Active State
+          const goal = char.activeGoal;
+          const targetDef = getItemDefinition(goal.targetItem);
+          const currentCount = gameState.inventory.getCount(goal.targetItem);
+          const startCount = goal.startCount || 0;
+          const targetQuantity = goal.targetQuantity || 1;
+          const collected = Math.max(0, currentCount - startCount);
+          const progressPercent = Math.min(
+            100,
+            (collected / targetQuantity) * 100,
+          );
+
+          goalSection.innerHTML = `
+                <div class="section-title">Current Task</div>
+                <div class="active-goal-card">
+                    <div class="goal-info">
+                        <span class="goal-icon">${targetDef.icon}</span>
+                        <div class="goal-text">
+                            <div class="goal-name">Get ${targetQuantity} ${targetDef.name}</div>
+                            <div class="goal-progress-text">${collected} / ${targetQuantity}</div>
+                        </div>
+                    </div>
+                    <div class="goal-progress-bar-bg">
+                        <div class="goal-progress-bar-fill" style="width: ${progressPercent}%"></div>
+                    </div>
+                    <div class="goal-status">
+                        Status: <span style="color: #fbbf24">${goal.status}</span>
+                    </div>
+                    <button class="btn-cancel-goal">Cancel Task</button>
+                </div>
+            `;
+          goalSection
+            .querySelector(".btn-cancel-goal")
+            .addEventListener("click", () => {
+              goalManager.clearGoal(char);
+              uiManager.renderMainWindow();
+            });
+        } else {
+          // Render Empty State
+          goalSection.innerHTML = `
+                <div class="section-title">Current Task</div>
+                <div class="no-goal-state">
+                    <div>No active task</div>
+                    <button class="btn-set-goal">Select Item Target</button>
+                </div>
+            `;
+          goalSection
+            .querySelector(".btn-set-goal")
+            .addEventListener("click", () => {
+              uiManager.showItemSelectionModal((itemId, quantity) => {
+                goalManager.setGoal(char, itemId, quantity);
+                uiManager.renderMainWindow();
+              });
+            });
         }
+      }
+      // If states match and we have a goal, update values
+      else if (hasActiveGoal) {
+        const goal = char.activeGoal;
+        const currentCount = gameState.inventory.getCount(goal.targetItem);
+        const startCount = goal.startCount || 0;
+        const targetQuantity = goal.targetQuantity || 1;
+        const collected = Math.max(0, currentCount - startCount);
+        const progressPercent = Math.min(
+          100,
+          (collected / targetQuantity) * 100,
+        );
+
+        // Update Text
+        const progressText = goalSection.querySelector(".goal-progress-text");
+        if (progressText) {
+          progressText.innerText = `${collected} / ${targetQuantity}`;
+        }
+
+        // Update Bar
+        const barFill = goalSection.querySelector(".goal-progress-bar-fill");
+        if (barFill) {
+          barFill.style.width = `${progressPercent}%`;
+        }
+
+        // Update Status
+        const statusSpan = goalSection.querySelector(".goal-status span");
+        if (statusSpan) statusSpan.innerText = goal.status;
       }
     }
 

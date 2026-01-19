@@ -91,24 +91,25 @@
 }
 .equip-row-dual .equip-slot-lg .slot-icon {
   font-size: 22px;
-  margin-bottom: 0px;
+  margin-bottom: 2px;
 }
 
-/* Tooltip for labels */
+/* Tooltip for labels REMOVED - labels are now always visible */
 .equip-row-dual .equip-slot-lg .slot-label {
-  display: none;
+  display: block;
+  font-size: 0.65rem; /* Slightly smaller for the smaller slots */
+  position: static;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: #888;
+  z-index: auto;
+  white-space: normal;
 }
 .equip-row-dual .equip-slot-lg:hover .slot-label {
-  display: block;
-  font-size: 0.7rem;
-  position: absolute;
-  bottom: -25px;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 4px 6px;
-  border-radius: 4px;
-  color: #fff;
-  z-index: 20;
-  white-space: nowrap;
+  /* No hover effect needed */
+  position: static;
+  background: transparent;
 }
 .equip-slot-lg .slot-label {
   font-size: 0.75rem;

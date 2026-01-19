@@ -20,7 +20,7 @@ export class SettingsView {
                     <input type="checkbox" id="setting-notifications-master">
                 </div>
                 <!-- Sub settings -->
-                <div id="notif-sub-settings" style="display: flex; flex-direction: column; gap: 8px; padding-left: 20px; width: 100%; box-sizing: border-box; border-left: 2px solid rgba(255,255,255,0.1);">
+                <div id="notif-sub-settings" style="display: flex; flex-direction: column; gap: 2px; padding-left: 20px; width: 100%; box-sizing: border-box; border-left: 2px solid rgba(255,255,255,0.1);">
                     <div class="setting-row" style="margin:0;">
                         <span class="setting-label" style="font-size: 0.9em; color: #aaa;">Level Up</span>
                         <input type="checkbox" id="setting-notifications-levelup">

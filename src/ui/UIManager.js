@@ -212,6 +212,13 @@ export class UIManager {
                 <h2>Select Target Item</h2>
                 <button class="btn-close">×</button>
             </div>
+            
+            <div style="padding: 10px; border-bottom: 1px solid #444; display: flex; align-items: center; gap: 10px; background: #1e293b;">
+                <label for="goal-quantity-input" style="color: #cbd5e1; font-weight: bold;">Target Quantity:</label>
+                <input type="number" id="goal-quantity-input" value="1" min="1" max="999" 
+                    style="background: #0f172a; border: 1px solid #475569; color: white; padding: 5px 10px; border-radius: 4px; width: 80px;" />
+            </div>
+
              <div class="goals-grid" style="overflow-y: auto; padding: 10px;">
                 ${Object.entries(ITEM_DEFINITIONS)
                   .sort(([, a], [, b]) => a.name.localeCompare(b.name))
@@ -245,7 +252,9 @@ export class UIManager {
     modal.querySelectorAll(".goal-item-card").forEach((el) => {
       el.addEventListener("click", () => {
         const id = el.dataset.id;
-        onSelect(id);
+        const qtyInput = modal.querySelector("#goal-quantity-input");
+        const qty = parseInt(qtyInput.value, 10) || 1;
+        onSelect(id, qty);
         close();
       });
     });
@@ -274,6 +283,11 @@ export class UIManager {
         CharacterDetail.updateContent(contentEl, this);
       } else {
         this.renderMainWindow();
+      }
+    } else if (this.currentView === "SKILLS") {
+      const contentEl = this.mainWindow.querySelector("#mw-content");
+      if (contentEl) {
+        this.skillsView.update(contentEl);
       }
     } else if (this.currentView === "EQUIP") {
       const invGrid = this.mainWindow.querySelector(".equip-inv-grid");

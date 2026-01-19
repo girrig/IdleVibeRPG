@@ -97,8 +97,12 @@ export class MainScene extends Phaser.Scene {
 
   addEmoji(x, y, emoji, size = 48) {
     const text = this.add
-      .text(x, y, emoji, { fontSize: `${size}px` })
+      .text(x, y, emoji, {
+        fontSize: `${size}px`,
+        padding: { left: 20, right: 20, top: 20, bottom: 20 },
+      })
       .setOrigin(0.5);
+    text.setDepth(y);
     this.sceneObjects.push(text);
     return text;
   }

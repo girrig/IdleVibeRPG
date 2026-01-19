@@ -11,10 +11,8 @@
 
 /* Replicating legacy .hud-panel glassmorphism */
 .setting-category {
-  background: rgba(20, 20, 30, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
@@ -57,6 +55,11 @@ input[type="checkbox"] {
   width: 20px;
   height: 20px;
   cursor: pointer;
+}
+
+/* Compact notification sub-settings */
+#notif-sub-settings .setting-row {
+  padding: 1px 0;
 }
 
 /* Buttons - Replicating legacy .btn-action gradients */

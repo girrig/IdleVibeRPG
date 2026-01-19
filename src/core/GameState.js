@@ -282,8 +282,19 @@ class GameState {
         const skillDef = getSkillDefinition(char.currentActivity.type);
         if (skillDef) {
           const now = Date.now();
-          const lastTime = char.currentActivity.lastActionTime || 0; // fallback
-          if (now - lastTime >= skillDef.interval) {
+          const lastTime = char.currentActivity.lastActionTime || 0;
+
+          // Determine interval: Option-specific > Skill Default > Hard fallback
+          let interval = skillDef.interval || 3000;
+
+          if (skillDef.options && char.currentActivity.target) {
+            const option = skillDef.options[char.currentActivity.target];
+            if (option && option.interval) {
+              interval = option.interval;
+            }
+          }
+
+          if (now - lastTime >= interval) {
             skillDef.action(this, char);
             char.currentActivity.lastActionTime = now;
           }
