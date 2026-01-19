@@ -22,6 +22,9 @@ export const ITEM_DEFINITIONS = {
   // Bars
   copper_bar: { name: "Copper Bar", icon: "🟧" },
   iron_bar: { name: "Iron Bar", icon: "⬜" },
+
+  // Currency
+  coins: { name: "Coins", icon: "💰" },
 };
 
 export const getItemDefinition = (id) => {

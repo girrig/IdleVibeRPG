@@ -53,6 +53,8 @@ class GameState {
       this.addCharacter(
         new Character(Date.now(), this.generateRandomName(), "WARRIOR"),
       );
+      // Give some starting money
+      this.inventory.addItem("coins", 1000);
     }
     this.startAutoSave();
   }
@@ -297,6 +299,17 @@ class GameState {
           if (now - lastTime >= interval) {
             skillDef.action(this, char);
             char.currentActivity.lastActionTime = now;
+
+            // Task Queue Logic
+            if (char.currentActivity.quantity > 0) {
+              char.currentActivity.progress++;
+              // console.log(`Progress: ${char.currentActivity.progress}/${char.currentActivity.quantity}`);
+              if (
+                char.currentActivity.progress >= char.currentActivity.quantity
+              ) {
+                char.completeCurrentTask();
+              }
+            }
           }
         }
       }

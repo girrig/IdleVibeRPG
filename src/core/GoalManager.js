@@ -20,7 +20,7 @@ export class GoalManager {
     }
 
     // Create Goal Object
-    character.activeGoal = {
+    const newGoal = {
       targetItem: itemId,
       targetQuantity: quantity,
       source: source,
@@ -29,6 +29,19 @@ export class GoalManager {
       status: "EXECUTING",
       steps: [], // For future multi-step
     };
+
+    // If already has a goal, Queue it
+    if (character.activeGoal) {
+      if (!character.goalQueue) character.goalQueue = [];
+      character.goalQueue.push(newGoal);
+      gameState.triggerNotification(
+        `${character.name}: Queued Goal - Get ${quantity} ${itemId}`,
+        "info",
+      );
+      return true;
+    }
+
+    character.activeGoal = newGoal;
 
     gameState.triggerNotification(
       `${character.name} goal set: Get ${quantity} ${itemId}`,
@@ -41,8 +54,30 @@ export class GoalManager {
   }
 
   clearGoal(character) {
+    if (!character.activeGoal) return;
+
+    gameState.triggerNotification(
+      `${character.name}: Cancelled goal - Get ${character.activeGoal.targetQuantity} ${character.activeGoal.targetItem}`,
+      "info",
+    );
+
     character.activeGoal = null;
-    character.stopActivity();
+    character.stopActivity(); // Clear current physical activity
+
+    // Check Queue
+    if (character.goalQueue && character.goalQueue.length > 0) {
+      const nextGoal = character.goalQueue.shift();
+      // Reset start count for the new goal
+      nextGoal.startCount = gameState.inventory.getCount(nextGoal.targetItem);
+      nextGoal.startTime = Date.now();
+
+      character.activeGoal = nextGoal;
+      gameState.triggerNotification(
+        `${character.name} starting next goal: Get ${nextGoal.targetQuantity} ${nextGoal.targetItem}`,
+        "info",
+      );
+      this.executeGoal(character);
+    }
   }
 
   update(gameState) {
@@ -52,6 +87,16 @@ export class GoalManager {
         this.checkGoalProgress(char);
       }
     });
+  }
+
+  removeGoalFromQueue(character, index) {
+    if (character.goalQueue && character.goalQueue[index]) {
+      const removed = character.goalQueue.splice(index, 1)[0];
+      gameState.triggerNotification(
+        `${character.name}: Removed queued goal - Get ${removed.targetQuantity} ${removed.targetItem}`,
+        "info",
+      );
+    }
   }
 
   checkGoalProgress(char) {
@@ -69,13 +114,24 @@ export class GoalManager {
         "success",
       );
 
-      // For now, clear goal (Single Item Fetch).
-      // The prompt implied "queue of everything i needs to do", which might imply multiple steps,
-      // but "until item has been obtained" usually means "Mission Accomplished".
-      // Since it's an Idle game, maybe they want to KEEP gathering?
-      // "until the item has been obtained" -> implies stop once obtained.
+      // Check Queue
+      char.activeGoal = null;
+      if (char.goalQueue && char.goalQueue.length > 0) {
+        const nextGoal = char.goalQueue.shift();
+        // Reset start count for the new goal to current count
+        nextGoal.startCount = gameState.inventory.getCount(nextGoal.targetItem);
+        nextGoal.startTime = Date.now();
 
-      this.clearGoal(char);
+        char.activeGoal = nextGoal;
+        gameState.triggerNotification(
+          `${char.name} starting next goal: Get ${nextGoal.targetQuantity} ${nextGoal.targetItem}`,
+          "info",
+        );
+        this.executeGoal(char);
+      } else {
+        // Stop activity if no more goals
+        char.stopActivity();
+      }
       return;
     }
 

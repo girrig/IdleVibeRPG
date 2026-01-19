@@ -119,24 +119,52 @@ export class CharacterDetail {
       const collected = Math.max(0, currentCount - startCount);
       const progressPercent = Math.min(100, (collected / targetQuantity) * 100);
 
+      // Render Queue List
+      let queueHtml = "";
+      if (char.goalQueue && char.goalQueue.length > 0) {
+        queueHtml = `<div class="goal-queue-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+              ${char.goalQueue
+                .map((q, i) => {
+                  const qDef = getItemDefinition(q.targetItem);
+                  return `<div class="queue-item-card" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; align-items: center; gap: 10px;">
+                      <div style="color: #64748b; font-size: 12px; min-width: 15px;">${i + 1}.</div>
+                      <div style="font-size: 16px;">${qDef.icon}</div>
+                      <div style="flex: 1; font-size: 13px; color: #e2e8f0;">Get ${q.targetQuantity} ${qDef.name}</div>
+                      <div style="font-size: 11px; color: #94a3b8;">Queued</div>
+                      <button class="btn-remove-queue" data-index="${i}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">✕</button>
+                  </div>`;
+                })
+                .join("")}
+          </div>`;
+      }
+
+      const headerHtml = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="section-title" style="margin-bottom: 0;">Tasks</div>
+            <button class="btn-top-action" style="padding: 5px 10px; background: #3b82f6; border: 1px solid #2563eb; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; font-weight: 500;">
+                + Queue Task
+            </button>
+        </div>`;
+
       goalSection.innerHTML = `
-            <div class="section-title">Current Task</div>
-            <div class="active-goal-card">
-                 <div class="goal-info">
-                    <span class="goal-icon">${targetDef.icon}</span>
-                    <div class="goal-text">
-                        <div class="goal-name">Get ${targetQuantity} ${targetDef.name}</div>
-                        <div class="goal-progress-text">${collected} / ${targetQuantity}</div>
+            ${headerHtml}
+                <div class="active-goal-card" style="margin-bottom: 10px; position: relative; padding-top: 15px;">
+                    <button class="btn-cancel-goal" style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 6px; color: #fca5a5; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; font-size: 14px; padding: 0;" title="Cancel Current Task">✕</button>
+                    <div class="goal-info">
+                        <span class="goal-icon">${targetDef.icon}</span>
+                        <div class="goal-text">
+                            <div class="goal-name">Get ${targetQuantity} ${targetDef.name}</div>
+                            <div class="goal-progress-text">${collected} / ${targetQuantity}</div>
+                        </div>
+                    </div>
+                    <div class="goal-progress-bar-bg">
+                        <div class="goal-progress-bar-fill" style="width: ${progressPercent}%"></div>
+                    </div>
+                    <div class="goal-status">
+                        Status: <span style="color: #fbbf24">${goal.status}</span>
                     </div>
                 </div>
-                <div class="goal-progress-bar-bg">
-                    <div class="goal-progress-bar-fill" style="width: ${progressPercent}%"></div>
-                </div>
-                <div class="goal-status">
-                    Status: <span style="color: #fbbf24">${goal.status}</span>
-                </div>
-                <button class="btn-cancel-goal">Cancel Task</button>
-            </div>
+            
+            ${queueHtml}
         `;
       goalSection
         .querySelector(".btn-cancel-goal")
@@ -144,16 +172,40 @@ export class CharacterDetail {
           goalManager.clearGoal(char);
           this.uiManager.renderMainWindow();
         });
+
+      // Remove Queue Item Listeners
+      goalSection.querySelectorAll(".btn-remove-queue").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const idx = parseInt(e.target.dataset.index);
+          goalManager.removeGoalFromQueue(char, idx);
+          this.uiManager.renderMainWindow();
+        });
+      });
+
+      goalSection
+        .querySelector(".btn-top-action")
+        .addEventListener("click", () => {
+          this.uiManager.showItemSelectionModal((itemId, quantity) => {
+            goalManager.setGoal(char, itemId, quantity);
+            this.uiManager.renderMainWindow();
+          });
+        });
     } else {
+      const headerHtml = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="section-title" style="margin-bottom: 0;">Tasks</div>
+            <button class="btn-top-action" style="padding: 5px 10px; background: #3b82f6; border: 1px solid #2563eb; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; font-weight: 500;">
+                + New Task
+            </button>
+        </div>`;
+
       goalSection.innerHTML = `
-            <div class="section-title">Current Task</div>
+            ${headerHtml}
             <div class="no-goal-state">
-                <div>No active task</div>
-                <button class="btn-set-goal">Select Item Target</button>
+                <div style="color: #94a3b8;">No active tasks</div>
             </div>
         `;
       goalSection
-        .querySelector(".btn-set-goal")
+        .querySelector(".btn-top-action")
         .addEventListener("click", () => {
           this.uiManager.showItemSelectionModal((itemId, quantity) => {
             goalManager.setGoal(char, itemId, quantity);
@@ -320,9 +372,36 @@ export class CharacterDetail {
             (collected / targetQuantity) * 100,
           );
 
+          // Render Queue List
+          let queueHtml = "";
+          if (char.goalQueue && char.goalQueue.length > 0) {
+            queueHtml = `<div class="goal-queue-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                  ${char.goalQueue
+                    .map((q, i) => {
+                      const qDef = getItemDefinition(q.targetItem);
+                      return `<div class="queue-item-card" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; align-items: center; gap: 10px;">
+                          <div style="color: #64748b; font-size: 12px; min-width: 15px;">${i + 1}.</div>
+                          <div style="font-size: 16px;">${qDef.icon}</div>
+                          <div style="flex: 1; font-size: 13px; color: #e2e8f0;">Get ${q.targetQuantity} ${qDef.name}</div>
+                          <div style="font-size: 11px; color: #94a3b8;">Queued</div>
+                          <button class="btn-remove-queue" data-index="${i}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">✕</button>
+                      </div>`;
+                    })
+                    .join("")}
+              </div>`;
+          }
+
+          const headerHtml = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div class="section-title" style="margin-bottom: 0;">Tasks</div>
+                <button class="btn-top-action" style="padding: 5px 10px; background: #3b82f6; border: 1px solid #2563eb; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; font-weight: 500;">
+                    + Queue Task
+                </button>
+            </div>`;
+
           goalSection.innerHTML = `
-                <div class="section-title">Current Task</div>
-                <div class="active-goal-card">
+                ${headerHtml}
+                <div class="active-goal-card" style="margin-bottom: 10px; position: relative; padding-top: 15px;">
+                    <button class="btn-cancel-goal" style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 6px; color: #fca5a5; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; font-size: 14px; padding: 0;" title="Cancel Current Task">✕</button>
                     <div class="goal-info">
                         <span class="goal-icon">${targetDef.icon}</span>
                         <div class="goal-text">
@@ -336,8 +415,9 @@ export class CharacterDetail {
                     <div class="goal-status">
                         Status: <span style="color: #fbbf24">${goal.status}</span>
                     </div>
-                    <button class="btn-cancel-goal">Cancel Task</button>
                 </div>
+                
+                ${queueHtml}
             `;
           goalSection
             .querySelector(".btn-cancel-goal")
@@ -345,17 +425,41 @@ export class CharacterDetail {
               goalManager.clearGoal(char);
               uiManager.renderMainWindow();
             });
+
+          // Remove Queue Item Listeners
+          goalSection.querySelectorAll(".btn-remove-queue").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+              const idx = parseInt(e.target.dataset.index);
+              goalManager.removeGoalFromQueue(char, idx);
+              uiManager.renderMainWindow();
+            });
+          });
+
+          goalSection
+            .querySelector(".btn-top-action")
+            .addEventListener("click", () => {
+              uiManager.showItemSelectionModal((itemId, quantity) => {
+                goalManager.setGoal(char, itemId, quantity);
+                uiManager.renderMainWindow();
+              });
+            });
         } else {
           // Render Empty State
+          const headerHtml = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div class="section-title" style="margin-bottom: 0;">Tasks</div>
+                <button class="btn-top-action" style="padding: 5px 10px; background: #3b82f6; border: 1px solid #2563eb; border-radius: 4px; color: white; cursor: pointer; font-size: 12px; font-weight: 500;">
+                    + New Task
+                </button>
+            </div>`;
+
           goalSection.innerHTML = `
-                <div class="section-title">Current Task</div>
+                ${headerHtml}
                 <div class="no-goal-state">
-                    <div>No active task</div>
-                    <button class="btn-set-goal">Select Item Target</button>
+                    <div style="color: #94a3b8;">No active tasks</div>
                 </div>
             `;
           goalSection
-            .querySelector(".btn-set-goal")
+            .querySelector(".btn-top-action")
             .addEventListener("click", () => {
               uiManager.showItemSelectionModal((itemId, quantity) => {
                 goalManager.setGoal(char, itemId, quantity);

@@ -6,6 +6,7 @@ import { SettingsView } from "./components/SettingsView";
 import { NotificationDisplay } from "./components/NotificationDisplay";
 import { TalentsView } from "./components/TalentsView";
 import { EquipmentView } from "./components/EquipmentView";
+import { StoreView } from "./components/StoreView";
 
 import { ITEM_DEFINITIONS } from "../core/ItemRegistry";
 
@@ -26,6 +27,8 @@ export class UIManager {
     this.skillsView = new SkillsView(this);
     this.talentsView = new TalentsView(this);
     this.characterDetail = new CharacterDetail(this);
+    this.storeView = new StoreView(this);
+    this.inventoryView = new InventoryView();
   }
 
   getAvatarUrl(spriteKey) {
@@ -75,6 +78,7 @@ export class UIManager {
       <div class="sidebar-item" id="nav-equip" title="Equipment" style="font-size: 24px;">🛡️</div>
       <div class="sidebar-item" id="nav-skills" title="Skills" style="font-size: 24px;">⭐</div>
       <div class="sidebar-item" id="nav-talents" title="Talents" style="font-size: 24px;">🌳</div>
+      <div class="sidebar-item" id="nav-store" title="Store" style="font-size: 24px;">🏪</div>
       <div class="sidebar-item" id="nav-settings" title="Settings" style="font-size: 24px;">⚙️</div>
     `;
     this.container.appendChild(this.sidebar);
@@ -120,6 +124,9 @@ export class UIManager {
     this.sidebar
       .querySelector("#nav-talents")
       .addEventListener("click", () => this.switchView("TALENTS"));
+    this.sidebar
+      .querySelector("#nav-store")
+      .addEventListener("click", () => this.switchView("STORE"));
     this.sidebar
       .querySelector("#nav-settings")
       .addEventListener("click", () => this.switchView("SETTINGS"));
@@ -179,13 +186,16 @@ export class UIManager {
       EquipmentView.render(contentEl, this.selectedCharIndex);
     } else if (this.currentView === "INV") {
       titleEl.innerText = "Inventory";
-      InventoryView.render(contentEl);
+      this.inventoryView.render(contentEl);
     } else if (this.currentView === "SKILLS") {
       titleEl.innerText = "Skills";
       this.skillsView.render(contentEl);
     } else if (this.currentView === "TALENTS") {
       titleEl.innerText = "Talents";
       this.talentsView.render(contentEl);
+    } else if (this.currentView === "STORE") {
+      titleEl.innerText = "Store";
+      this.storeView.render(contentEl);
     } else if (this.currentView === "SETTINGS") {
       titleEl.innerText = "Settings";
       SettingsView.render(contentEl);
@@ -297,11 +307,11 @@ export class UIManager {
     });
   }
 
-  handleStartActivity(skillId, targetId) {
+  handleStartActivity(skillId, targetId, quantity = 1) {
     const char = gameState.characters[this.selectedCharIndex];
     if (!char) return;
 
-    char.startActivity(skillId, targetId);
+    char.startActivity(skillId, targetId, quantity);
     gameState.notifyListeners(); // Will trigger update()
   }
 
@@ -312,7 +322,11 @@ export class UIManager {
     if (this.currentView === "INV") {
       const contentEl = this.mainWindow.querySelector("#mw-content");
       if (contentEl) {
-        InventoryView.render(contentEl);
+        // We only want to re-render if we are already seeing the view
+        // But InventoryView.render completely wipes content.
+        // Ideally we should have an .update() method, but .render works for now.
+        // To preserve selection, the instance holds the state.
+        this.inventoryView.render(contentEl);
       }
     } else if (this.currentView === "CHARACTERS") {
       const contentEl = this.mainWindow.querySelector(".mw-content");

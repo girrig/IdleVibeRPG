@@ -39,7 +39,9 @@ export class Character {
     };
     this.talents = {}; // { talentId: true }
     this.talentPoints = 3; // Start with 3 for testing
-    this.currentActivity = null; // e.g. { type: 'MINING', target: 'copper_ore', startTime: 12345 }
+    this.currentActivity = null; // e.g. { type: 'MINING', target: 'copper_ore', startTime: 12345, quantity: 10, progress: 0 }
+    this.activityQueue = []; // Array of { type, target, quantity }
+    this.goalQueue = []; // Array of Goal objects
   }
 
   static fromData(data) {
@@ -56,6 +58,11 @@ export class Character {
     }
     char.talents = { ...(data.talents || {}) };
     if (data.talentPoints === undefined) char.talentPoints = 3; // Retroactive grant for old saves
+
+    // Resume queue
+    char.activityQueue = data.activityQueue || [];
+    char.goalQueue = data.goalQueue || [];
+
     return char;
   }
 
@@ -159,22 +166,54 @@ export class Character {
     return true;
   }
 
-  startActivity(type, target) {
+  startActivity(type, target, quantity = 0) {
+    // If busy, add to queue
+    if (this.currentActivity) {
+      this.activityQueue.push({ type, target, quantity });
+      gameState.triggerNotification(
+        `${this.name}: Queued ${target} (x${quantity > 0 ? quantity : "∞"})`,
+        "activity",
+      );
+      return;
+    }
+
     this.currentActivity = {
       type,
       target,
       startTime: Date.now(),
       lastActionTime: Date.now(),
+      quantity: quantity,
+      progress: 0,
     };
     gameState.triggerNotification(
-      `${this.name} started ${type} on ${target}`,
+      `${this.name} started ${type} on ${target} (x${quantity > 0 ? quantity : "∞"})`,
       "activity",
     );
   }
 
+  completeCurrentTask() {
+    if (!this.currentActivity) return;
+
+    gameState.triggerNotification(
+      `${this.name} finished ${this.currentActivity.target}`,
+      "activity",
+    );
+    this.currentActivity = null;
+
+    // Check Queue
+    if (this.activityQueue.length > 0) {
+      const next = this.activityQueue.shift();
+      this.startActivity(next.type, next.target, next.quantity);
+    }
+  }
+
   stopActivity() {
     this.currentActivity = null;
-    gameState.triggerNotification(`${this.name} stopped activity`, "activity");
+    this.activityQueue = []; // Clear queue on manual stop
+    gameState.triggerNotification(
+      `${this.name} stopped activity (Queue Cleared)`,
+      "activity",
+    );
   }
 
   gainXp(skillId, amount) {
