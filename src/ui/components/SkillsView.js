@@ -1,5 +1,6 @@
 import { gameState } from "../../core/GameState";
 import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
+import { getItemDefinition } from "../../core/ItemRegistry";
 
 export class SkillsView {
   constructor(uiManager) {
@@ -67,6 +68,17 @@ export class SkillsView {
 
         let iconHtml = `<div class="action-icon">${opt.icon || "❓"}</div>`;
 
+        let costHtml = "";
+        if (opt.cost) {
+          const costStr = Object.entries(opt.cost)
+            .map(([id, qty]) => {
+              const iDef = getItemDefinition(id);
+              return `${qty} ${iDef.name}`;
+            })
+            .join(", ");
+          costHtml = `<div class="action-cost" style="font-size: 0.8em; color: #ffab40;">Requires: ${costStr}</div>`;
+        }
+
         card.innerHTML = `
                 ${iconHtml}
                 <div class="action-details">
@@ -76,6 +88,7 @@ export class SkillsView {
                         <span class="action-xp">${opt.xp} XP</span>
                         <span class="action-time">⏱️ ${(opt.interval || activeSkill.interval || 3000) / 1000}s</span>
                     </div>
+                    ${costHtml}
                 </div>
                 ${isLocked ? '<div class="lock-overlay">🔒</div>' : ""}
              `;

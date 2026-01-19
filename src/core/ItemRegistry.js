@@ -18,6 +18,10 @@ export const ITEM_DEFINITIONS = {
   rat_bones: { name: "Rat Bones", icon: "🦴" },
   goblin_mail: { name: "Goblin Mail", icon: "👕" },
   wolf_fur: { name: "Wolf Fur", icon: "🧶" },
+
+  // Bars
+  copper_bar: { name: "Copper Bar", icon: "🟧" },
+  iron_bar: { name: "Iron Bar", icon: "⬜" },
 };
 
 export const getItemDefinition = (id) => {

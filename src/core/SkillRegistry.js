@@ -1,3 +1,5 @@
+import { getItemDefinition } from "./ItemRegistry";
+
 export const SKILL_DEFINITIONS = {
   MINING: {
     id: "MINING",
@@ -104,6 +106,57 @@ export const SKILL_DEFINITIONS = {
         gameState.inventory.addItem(option.drop, amount);
         char.gainXp("fighting", option.xp);
       }
+    },
+  },
+  SMITHING: {
+    id: "SMITHING",
+    name: "Smithing",
+    icon: "🔨",
+    options: {
+      copper_bar: {
+        name: "Copper Bar",
+        level: 1,
+        xp: 15,
+        icon: "🟧",
+        cost: { copper_ore: 1 },
+      },
+      iron_bar: {
+        name: "Iron Bar",
+        level: 5,
+        xp: 30,
+        icon: "⬜",
+        cost: { iron_ore: 1, coal: 1 },
+      },
+    },
+    interval: 3000,
+    action: (gameState, char) => {
+      const targetId = char.currentActivity.target;
+      const option = SKILL_DEFINITIONS.SMITHING.options[targetId];
+      if (!option) return;
+
+      // Check Costs
+      if (option.cost) {
+        const canAfford = Object.entries(option.cost).every(([item, qty]) => {
+          return gameState.inventory.getCount(item) >= qty;
+        });
+
+        if (!canAfford) {
+          gameState.triggerNotification("Not enough resources!", "error");
+          char.stopActivity();
+          return;
+        }
+
+        // Consume Resources
+        Object.entries(option.cost).forEach(([item, qty]) => {
+          gameState.inventory.removeItem(item, qty);
+          // Optional: Negative notification?
+          const def = getItemDefinition(item);
+          gameState.triggerNotification(`-${qty} ${def.name}`, "item");
+        });
+      }
+
+      gameState.inventory.addItem(targetId, 1);
+      char.gainXp("smithing", option.xp);
     },
   },
 };

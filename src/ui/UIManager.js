@@ -213,10 +213,21 @@ export class UIManager {
                 <button class="btn-close">×</button>
             </div>
             
-            <div style="padding: 10px; border-bottom: 1px solid #444; display: flex; align-items: center; gap: 10px; background: #1e293b;">
-                <label for="goal-quantity-input" style="color: #cbd5e1; font-weight: bold;">Target Quantity:</label>
-                <input type="number" id="goal-quantity-input" value="1" min="1" max="999" 
-                    style="background: #0f172a; border: 1px solid #475569; color: white; padding: 5px 10px; border-radius: 4px; width: 80px;" />
+            <div class="quantity-selector-container">
+                <label for="goal-quantity-input" class="quantity-label">Target Quantity:</label>
+                
+                <div class="quantity-control-wrapper">
+                    <button class="quantity-btn-step minus" id="btn-qty-minus">−</button>
+                    <input type="number" id="goal-quantity-input" value="1" min="1" max="9999" class="quantity-input" />
+                    <button class="quantity-btn-step plus" id="btn-qty-plus">+</button>
+                </div>
+                
+                <div class="quantity-presets">
+                    <button class="quantity-preset-btn" data-qty="1">1</button>
+                    <button class="quantity-preset-btn" data-qty="10">10</button>
+                    <button class="quantity-preset-btn" data-qty="100">100</button>
+                    <button class="quantity-preset-btn" data-qty="1000">1000</button>
+                </div>
             </div>
 
              <div class="goals-grid" style="overflow-y: auto; padding: 10px;">
@@ -246,6 +257,32 @@ export class UIManager {
     modal.querySelector(".btn-close").addEventListener("click", close);
     modal.addEventListener("click", (e) => {
       if (e.target === modal) close();
+    });
+
+    // Custom Quantity Control Logic
+    const qtyInput = modal.querySelector("#goal-quantity-input");
+    const updateQty = (delta) => {
+      let val = parseInt(qtyInput.value, 10) || 0;
+      val += delta;
+      if (val < 1) val = 1;
+      if (val > 9999) val = 9999;
+      qtyInput.value = val;
+    };
+
+    modal
+      .querySelector("#btn-qty-minus")
+      .addEventListener("click", () => updateQty(-1));
+    modal
+      .querySelector("#btn-qty-plus")
+      .addEventListener("click", () => updateQty(1));
+
+    // Quantity Preset Buttons
+    modal.querySelectorAll(".quantity-preset-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (qtyInput) {
+          qtyInput.value = btn.dataset.qty;
+        }
+      });
     });
 
     // Item Click

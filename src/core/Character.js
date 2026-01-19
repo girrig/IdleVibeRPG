@@ -35,6 +35,7 @@ export class Character {
       fighting: { level: 1, xp: 0 },
       woodcutting: { level: 1, xp: 0 },
       fishing: { level: 1, xp: 0 },
+      smithing: { level: 1, xp: 0 },
     };
     this.talents = {}; // { talentId: true }
     this.talentPoints = 3; // Start with 3 for testing
@@ -208,6 +209,7 @@ export class Character {
       }
 
       gameState.triggerNotification(msg, "levelUp");
+      gameState.saveGame();
       // TODO: Notify UI of level up (via GameState listeners)
     }
   }
