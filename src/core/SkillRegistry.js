@@ -1,11 +1,12 @@
 import { getItemDefinition } from "./ItemRegistry";
+import { SKILL_COLORS, GAME_CONFIG } from "./Constants";
 
 export const SKILL_DEFINITIONS = {
   MINING: {
     id: "MINING",
     name: "Mining",
     icon: "⛏️",
-    color: "#e67e22", // Orange
+    color: SKILL_COLORS.MINING,
     options: {
       copper_ore: {
         name: "Copper Ore",
@@ -23,7 +24,7 @@ export const SKILL_DEFINITIONS = {
       },
       coal: { name: "Coal", level: 10, xp: 30, icon: "⚫", interval: 6000 },
     },
-    interval: 3000,
+    interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.MINING.options[targetId];
@@ -42,13 +43,13 @@ export const SKILL_DEFINITIONS = {
     id: "WOODCUTTING",
     name: "Woodcutting",
     icon: "🪓",
-    color: "#2ecc71", // Emerald Green
+    color: SKILL_COLORS.WOODCUTTING,
     options: {
       oak_log: { name: "Oak Log", level: 1, xp: 10, icon: "🌳" },
       willow_log: { name: "Willow Log", level: 5, xp: 20, icon: "🌿" },
       maple_log: { name: "Maple Log", level: 10, xp: 30, icon: "🍁" },
     },
-    interval: 3000,
+    interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.WOODCUTTING.options[targetId];
@@ -64,13 +65,13 @@ export const SKILL_DEFINITIONS = {
     id: "FISHING",
     name: "Fishing",
     icon: "🎣",
-    color: "#3498db", // Blue
+    color: SKILL_COLORS.FISHING,
     options: {
       raw_trout: { name: "Raw Trout", level: 1, xp: 10, icon: "🐟" },
       raw_salmon: { name: "Raw Salmon", level: 5, xp: 20, icon: "🐠" },
       raw_tuna: { name: "Raw Tuna", level: 10, xp: 30, icon: "🦈" },
     },
-    interval: 3000,
+    interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.FISHING.options[targetId];
@@ -86,7 +87,7 @@ export const SKILL_DEFINITIONS = {
     id: "FIGHTING",
     name: "Fighting",
     icon: "⚔️",
-    color: "#e74c3c", // Red
+    color: SKILL_COLORS.FIGHTING,
     options: {
       rat: { name: "Rat", level: 1, xp: 10, drop: "rat_bones", icon: "🐀" },
       goblin: {
@@ -98,7 +99,7 @@ export const SKILL_DEFINITIONS = {
       },
       wolf: { name: "Wolf", level: 10, xp: 30, drop: "wolf_fur", icon: "🐺" },
     },
-    interval: 3000,
+    interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.FIGHTING.options[targetId];
@@ -116,7 +117,7 @@ export const SKILL_DEFINITIONS = {
     id: "SMITHING",
     name: "Smithing",
     icon: "🔨",
-    color: "#a9a9a9", // Grey
+    color: SKILL_COLORS.SMITHING,
     options: {
       copper_bar: {
         name: "Copper Bar",
@@ -133,7 +134,7 @@ export const SKILL_DEFINITIONS = {
         cost: { iron_ore: 1, coal: 1 },
       },
     },
-    interval: 3000,
+    interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.SMITHING.options[targetId];

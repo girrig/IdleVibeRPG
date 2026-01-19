@@ -5,6 +5,8 @@ import { SaveManager } from "./SaveManager";
 import { goalManager } from "./GoalManager";
 import { getItemDefinition } from "./ItemRegistry";
 
+import { GAME_CONFIG } from "./Constants";
+
 class GameState {
   constructor() {
     this.characters = [];
@@ -13,18 +15,17 @@ class GameState {
       (itemId, qty) => this.handleItemAdded(itemId, qty),
     );
     this.lastTick = Date.now();
-    this.tickRate = 1000; // 1 second
-    this.autoSaveInterval = 60000; // 60 seconds
-    this.autoSaveInterval = 60000; // 60 seconds
+    this.tickRate = GAME_CONFIG.TICK_RATE;
+    this.autoSaveInterval = GAME_CONFIG.AUTOSAVE_INTERVAL;
     this.nextAutoSaveTime = 0;
     this.settings = {
       autoSave: true,
       notifications: {
-        master: true,
-        levelUp: true,
-        activity: true,
-        autoSave: true,
-        item: true,
+        master: GAME_CONFIG.NOTIFICATIONS.MASTER,
+        levelUp: GAME_CONFIG.NOTIFICATIONS.LEVEL_UP,
+        activity: GAME_CONFIG.NOTIFICATIONS.ACTIVITY,
+        autoSave: GAME_CONFIG.NOTIFICATIONS.AUTOSAVE,
+        item: GAME_CONFIG.NOTIFICATIONS.ITEM,
       },
     };
     this.listeners = [];
@@ -291,7 +292,8 @@ class GameState {
           const lastTime = char.currentActivity.lastActionTime || 0;
 
           // Determine interval: Option-specific > Skill Default > Hard fallback
-          let interval = skillDef.interval || 3000;
+          let interval =
+            skillDef.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL;
 
           if (skillDef.options && char.currentActivity.target) {
             const option = skillDef.options[char.currentActivity.target];

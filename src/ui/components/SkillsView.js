@@ -1,6 +1,7 @@
 import { gameState } from "../../core/GameState";
 import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
 import { getItemDefinition } from "../../core/ItemRegistry";
+import { UI_COLORS, GAME_CONFIG } from "../../core/Constants";
 
 export class SkillsView {
   constructor(uiManager) {
@@ -95,7 +96,7 @@ export class SkillsView {
               return `${qty} ${iDef.name}`;
             })
             .join(", ");
-          costHtml = `<div class="action-cost" style="font-size: 0.8em; color: #ffab40;">Requires: ${costStr}</div>`;
+          costHtml = `<div class="action-cost" style="font-size: 0.8em; color: ${UI_COLORS.COST};">Requires: ${costStr}</div>`;
         }
 
         card.innerHTML = `
@@ -105,7 +106,7 @@ export class SkillsView {
                     <div class="action-meta">
                         <span class="action-req">Req: Lv ${opt.level}</span>
                         <span class="action-xp">${opt.xp} XP</span>
-                        <span class="action-time">⏱️ ${(opt.interval || activeSkill.interval || 3000) / 1000}s</span>
+                        <span class="action-time">⏱️ ${(opt.interval || activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL) / 1000}s</span>
                     </div>
                     ${costHtml}
                 </div>

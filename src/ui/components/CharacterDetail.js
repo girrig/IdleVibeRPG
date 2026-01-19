@@ -2,6 +2,7 @@ import { gameState } from "../../core/GameState";
 import { goalManager } from "../../core/GoalManager";
 import { ITEM_DEFINITIONS } from "../../core/ItemRegistry";
 import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
+import { UI_COLORS, SKILL_COLORS } from "../../core/Constants";
 
 function getItemDefinition(id) {
   return ITEM_DEFINITIONS[id] || { name: id, icon: "❓" };
@@ -30,10 +31,15 @@ export class CharacterDetail {
       const activity = char.currentActivity
         ? char.currentActivity.type
         : "Idle";
+      // We could move these rgba strings to a helper if we want strict globals,
+      // but key colors are now in UI_COLORS.
+      // Using helper to derive rgba from constant would be ideal but for now using literals matching conventions
       const badgeColor = char.currentActivity
-        ? "rgba(251, 191, 36, 0.2)"
-        : "rgba(148, 163, 184, 0.2)"; // Amber/Slate bg
-      const badgeTextColor = char.currentActivity ? "#fbbf24" : "#94a3b8";
+        ? "rgba(251, 191, 36, 0.2)" // Gold low opacity
+        : "rgba(148, 163, 184, 0.2)"; // Slate low opacity
+      const badgeTextColor = char.currentActivity
+        ? UI_COLORS.STATUS_ACTIVE
+        : UI_COLORS.STATUS_IDLE;
 
       item.innerHTML = `
             <div class="char-list-avatar">👤</div>
@@ -274,7 +280,7 @@ export class CharacterDetail {
                         <div class="goal-progress-bar-fill" style="width: ${progressPercent}%"></div>
                     </div>
                     <div class="goal-status">
-                        Status: <span style="color: #fbbf24">${goal.status}</span>
+                        Status: <span style="color: ${UI_COLORS.STATUS_ACTIVE}">${goal.status}</span>
                     </div>
                 </div>
             
@@ -350,7 +356,7 @@ export class CharacterDetail {
                  const xpNeeded = skill.level * 100;
                  const percent = Math.min((skill.xp / xpNeeded) * 100, 100);
                  const def = SKILL_DEFINITIONS[id.toUpperCase()];
-                 const color = def ? def.color : "#4ade80"; // Fallback green
+                 const color = def ? def.color : UI_COLORS.PURCHASED; // Fallback green -> PURCHASED
 
                  return `
                 <div class="skill-row-compact" title="${skill.xp} / ${xpNeeded} XP">
@@ -381,15 +387,15 @@ export class CharacterDetail {
         <div class="section-title">Attributes</div>
         <div class="stats-grid-visual">
              <div class="stat-box">
-                <div class="stat-label" style="color:#f87171">STR</div>
+                <div class="stat-label" style="color:${UI_COLORS.STAT_STR}">STR</div>
                 <div class="stat-value stat-pill">${char.stats.strength}</div>
              </div>
              <div class="stat-box">
-                <div class="stat-label" style="color:#4ade80">DEX</div>
+                <div class="stat-label" style="color:${UI_COLORS.STAT_DEX}">DEX</div>
                 <div class="stat-value stat-pill">${char.stats.dexterity}</div>
              </div>
              <div class="stat-box">
-                <div class="stat-label" style="color:#60a5fa">INT</div>
+                <div class="stat-label" style="color:${UI_COLORS.STAT_INT}">INT</div>
                 <div class="stat-value stat-pill">${char.stats.intelligence}</div>
              </div>
         </div>
@@ -442,7 +448,9 @@ export class CharacterDetail {
           const badgeColor = c.currentActivity
             ? "rgba(251, 191, 36, 0.2)"
             : "rgba(148, 163, 184, 0.2)";
-          const badgeTextColor = c.currentActivity ? "#fbbf24" : "#94a3b8";
+          const badgeTextColor = c.currentActivity
+            ? UI_COLORS.STATUS_ACTIVE
+            : UI_COLORS.STATUS_IDLE;
 
           badge.style.background = badgeColor;
           badge.style.color = badgeTextColor;
@@ -518,7 +526,7 @@ export class CharacterDetail {
                         <div class="goal-progress-bar-fill" style="width: ${progressPercent}%"></div>
                     </div>
                     <div class="goal-status">
-                        Status: <span style="color: #fbbf24">${goal.status}</span>
+                        Status: <span style="color: ${UI_COLORS.STATUS_ACTIVE}">${goal.status}</span>
                     </div>
                 </div>
                 

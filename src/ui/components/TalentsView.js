@@ -1,6 +1,7 @@
 import { gameState } from "../../core/GameState";
 import { TALENT_DEFINITIONS } from "../../core/TalentRegistry";
 import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
+import { UI_COLORS } from "../../core/Constants";
 
 export class TalentsView {
   constructor(uiManager) {
@@ -40,13 +41,13 @@ export class TalentsView {
 
     // Helper to get color
     const getCatColor = (catId) => {
-      if (catId === "Attributes") return "#fbbf24"; // Default gold
+      if (catId === "Attributes") return UI_COLORS.ATTRIBUTE_POINTS;
       const skillKey = skillMap[catId];
       if (skillKey) {
         const def = SKILL_DEFINITIONS[skillKey.toUpperCase()];
-        return def ? def.color : "#ccc";
+        if (def && def.color) return def.color;
       }
-      return "#ccc";
+      return UI_COLORS.LOCKED;
     };
 
     const activeColor = getCatColor(this.activeCategory);
@@ -260,7 +261,7 @@ export class TalentsView {
     line.setAttribute("y1", y1);
     line.setAttribute("x2", x2);
     line.setAttribute("y2", y2);
-    line.setAttribute("stroke", isUnlocked ? "#4ade80" : "#444");
+    line.setAttribute("stroke", isUnlocked ? UI_COLORS.PURCHASED : "#444"); // #444 could be constant too but it's style-specific
     line.setAttribute("stroke-width", "3");
 
     svg.appendChild(line);
