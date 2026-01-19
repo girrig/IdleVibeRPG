@@ -81,6 +81,135 @@ export class CharacterDetail {
     container.appendChild(detailPanel);
   }
 
+  static getQueueHTML(char) {
+    if (!char.goalQueue || char.goalQueue.length === 0) return "";
+
+    return `<div class="goal-queue-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          ${char.goalQueue
+            .map((q, i) => {
+              const qDef = getItemDefinition(q.targetItem);
+              // Added draggable and data-index
+              return `<div class="queue-item-card" draggable="true" data-index="${i}" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; align-items: center; gap: 10px; cursor: grab;">
+                  <div style="color: #64748b; font-size: 12px; min-width: 15px; pointer-events: none;">${i + 1}.</div>
+                  <div style="font-size: 16px; pointer-events: none;">${qDef.icon}</div>
+                  <div style="flex: 1; font-size: 13px; color: #e2e8f0; pointer-events: none;">Get ${q.targetQuantity} ${qDef.name}</div>
+                  <div style="font-size: 11px; color: #94a3b8; pointer-events: none;">Queued</div>
+                  <button class="btn-remove-queue" data-index="${i}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">✕</button>
+              </div>`;
+            })
+            .join("")}
+      </div>`;
+  }
+
+  static bindQueueDragEvents(container, char, uiManager) {
+    const list = container.querySelector(".goal-queue-list");
+    if (!list) return;
+
+    let draggedItem = null;
+    let draggedIndex = null; // Index from source data
+
+    // Drag Proxy variables
+    let dragProxy = null;
+    let startX = 0;
+    let startY = 0;
+
+    // Transparent empty image to hide default ghost
+    const emptyImg = new Image();
+    emptyImg.src =
+      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+    const items = list.querySelectorAll(".queue-item-card");
+    items.forEach((item) => {
+      item.addEventListener("dragstart", (e) => {
+        draggedItem = item;
+        // Don't rely on dataset index during move, logic relies on DOM order
+        draggedIndex = parseInt(item.dataset.index);
+
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setDragImage(emptyImg, 0, 0); // Hide default
+
+        // Create Custom Proxy
+        const rect = item.getBoundingClientRect();
+        dragProxy = item.cloneNode(true);
+        dragProxy.style.position = "fixed";
+        dragProxy.style.zIndex = "9999";
+        dragProxy.style.width = `${rect.width}px`;
+        dragProxy.style.height = `${rect.height}px`;
+        dragProxy.style.left = `${rect.left}px`;
+        dragProxy.style.top = `${rect.top}px`;
+        dragProxy.style.pointerEvents = "none";
+        dragProxy.style.boxShadow = "0 5px 15px rgba(0,0,0,0.5)"; // Moderate shadow
+        // dragProxy.style.transform = "scale(1.05)"; // Removed per feedback
+        dragProxy.style.opacity = "1";
+        dragProxy.style.backgroundColor = "#1e293b";
+        dragProxy.style.borderRadius = "4px";
+
+        document.body.appendChild(dragProxy);
+
+        startX = e.clientX - rect.left;
+        startY = e.clientY - rect.top;
+
+        // Hide original but keep in layout?
+        // User wants "list contents move".
+        // If we want gaps to close, we should display:none or similar?
+        // But usually standard behavior is the "gap" travels with the mouse.
+        // So we keep opacity 0 (invisible but takes space) and move IT around DOM.
+        item.style.opacity = "0";
+      });
+
+      // Update proxy position
+      item.addEventListener("drag", (e) => {
+        if (dragProxy && e.clientX !== 0 && e.clientY !== 0) {
+          dragProxy.style.left = `${e.clientX - startX}px`;
+          dragProxy.style.top = `${e.clientY - startY}px`;
+        }
+      });
+
+      item.addEventListener("dragend", () => {
+        item.style.opacity = "1";
+        if (dragProxy) {
+          dragProxy.remove();
+          dragProxy = null;
+        }
+      });
+
+      item.addEventListener("dragover", (e) => {
+        e.preventDefault(); // allow drop
+        e.dataTransfer.dropEffect = "move";
+
+        // Live Reordering Logic
+        if (draggedItem && draggedItem !== item) {
+          const rect = item.getBoundingClientRect();
+          const next = (e.clientY - rect.top) / rect.height > 0.5;
+          list.insertBefore(draggedItem, (next && item.nextSibling) || item);
+        }
+      });
+
+      item.addEventListener("drop", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // On Drop, reconstruct the queue based on new DOM order
+        const newQueue = [];
+        const newDomItems = list.querySelectorAll(".queue-item-card");
+
+        newDomItems.forEach((domItem) => {
+          const originalIndex = parseInt(domItem.dataset.index);
+          if (char.goalQueue[originalIndex]) {
+            newQueue.push(char.goalQueue[originalIndex]);
+          }
+        });
+
+        // Update Model
+        char.goalQueue = newQueue;
+        gameState.saveGame();
+
+        // Refresh UI
+        uiManager.renderMainWindow();
+      });
+    });
+  }
+
   renderDetailContent(container, char) {
     // Header
     const header = document.createElement("div");
@@ -120,23 +249,7 @@ export class CharacterDetail {
       const progressPercent = Math.min(100, (collected / targetQuantity) * 100);
 
       // Render Queue List
-      let queueHtml = "";
-      if (char.goalQueue && char.goalQueue.length > 0) {
-        queueHtml = `<div class="goal-queue-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-              ${char.goalQueue
-                .map((q, i) => {
-                  const qDef = getItemDefinition(q.targetItem);
-                  return `<div class="queue-item-card" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; align-items: center; gap: 10px;">
-                      <div style="color: #64748b; font-size: 12px; min-width: 15px;">${i + 1}.</div>
-                      <div style="font-size: 16px;">${qDef.icon}</div>
-                      <div style="flex: 1; font-size: 13px; color: #e2e8f0;">Get ${q.targetQuantity} ${qDef.name}</div>
-                      <div style="font-size: 11px; color: #94a3b8;">Queued</div>
-                      <button class="btn-remove-queue" data-index="${i}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">✕</button>
-                  </div>`;
-                })
-                .join("")}
-          </div>`;
-      }
+      const queueHtml = CharacterDetail.getQueueHTML(char);
 
       const headerHtml = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <div class="section-title" style="margin-bottom: 0;">Tasks</div>
@@ -166,6 +279,10 @@ export class CharacterDetail {
             
             ${queueHtml}
         `;
+
+      // Bind Queue Drag Events
+      CharacterDetail.bindQueueDragEvents(goalSection, char, this.uiManager);
+
       goalSection
         .querySelector(".btn-cancel-goal")
         .addEventListener("click", () => {
@@ -373,23 +490,7 @@ export class CharacterDetail {
           );
 
           // Render Queue List
-          let queueHtml = "";
-          if (char.goalQueue && char.goalQueue.length > 0) {
-            queueHtml = `<div class="goal-queue-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
-                  ${char.goalQueue
-                    .map((q, i) => {
-                      const qDef = getItemDefinition(q.targetItem);
-                      return `<div class="queue-item-card" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; align-items: center; gap: 10px;">
-                          <div style="color: #64748b; font-size: 12px; min-width: 15px;">${i + 1}.</div>
-                          <div style="font-size: 16px;">${qDef.icon}</div>
-                          <div style="flex: 1; font-size: 13px; color: #e2e8f0;">Get ${q.targetQuantity} ${qDef.name}</div>
-                          <div style="font-size: 11px; color: #94a3b8;">Queued</div>
-                          <button class="btn-remove-queue" data-index="${i}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">✕</button>
-                      </div>`;
-                    })
-                    .join("")}
-              </div>`;
-          }
+          const queueHtml = CharacterDetail.getQueueHTML(char);
 
           const headerHtml = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <div class="section-title" style="margin-bottom: 0;">Tasks</div>
@@ -419,6 +520,10 @@ export class CharacterDetail {
                 
                 ${queueHtml}
             `;
+
+          // Bind Queue Drag Events
+          CharacterDetail.bindQueueDragEvents(goalSection, char, uiManager);
+
           goalSection
             .querySelector(".btn-cancel-goal")
             .addEventListener("click", () => {

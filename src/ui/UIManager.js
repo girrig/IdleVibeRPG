@@ -28,6 +28,7 @@ export class UIManager {
     this.talentsView = new TalentsView(this);
     this.characterDetail = new CharacterDetail(this);
     this.storeView = new StoreView(this);
+    this.equipmentView = new EquipmentView();
     this.inventoryView = new InventoryView();
   }
 
@@ -183,7 +184,7 @@ export class UIManager {
       this.characterDetail.render(contentEl);
     } else if (this.currentView === "EQUIP") {
       titleEl.innerText = "Equipment";
-      EquipmentView.render(contentEl, this.selectedCharIndex);
+      this.equipmentView.render(contentEl, this.selectedCharIndex);
     } else if (this.currentView === "INV") {
       titleEl.innerText = "Inventory";
       this.inventoryView.render(contentEl);

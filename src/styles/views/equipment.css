@@ -3,13 +3,20 @@
 .equipment-layout {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start; /* Left align to allow inv to fill right */
   gap: 20px;
   height: 100%;
   padding: 10px;
   overflow: hidden;
   box-sizing: border-box;
   width: 100%;
+}
+
+.equip-main-area {
+  display: flex;
+  gap: 20px;
+  flex-shrink: 0;
+  justify-content: center;
 }
 
 .equip-column {

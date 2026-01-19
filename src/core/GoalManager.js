@@ -1,5 +1,6 @@
 import { sourceRegistry } from "./SourceRegistry";
 import { gameState } from "./GameState";
+import { SKILL_DEFINITIONS } from "./SkillRegistry";
 
 export class GoalManager {
   constructor() {
@@ -8,49 +9,119 @@ export class GoalManager {
 
   // Assign a goal to a character
   setGoal(character, itemId, quantity = 1) {
-    const source = sourceRegistry.getSource(itemId);
+    // dependency resolution
+    const plan = this.resolveDependencies(itemId, quantity);
 
-    // Validation
-    if (!source) {
+    if (plan.length === 0) {
       gameState.triggerNotification(
-        `Cannot find source for ${itemId}`,
+        `Could not formulate plan for ${itemId}`,
         "error",
       );
       return false;
     }
 
-    // Create Goal Object
-    const newGoal = {
-      targetItem: itemId,
-      targetQuantity: quantity,
-      source: source,
-      startTime: Date.now(),
-      startCount: gameState.inventory.getCount(itemId),
-      status: "EXECUTING",
-      steps: [], // For future multi-step
+    plan.forEach((step, index) => {
+      // Create Goal Object
+      const newGoal = {
+        targetItem: step.itemId,
+        targetQuantity: step.quantity,
+        source: step.source,
+        startTime: Date.now(),
+        startCount: gameState.inventory.getCount(step.itemId),
+        status: "EXECUTING",
+        steps: [], // For future multi-step
+      };
+
+      // If already has a goal, Queue it
+      if (character.activeGoal) {
+        if (!character.goalQueue) character.goalQueue = [];
+        character.goalQueue.push(newGoal);
+        // Only notify for the final goal
+        if (index === plan.length - 1) {
+          gameState.triggerNotification(
+            `${character.name}: Queued Goal - Get ${quantity} ${itemId}`,
+            "info",
+          );
+        }
+      } else {
+        character.activeGoal = newGoal;
+        gameState.triggerNotification(
+          `${character.name} goal set: Get ${step.quantity} ${step.itemId}`,
+          "info",
+        );
+        this.executeGoal(character);
+      }
+    });
+
+    return true;
+  }
+
+  resolveDependencies(itemId, quantity) {
+    const plan = [];
+    // Simulation inventory to track what we "will have" after each step
+    // We can clone the current inventory counts for the simulation
+    const simInventory = { ...gameState.inventory.items };
+
+    const getSimCount = (id) => simInventory[id] || 0;
+    const adjustSimCount = (id, delta) => {
+      simInventory[id] = (simInventory[id] || 0) + delta;
     };
 
-    // If already has a goal, Queue it
-    if (character.activeGoal) {
-      if (!character.goalQueue) character.goalQueue = [];
-      character.goalQueue.push(newGoal);
-      gameState.triggerNotification(
-        `${character.name}: Queued Goal - Get ${quantity} ${itemId}`,
-        "info",
-      );
-      return true;
-    }
+    // Recursive Requirement Finder
+    const addRequirement = (reqItem, reqQty, checkInventory = true) => {
+      const current = getSimCount(reqItem);
 
-    character.activeGoal = newGoal;
+      let missing = reqQty;
+      if (checkInventory) {
+        if (current >= reqQty) {
+          // We have enough, assume we consume it
+          adjustSimCount(reqItem, -reqQty);
+          return;
+        }
+        missing = reqQty - current;
+      }
 
-    gameState.triggerNotification(
-      `${character.name} goal set: Get ${quantity} ${itemId}`,
-      "info",
-    );
+      // Find Source
+      const source = sourceRegistry.getSource(reqItem);
+      if (!source) {
+        console.warn(`No source found for dependency ${reqItem}`);
+        return;
+      }
 
-    // Execute immediately
-    this.executeGoal(character);
-    return true;
+      // Check if it has recipe costs (Ingredients)
+      // Look up in SKILL_DEFINITIONS
+      // source has { type, skillId, target }
+      // SKILL_DEFINITIONS[source.skillId].options[source.target].cost
+      let cost = null;
+      const skillDef = SKILL_DEFINITIONS[source.skillId];
+      if (skillDef && skillDef.options && skillDef.options[source.target]) {
+        cost = skillDef.options[source.target].cost;
+      }
+
+      // If dependencies exist, resolve them EARLIER
+      if (cost) {
+        Object.entries(cost).forEach(([ingId, ingPerUnit]) => {
+          const totalIngNeeded = ingPerUnit * missing;
+          addRequirement(ingId, totalIngNeeded, true);
+        });
+      }
+
+      // Add THIS task to plan
+      // We assume we gather/craft the MISSING amount
+      plan.push({
+        itemId: reqItem,
+        quantity: missing,
+        source: source,
+      });
+
+      // "Produce" the item in sim
+      adjustSimCount(reqItem, missing);
+      // And "Consume" it for the parent (since we produced exactly what was missing + what we had = reqQty)
+      adjustSimCount(reqItem, -reqQty);
+    };
+
+    addRequirement(itemId, quantity, false);
+    return plan;
   }
 
   clearGoal(character) {
@@ -97,6 +168,16 @@ export class GoalManager {
         "info",
       );
     }
+  }
+
+  reorderGoalQueue(character, fromIndex, toIndex) {
+    if (!character.goalQueue) return;
+    if (fromIndex < 0 || fromIndex >= character.goalQueue.length) return;
+    if (toIndex < 0 || toIndex >= character.goalQueue.length) return;
+
+    const [movedGoal] = character.goalQueue.splice(fromIndex, 1);
+    character.goalQueue.splice(toIndex, 0, movedGoal);
+    gameState.saveGame();
   }
 
   checkGoalProgress(char) {
@@ -157,6 +238,10 @@ export class GoalManager {
         current.type !== source.skillId ||
         current.target !== source.target
       ) {
+        // Force the activity if unrelated
+        if (current) {
+          char.stopActivity();
+        }
         char.startActivity(source.skillId, source.target);
       }
     }
