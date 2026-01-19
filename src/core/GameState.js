@@ -29,6 +29,16 @@ class GameState {
     };
     this.listeners = [];
     this.notificationListeners = [];
+    this.isResetting = false;
+
+    // Listen for storage changes to handle multi-tab resets
+    window.addEventListener("storage", (e) => {
+      if (e.key === "idleVibeRPG_save" && e.newValue === null) {
+        console.log("Game reset detected in another tab. Reloading...");
+        this.isResetting = true; // Prevent saving during reload
+        location.reload();
+      }
+    });
   }
 
   initialize() {
@@ -75,6 +85,8 @@ class GameState {
   }
 
   saveGame() {
+    if (this.isResetting) return false;
+
     const data = {
       characters: this.characters,
       inventory: this.inventory.items,
@@ -131,9 +143,26 @@ class GameState {
   }
 
   resetGame() {
+    this.isResetting = true;
     if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
+
+    // 1. Clear Storage
     SaveManager.clear("idleVibeRPG_save");
-    location.reload();
+
+    // 2. Clear Internal State immediately for checking visual feedback
+    this.characters = [];
+    this.inventory.items = {};
+
+    // 3. Update UI to show empty state
+    this.notifyListeners();
+
+    // 4. Show Notification
+    this.triggerNotification("Game Reset! Reloading...", "success");
+
+    // 5. Reload after a short delay
+    setTimeout(() => {
+      location.reload();
+    }, 1000);
   }
 
   generateRandomName() {

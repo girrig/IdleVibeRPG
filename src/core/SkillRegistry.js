@@ -12,7 +12,14 @@ export const SKILL_DEFINITIONS = {
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.MINING.options[targetId];
-      gameState.inventory.addItem(targetId, 1);
+      let amount = 1;
+      // mining_2: 10% chance for double ore
+      if (char.talents.mining_2 && Math.random() < 0.1) {
+        amount = 2;
+        // Optional: Notify double drop?
+        // gameState.triggerNotification("Double Ore!", "success");
+      }
+      gameState.inventory.addItem(targetId, amount);
       if (option) char.gainXp("mining", option.xp);
     },
   },
@@ -29,7 +36,11 @@ export const SKILL_DEFINITIONS = {
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.WOODCUTTING.options[targetId];
-      gameState.inventory.addItem(targetId, 1);
+      let amount = 1;
+      // woodcutting_2: 10% chance for double logs
+      if (char.talents.woodcutting_2 && Math.random() < 0.1) amount = 2;
+
+      gameState.inventory.addItem(targetId, amount);
       if (option) char.gainXp("woodcutting", option.xp);
     },
   },
@@ -46,7 +57,11 @@ export const SKILL_DEFINITIONS = {
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.FISHING.options[targetId];
-      gameState.inventory.addItem(targetId, 1);
+      let amount = 1;
+      // fishing_2: 10% chance for double fish
+      if (char.talents.fishing_2 && Math.random() < 0.1) amount = 2;
+
+      gameState.inventory.addItem(targetId, amount);
       if (option) char.gainXp("fishing", option.xp);
     },
   },
@@ -70,7 +85,11 @@ export const SKILL_DEFINITIONS = {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.FIGHTING.options[targetId];
       if (option) {
-        gameState.inventory.addItem(option.drop, 1);
+        let amount = 1;
+        // fighting_2: 10% chance for double loot
+        if (char.talents.fighting_2 && Math.random() < 0.1) amount = 2;
+
+        gameState.inventory.addItem(option.drop, amount);
         char.gainXp("fighting", option.xp);
       }
     },

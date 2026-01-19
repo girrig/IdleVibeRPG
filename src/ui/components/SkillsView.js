@@ -4,7 +4,7 @@ import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
 export class SkillsView {
   constructor(uiManager) {
     this.uiManager = uiManager;
-    this.activeSkillTab = "MINING";
+    this.activeSkillTab = "FIGHTING";
   }
 
   render(container) {
@@ -20,9 +20,13 @@ export class SkillsView {
     contentArea.className = "skills-options-area";
 
     // Ensure active tab defaults if not set
-    if (!this.activeSkillTab) this.activeSkillTab = "MINING";
+    if (!this.activeSkillTab) this.activeSkillTab = "FIGHTING";
 
-    Object.values(SKILL_DEFINITIONS).forEach((skill) => {
+    const sortedSkills = Object.values(SKILL_DEFINITIONS).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+
+    sortedSkills.forEach((skill) => {
       // Create Sidebar Item
       const tabBtn = document.createElement("div");
       tabBtn.className = `skill-category-tab ${

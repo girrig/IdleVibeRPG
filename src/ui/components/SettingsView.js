@@ -1,4 +1,5 @@
 import { gameState } from "../../core/GameState";
+import { ConfirmationModal } from "./ConfirmationModal";
 
 export class SettingsView {
   static render(container) {
@@ -41,9 +42,7 @@ export class SettingsView {
         </div>
         <div class="setting-category">
             <h3>Account</h3>
-             <div class="setting-row" style="justify-content: center;">
-               <button class="btn-setting" id="btn-save-game">Save Game</button>
-            </div>
+            <!-- Save Game button removed -->
             <div class="setting-row">
                <button class="btn-setting danger" id="btn-reset-game">Reset Progress</button>
             </div>
@@ -171,19 +170,17 @@ export class SettingsView {
       );
     }
 
-    if (btnSave) {
-      btnSave.addEventListener("click", () => {
-        if (gameState.saveGame()) {
-          alert("Game Saved!");
-        }
-      });
-    }
+    // btnSave listener removed
 
     if (btnReset) {
       btnReset.addEventListener("click", () => {
-        if (confirm("Are you sure you want to reset ALL progress?")) {
-          gameState.resetGame();
-        }
+        ConfirmationModal.show(
+          "Reset Progress",
+          "Are you sure you want to reset ALL progress? This action cannot be undone.",
+          () => {
+            gameState.resetGame();
+          },
+        );
       });
     }
   }

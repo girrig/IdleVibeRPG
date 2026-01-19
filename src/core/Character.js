@@ -47,6 +47,12 @@ export class Character {
     // Deep merge stats and skills to ensure defaults are preserved if missing in data
     char.stats = { ...new Character(0, "").stats, ...(data.stats || {}) };
     char.skills = { ...new Character(0, "").skills, ...(data.skills || {}) };
+    // Ensure all skills have initialized talentPoints
+    for (const key in char.skills) {
+      if (char.skills[key].talentPoints === undefined) {
+        char.skills[key].talentPoints = 0;
+      }
+    }
     char.talents = { ...(data.talents || {}) };
     if (data.talentPoints === undefined) char.talentPoints = 3; // Retroactive grant for old saves
     return char;
@@ -54,10 +60,34 @@ export class Character {
 
   unlockTalent(talentId) {
     if (this.talents[talentId]) return false; // Already unlocked
-    if (this.talentPoints <= 0) return false;
 
     const def = getTalentDefinition(talentId);
     if (!def) return false;
+
+    // Determine Cost Type
+    // Columns 0 (Str), 1 (Dex), 2 (Int) use Global Attribute Points
+    // Columns 3+ use specific Skill Points
+    const isAttribute = def.position.col <= 2;
+    let skillIdForPoints = null;
+
+    if (!isAttribute) {
+      // Find which skill corresponds to this talent
+      // Simple mapping based on known structure or we could add 'skillId' to talent def
+      // Current mapping: 3->Mining, 4->Woodcutting, 5->Fishing, 6->Fighting
+      if (def.position.col === 3) skillIdForPoints = "mining";
+      else if (def.position.col === 4) skillIdForPoints = "woodcutting";
+      else if (def.position.col === 5) skillIdForPoints = "fishing";
+      else if (def.position.col === 6) skillIdForPoints = "fighting";
+    }
+
+    if (isAttribute) {
+      if (this.talentPoints < def.cost) return false;
+      this.talentPoints -= def.cost;
+    } else {
+      if (!skillIdForPoints || !this.skills[skillIdForPoints]) return false;
+      if (this.skills[skillIdForPoints].talentPoints < def.cost) return false;
+      this.skills[skillIdForPoints].talentPoints -= def.cost;
+    }
 
     // Check Prerequisites
     for (const req of def.prerequisites) {
@@ -65,7 +95,6 @@ export class Character {
     }
 
     // Unlock
-    this.talentPoints -= def.cost;
     this.talents[talentId] = true;
 
     // Apply Effect
@@ -101,21 +130,30 @@ export class Character {
     const skill = this.skills[skillId];
     if (!skill) return;
 
-    skill.xp += amount;
-    // Simple formula: XP needed for next level = Level * 100
-    // e.g. Level 1 needs 100 XP to reach Level 2
-    // If we want cumulative: total XP for Level 2 = 100.
-    // Let's assume 'xp' is current progress into the level, simplifying.
-    // Or 'xp' is total. Let's do: 'xp' resets on level up for simplicity now.
+    // Check for XP Bonus Talents
+    let multiplier = 1;
+    // Simple check for now based on convention: <skill>_1 is always XP bonus
+    // Or we can be explicit
+    if (skillId === "mining" && this.talents.mining_1) multiplier += 0.1;
+    if (skillId === "woodcutting" && this.talents.woodcutting_1)
+      multiplier += 0.1;
+    if (skillId === "fishing" && this.talents.fishing_1) multiplier += 0.1;
+    if (skillId === "fighting" && this.talents.fighting_1) multiplier += 0.1;
+
+    skill.xp += amount * multiplier;
 
     const xpNeeded = skill.level * 100;
     if (skill.xp >= xpNeeded) {
       skill.xp -= xpNeeded;
       skill.level++;
-      gameState.triggerNotification(
-        `Level Up! ${skillId} is now level ${skill.level}`,
-        "levelUp",
-      );
+
+      // Award Skill Talent Point EVERY level
+      if (skill.talentPoints === undefined) skill.talentPoints = 0;
+      skill.talentPoints++;
+
+      let msg = `Level Up! ${skillId} is now level ${skill.level}. +1 ${skillId} Talent Point!`;
+
+      gameState.triggerNotification(msg, "levelUp");
       // TODO: Notify UI of level up (via GameState listeners)
     }
   }

@@ -1,5 +1,6 @@
 import { gameState } from "../../core/GameState";
 import { ITEM_DEFINITIONS } from "../../core/ItemRegistry";
+import { formatNumber } from "../../utils/formatters";
 
 function getItemDefinition(id) {
   return ITEM_DEFINITIONS[id] || { name: id, icon: "❓" };
@@ -28,7 +29,7 @@ export class InventoryView {
           return `
           <div class="inv-card" title="${def.name}">
             <div class="inv-card-icon">${icon}</div>
-            <div class="inv-card-count">${count}</div>
+            <div class="inv-card-count">${formatNumber(count)}</div>
           </div>
         `;
         })
