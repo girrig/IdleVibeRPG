@@ -229,10 +229,14 @@ class GameState {
     // Check master switch
     if (!this.settings.notifications.master) return;
 
+    // Start by resolving the type key (string)
+    // Start by resolving the type key (string)
+    const typeKey = type && typeof type === "object" ? type.id : type;
+
     // Check specific type switch if exists
     if (
-      this.settings.notifications[type] !== undefined &&
-      this.settings.notifications[type] === false
+      this.settings.notifications[typeKey] !== undefined &&
+      this.settings.notifications[typeKey] === false
     ) {
       return;
     }
@@ -321,3 +325,4 @@ class GameState {
 }
 
 export const gameState = new GameState();
+window.gameState = gameState;

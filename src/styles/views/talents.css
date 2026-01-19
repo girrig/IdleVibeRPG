@@ -196,8 +196,8 @@
 }
 
 .talent-node.available {
-  border-color: #fbbf24;
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
+  border-color: #888;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
   animation: pulse-border 2s infinite;
 }
 
@@ -257,12 +257,12 @@
 
 @keyframes pulse-border {
   0% {
-    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.3);
   }
   70% {
-    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }
 }

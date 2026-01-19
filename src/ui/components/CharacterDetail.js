@@ -1,6 +1,7 @@
 import { gameState } from "../../core/GameState";
 import { goalManager } from "../../core/GoalManager";
 import { ITEM_DEFINITIONS } from "../../core/ItemRegistry";
+import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
 
 function getItemDefinition(id) {
   return ITEM_DEFINITIONS[id] || { name: id, icon: "❓" };
@@ -348,6 +349,9 @@ export class CharacterDetail {
                .map(({ id, skill, name }) => {
                  const xpNeeded = skill.level * 100;
                  const percent = Math.min((skill.xp / xpNeeded) * 100, 100);
+                 const def = SKILL_DEFINITIONS[id.toUpperCase()];
+                 const color = def ? def.color : "#4ade80"; // Fallback green
+
                  return `
                 <div class="skill-row-compact" title="${skill.xp} / ${xpNeeded} XP">
                     <div class="skill-info-compact">
@@ -355,7 +359,7 @@ export class CharacterDetail {
                     <span class="skill-lvl-compact">Lv ${skill.level}</span>
                     </div>
                     <div class="skill-bar-bg-compact">
-                    <div class="skill-bar-fill-compact ${id}" style="width: ${percent}%"></div>
+                    <div class="skill-bar-fill-compact ${id}" style="width: ${percent}%; background-color: ${color}"></div>
                     </div>
                 </div>
                 `;
@@ -576,6 +580,7 @@ export class CharacterDetail {
       // If states match and we have a goal, update values
       else if (hasActiveGoal) {
         const goal = char.activeGoal;
+        const targetDef = getItemDefinition(goal.targetItem); // Needed for icon/name update
         const currentCount = gameState.inventory.getCount(goal.targetItem);
         const startCount = goal.startCount || 0;
         const targetQuantity = goal.targetQuantity || 1;
@@ -591,6 +596,14 @@ export class CharacterDetail {
           progressText.innerText = `${collected} / ${targetQuantity}`;
         }
 
+        // Update Name and Icon (Fix for auto-advancing tasks)
+        const nameEl = goalSection.querySelector(".goal-name");
+        if (nameEl)
+          nameEl.innerText = `Get ${targetQuantity} ${targetDef.name}`;
+
+        const iconEl = goalSection.querySelector(".goal-icon");
+        if (iconEl) iconEl.innerText = targetDef.icon;
+
         // Update Bar
         const barFill = goalSection.querySelector(".goal-progress-bar-fill");
         if (barFill) {
@@ -600,6 +613,47 @@ export class CharacterDetail {
         // Update Status
         const statusSpan = goalSection.querySelector(".goal-status span");
         if (statusSpan) statusSpan.innerText = goal.status;
+
+        // Update Queue List (Fix for stale queue visibility)
+        const currentQueueList = goalSection.querySelector(".goal-queue-list");
+        const newQueueHtml = CharacterDetail.getQueueHTML(char);
+
+        if (currentQueueList) {
+          if (newQueueHtml) {
+            // Replace existing queue
+            if (currentQueueList.outerHTML !== newQueueHtml) {
+              currentQueueList.outerHTML = newQueueHtml;
+              CharacterDetail.bindQueueDragEvents(goalSection, char, uiManager);
+
+              // Re-bind remove buttons
+              goalSection
+                .querySelectorAll(".btn-remove-queue")
+                .forEach((btn) => {
+                  btn.addEventListener("click", (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    goalManager.removeGoalFromQueue(char, idx);
+                    uiManager.renderMainWindow();
+                  });
+                });
+            }
+          } else {
+            // Remove queue if empty
+            currentQueueList.remove();
+          }
+        } else if (newQueueHtml) {
+          // Append new queue if none existed
+          goalSection.insertAdjacentHTML("beforeend", newQueueHtml);
+          CharacterDetail.bindQueueDragEvents(goalSection, char, uiManager);
+
+          // Re-bind remove buttons
+          goalSection.querySelectorAll(".btn-remove-queue").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+              const idx = parseInt(e.target.dataset.index);
+              goalManager.removeGoalFromQueue(char, idx);
+              uiManager.renderMainWindow();
+            });
+          });
+        }
       }
     }
 
@@ -611,6 +665,13 @@ export class CharacterDetail {
         const xpNeeded = skill.level * 100;
         const percent = Math.min((skill.xp / xpNeeded) * 100, 100);
         bar.style.width = `${percent}%`;
+
+        // Ensure color is set (in case of dynamic update, though strictly only needed on render usually,
+        // unless we want to support dynamic theme changes without re-render.
+        // But render sets style attribute, so we just update width here is fine.
+        // Actually, let's enforce it just in case.)
+        const def = SKILL_DEFINITIONS[id.toUpperCase()];
+        if (def && def.color) bar.style.backgroundColor = def.color;
 
         const lvl = row.querySelector(".skill-lvl-compact");
         if (lvl) lvl.innerText = `Lv ${skill.level}`;

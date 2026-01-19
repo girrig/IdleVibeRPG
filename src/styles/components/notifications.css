@@ -2,10 +2,12 @@
 .notification-container {
   position: fixed;
   bottom: 20px;
-  right: 20px;
-  width: 300px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* width: 300px;  Removed to allow auto-sizing */
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse; /* Stack upwards */
+  align-items: center; /* Center items horizontally */
   gap: 10px;
   z-index: 9999;
   pointer-events: none; /* Let clicks pass through */
@@ -22,11 +24,11 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
   animation:
-    slideIn 0.3s ease-out forwards,
-    fadeOut 0.5s ease-in 3.5s forwards;
+    slideUp 0.3s ease-out forwards,
+    fadeOut 0.5s ease-in 1s forwards;
   pointer-events: auto; /* Allow closing if we add close btn */
   opacity: 0;
-  transform: translateX(20px);
+  transform: translateY(20px);
 }
 
 .game-notification.error {
@@ -50,14 +52,14 @@
   );
 }
 
-@keyframes slideIn {
+@keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateX(100%);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 

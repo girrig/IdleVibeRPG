@@ -65,6 +65,7 @@
 - [x] Implement Task Queue Drag & Drop <!-- id: 91 -->
 - [x] Refactor Equipment Panel (Usage of Inventory Grid) <!-- id: 92 -->
 - [x] Implement Sell Item Functionality <!-- id: 93 -->
+- [x] Refine Notification Position and Sizing <!-- id: 94 -->
 - [x] World Aesthetics (Polish) <!-- id: 26 -->
   - [x] Generate Ground Tiles (Grass/Dirt) <!-- id: 27 -->
   - [x] Generate Environment Props (Trees, Rocks) <!-- id: 28 -->

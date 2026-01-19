@@ -1,5 +1,6 @@
 import { gameState } from "../../core/GameState";
 import { TALENT_DEFINITIONS } from "../../core/TalentRegistry";
+import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
 
 export class TalentsView {
   constructor(uiManager) {
@@ -37,27 +38,45 @@ export class TalentsView {
       }
     }
 
+    // Helper to get color
+    const getCatColor = (catId) => {
+      if (catId === "Attributes") return "#fbbf24"; // Default gold
+      const skillKey = skillMap[catId];
+      if (skillKey) {
+        const def = SKILL_DEFINITIONS[skillKey.toUpperCase()];
+        return def ? def.color : "#ccc";
+      }
+      return "#ccc";
+    };
+
+    const activeColor = getCatColor(this.activeCategory);
+
     container.innerHTML = `
         <div class="talents-body">
             <div class="talents-sidebar">
 
                 ${this.categories
-                  .map(
-                    (cat) => `
-                    <div class="talent-sidebar-item ${this.activeCategory === cat.id ? "active" : ""}" data-category="${cat.id}">
+                  .map((cat) => {
+                    const isActive = this.activeCategory === cat.id;
+                    const catColor = getCatColor(cat.id);
+                    const style = isActive
+                      ? `style="border-color: ${catColor}; color: ${catColor}; background: rgba(${this.hexToRgb(catColor)}, 0.1);"`
+                      : "";
+                    return `
+                    <div class="talent-sidebar-item ${isActive ? "active" : ""}" data-category="${cat.id}" ${style}>
                         <span class="tab-icon">${cat.icon}</span>
                         <span class="tab-name">${cat.label}</span>
                     </div>
-                `,
-                  )
+                `;
+                  })
                   .join("")}
             </div>
             <div class="talents-main">
-                <div class="main-points-display">
+                <div class="main-points-display" style="color: ${activeColor}; border-color: ${activeColor}">
                     ${pointLabel}: <span class="points-val">${pointValue}</span>
                 </div>
                 <div class="talents-grid">
-                    ${this.renderTalentColumns(char)}
+                    ${this.renderTalentColumns(char, activeColor)}
                 </div>
             </div>
         </div>
@@ -99,7 +118,7 @@ export class TalentsView {
     window.addEventListener("resize", () => this.drawConnectors());
   }
 
-  renderTalentColumns(char) {
+  renderTalentColumns(char, activeColor) {
     const activeCatDef = this.categories.find(
       (c) => c.id === this.activeCategory,
     );
@@ -151,9 +170,16 @@ export class TalentsView {
 
                     if (unlocked) statusClass += " purchased";
 
+                    // Only apply colored border if purchased/unlocked
+                    const style = unlocked
+                      ? `style="border-color: ${activeColor}"`
+                      : "";
+
                     return `
                         <div class="talent-node-wrapper">
-                            <div class="talent-node ${statusClass}" id="talent-node-${def.id}" data-id="${def.id}" title="${def.name}: ${def.description} (Cost: ${def.cost})">
+                            <div class="talent-node ${statusClass}" id="talent-node-${def.id}" data-id="${def.id}" 
+                                 title="${def.name}: ${def.description} (Cost: ${def.cost})"
+                                 ${style}>
                                 <div class="talent-icon">${def.icon}</div>
                                 <div class="talent-name">${def.name}</div>
                                 ${unlocked ? '<div class="check">✔</div>' : ""}
@@ -238,5 +264,20 @@ export class TalentsView {
     line.setAttribute("stroke-width", "3");
 
     svg.appendChild(line);
+  }
+
+  // Helper
+  hexToRgb(hex) {
+    if (!hex) return "255, 255, 255";
+    // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+    var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    hex = hex.replace(shorthandRegex, function (m, r, g, b) {
+      return r + r + g + g + b + b;
+    });
+
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+      : "255, 255, 255";
   }
 }

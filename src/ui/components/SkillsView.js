@@ -30,9 +30,21 @@ export class SkillsView {
     sortedSkills.forEach((skill) => {
       // Create Sidebar Item
       const tabBtn = document.createElement("div");
-      tabBtn.className = `skill-category-tab ${
-        this.activeSkillTab === skill.id ? "active" : ""
-      }`;
+      const isActive = this.activeSkillTab === skill.id;
+      tabBtn.className = `skill-category-tab ${isActive ? "active" : ""}`;
+      // Apply color if active
+      if (isActive && skill.color) {
+        tabBtn.style.borderColor = skill.color;
+        tabBtn.style.color = skill.color;
+        // Background handled by CSS class, or we can tint it too
+        tabBtn.style.background = `rgba(${this.hexToRgb(skill.color)}, 0.15)`;
+      } else {
+        // Reset styles for inactive
+        tabBtn.style.borderColor = "";
+        tabBtn.style.color = "";
+        tabBtn.style.background = "";
+      }
+
       tabBtn.innerHTML = `
             <span class="tab-icon">${skill.icon}</span>
             <span class="tab-name">${skill.name}</span>
@@ -55,7 +67,14 @@ export class SkillsView {
         char && char.skills[activeSkill.id.toLowerCase()]
           ? char.skills[activeSkill.id.toLowerCase()].level
           : 1;
-      header.innerHTML = `<h2>${activeSkill.icon} ${activeSkill.name} <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
+      const colorStyle = activeSkill.color
+        ? `style="color: ${activeSkill.color}; border-bottom-color: ${activeSkill.color}"`
+        : "";
+
+      header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
+      // Also apply border color to the container header div if we want
+      if (activeSkill.color) header.style.borderBottomColor = activeSkill.color;
+
       contentArea.appendChild(header);
 
       const grid = document.createElement("div");
@@ -175,5 +194,19 @@ export class SkillsView {
         cardIndex++;
       });
     }
+  }
+
+  // Helper
+  hexToRgb(hex) {
+    // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+    var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    hex = hex.replace(shorthandRegex, function (m, r, g, b) {
+      return r + r + g + g + b + b;
+    });
+
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+      : "255, 255, 255";
   }
 }

@@ -1,6 +1,8 @@
 import { getTalentDefinition, TALENT_DEFINITIONS } from "./TalentRegistry";
+import { SKILL_DEFINITIONS } from "./SkillRegistry";
 
-import { gameState } from "./GameState";
+// Circular dependency fix: Use window.gameState instead of import
+// import { gameState } from "./GameState";
 
 export class Character {
   constructor(id, name, type = "WARRIOR") {
@@ -116,7 +118,11 @@ export class Character {
       def.effect(this);
     }
 
-    gameState.triggerNotification(`Unlocked talent: ${def.name}`, "master");
+    if (window.gameState)
+      window.gameState.triggerNotification(
+        `Unlocked talent: ${def.name}`,
+        "master",
+      );
     return true;
   }
 
@@ -161,7 +167,11 @@ export class Character {
     // 4. Remove Talent
     delete this.talents[talentId];
 
-    gameState.triggerNotification(`Refunded talent: ${def.name}`, "info");
+    if (window.gameState)
+      window.gameState.triggerNotification(
+        `Refunded talent: ${def.name}`,
+        "info",
+      );
 
     return true;
   }
@@ -170,10 +180,11 @@ export class Character {
     // If busy, add to queue
     if (this.currentActivity) {
       this.activityQueue.push({ type, target, quantity });
-      gameState.triggerNotification(
-        `${this.name}: Queued ${target} (x${quantity > 0 ? quantity : "∞"})`,
-        "activity",
-      );
+      if (window.gameState)
+        window.gameState.triggerNotification(
+          `${this.name}: Queued ${target} (x${quantity > 0 ? quantity : "∞"})`,
+          "activity",
+        );
       return;
     }
 
@@ -185,19 +196,26 @@ export class Character {
       quantity: quantity,
       progress: 0,
     };
-    gameState.triggerNotification(
-      `${this.name} started ${type} on ${target} (x${quantity > 0 ? quantity : "∞"})`,
-      "activity",
-    );
+
+    const def = SKILL_DEFINITIONS[type];
+    const notifType =
+      def && def.color ? { id: "activity", color: def.color } : "activity";
+
+    if (window.gameState)
+      window.gameState.triggerNotification(
+        `${this.name} started ${type} on ${target} (x${quantity > 0 ? quantity : "∞"})`,
+        notifType,
+      );
   }
 
   completeCurrentTask() {
     if (!this.currentActivity) return;
 
-    gameState.triggerNotification(
-      `${this.name} finished ${this.currentActivity.target}`,
-      "activity",
-    );
+    if (window.gameState)
+      window.gameState.triggerNotification(
+        `${this.name} finished ${this.currentActivity.target}`,
+        "activity",
+      );
     this.currentActivity = null;
 
     // Check Queue
@@ -210,10 +228,11 @@ export class Character {
   stopActivity() {
     this.currentActivity = null;
     this.activityQueue = []; // Clear queue on manual stop
-    gameState.triggerNotification(
-      `${this.name} stopped activity (Queue Cleared)`,
-      "activity",
-    );
+    if (window.gameState)
+      window.gameState.triggerNotification(
+        `${this.name} stopped activity (Queue Cleared)`,
+        "activity",
+      );
   }
 
   gainXp(skillId, amount) {
@@ -247,8 +266,14 @@ export class Character {
         msg += ` +1 ${skillId} Talent Point!`;
       }
 
-      gameState.triggerNotification(msg, "levelUp");
-      gameState.saveGame();
+      const def = SKILL_DEFINITIONS[skillId.toUpperCase()];
+      const notifType =
+        def && def.color ? { id: "levelUp", color: def.color } : "levelUp";
+
+      if (window.gameState) {
+        window.gameState.triggerNotification(msg, notifType);
+        window.gameState.saveGame();
+      }
       // TODO: Notify UI of level up (via GameState listeners)
     }
   }

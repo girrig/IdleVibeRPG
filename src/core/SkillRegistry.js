@@ -5,6 +5,7 @@ export const SKILL_DEFINITIONS = {
     id: "MINING",
     name: "Mining",
     icon: "⛏️",
+    color: "#e67e22", // Orange
     options: {
       copper_ore: {
         name: "Copper Ore",
@@ -41,6 +42,7 @@ export const SKILL_DEFINITIONS = {
     id: "WOODCUTTING",
     name: "Woodcutting",
     icon: "🪓",
+    color: "#2ecc71", // Emerald Green
     options: {
       oak_log: { name: "Oak Log", level: 1, xp: 10, icon: "🌳" },
       willow_log: { name: "Willow Log", level: 5, xp: 20, icon: "🌿" },
@@ -62,6 +64,7 @@ export const SKILL_DEFINITIONS = {
     id: "FISHING",
     name: "Fishing",
     icon: "🎣",
+    color: "#3498db", // Blue
     options: {
       raw_trout: { name: "Raw Trout", level: 1, xp: 10, icon: "🐟" },
       raw_salmon: { name: "Raw Salmon", level: 5, xp: 20, icon: "🐠" },
@@ -83,6 +86,7 @@ export const SKILL_DEFINITIONS = {
     id: "FIGHTING",
     name: "Fighting",
     icon: "⚔️",
+    color: "#e74c3c", // Red
     options: {
       rat: { name: "Rat", level: 1, xp: 10, drop: "rat_bones", icon: "🐀" },
       goblin: {
@@ -112,6 +116,7 @@ export const SKILL_DEFINITIONS = {
     id: "SMITHING",
     name: "Smithing",
     icon: "🔨",
+    color: "#a9a9a9", // Grey
     options: {
       copper_bar: {
         name: "Copper Bar",
