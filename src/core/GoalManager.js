@@ -32,7 +32,6 @@ export class GoalManager {
         targetQuantity: step.quantity,
         source: step.source,
         startTime: null, // Will be set when executed
-        startCount: 0,
         status: "PENDING",
       })),
       currentStepIndex: 0,
@@ -179,6 +178,10 @@ export class GoalManager {
           return;
         }
         missing = reqQty - current;
+      } else {
+        console.log(
+          `[Dependency] Root Item ${reqItem}: checkInventory=false. Force producing ${reqQty}. (Current Inv: ${current})`,
+        );
       }
 
       // Find Source
@@ -229,7 +232,10 @@ export class GoalManager {
 
     const step = group.steps[group.currentStepIndex];
     step.startTime = Date.now();
-    step.startCount = gameState.inventory.getCount(step.targetItem);
+    // PERSISTENCE FIX: Only set startCount if not already defined (Resume case)
+    if (step.startCount === undefined) {
+      step.startCount = gameState.inventory.getCount(step.targetItem);
+    }
     step.status = "EXECUTING";
 
     character.activeGoal = step;
@@ -267,6 +273,70 @@ export class GoalManager {
   checkQueue(character) {
     if (character.goalQueue && character.goalQueue.length > 0) {
       const nextGroup = character.goalQueue.shift();
+
+      // DYNAMIC RE-CHECK: Before starting, verify dependencies for the resumed step
+      if (nextGroup.steps && nextGroup.steps.length > 0) {
+        // Ensure index is valid
+        if (nextGroup.currentStepIndex === undefined)
+          nextGroup.currentStepIndex = 0;
+
+        const currentIdx = nextGroup.currentStepIndex;
+        if (currentIdx < nextGroup.steps.length) {
+          const step = nextGroup.steps[currentIdx];
+
+          // DYNAMIC RE-CHECK LOGIC
+          // If Resuming (startCount defined), calculate remaining based on progress.
+          // If New (startCount undefined), use full Target Quantity (Ignore Inventory).
+          let remaining = step.targetQuantity;
+
+          if (step.startCount !== undefined) {
+            const startCnt = step.startCount;
+            const targetTotal = startCnt + step.targetQuantity;
+            const currentInv = gameState.inventory.getCount(step.targetItem);
+            remaining = Math.max(0, targetTotal - currentInv);
+          }
+          // If startCount is undefined, we simply assume the FULL amount is needed.
+          // This prevents "Looking at inventory" for the main goal of a fresh task.
+
+          if (remaining > 0) {
+            const projected = this.getProjectedInventory(character);
+            const plan = this.resolveDependencies(
+              step.targetItem,
+              remaining,
+              projected,
+            );
+
+            // If the plan is more complex than just "Do the step", inject dependencies
+            if (
+              plan.length > 1 ||
+              (plan.length === 1 && plan[0].itemId !== step.targetItem)
+            ) {
+              // Convert plan to steps
+              const newSteps = plan.map((s) => ({
+                targetItem: s.itemId,
+                targetQuantity: s.quantity,
+                source: s.source,
+              }));
+
+              // Splice logic:
+              // We replace the CURRENT step with the NEW plan.
+              // Why? Because "Smith 10" (Target) is replaced by "Mine 5, Smith 5" (Action).
+              // But we must be careful about "startCount".
+              // The new "Smith 5" step will be initialized fresh, so its startCount will be currentInv (5).
+              // Target 5. Total 10. This matches "Get 10".
+
+              gameState.triggerNotification(
+                `${character.name}: Re-calculated dependencies for resumed task`,
+                "info",
+              );
+
+              // Replace current step with new steps
+              nextGroup.steps.splice(currentIdx, 1, ...newSteps);
+            }
+          }
+        }
+      }
+
       character.activeGoalGroup = nextGroup;
 
       gameState.triggerNotification(
@@ -298,6 +368,61 @@ export class GoalManager {
   }
 
   reorderGoalQueue(character, fromIndex, toIndex) {
+    // Handle Active Task logic via special index -1
+    const isActiveSource = fromIndex === -1;
+    const isActiveTarget = toIndex === -1;
+
+    if (isActiveSource) {
+      // Active -> Queue (Insert at toIndex)
+      if (!character.activeGoalGroup) return; // Nothing to move
+
+      const groupToMove = character.activeGoalGroup;
+
+      // Stop current activity
+      character.activeGoal = null;
+      character.activeGoalGroup = null;
+      character.stopActivity();
+
+      // Insert into queue
+      if (!character.goalQueue) character.goalQueue = [];
+      character.goalQueue.splice(toIndex, 0, groupToMove);
+
+      gameState.triggerNotification(
+        `${character.name}: Paused active task`,
+        "info",
+      );
+
+      // Start next task
+      this.checkQueue(character);
+      return;
+    }
+
+    if (isActiveTarget) {
+      // Queue -> Active (Swap/Start)
+      if (!character.goalQueue || !character.goalQueue[fromIndex]) return;
+
+      const newActive = character.goalQueue.splice(fromIndex, 1)[0];
+      const oldActive = character.activeGoalGroup;
+
+      if (oldActive) {
+        // If OldActive exists, push it to Queue[fromIndex].
+        character.goalQueue.splice(fromIndex, 0, oldActive);
+      }
+
+      // Unshift NewActive to [0].
+      character.goalQueue.unshift(newActive);
+
+      // Clear Active.
+      character.activeGoal = null;
+      character.activeGoalGroup = null;
+      character.stopActivity();
+
+      // Call checkQueue(). checkQueue will take [0] (NewActive) and run re-check.
+      this.checkQueue(character);
+      return;
+    }
+
+    // Standard Queue Reorder
     if (!character.goalQueue) return;
     if (fromIndex < 0 || fromIndex >= character.goalQueue.length) return;
     if (toIndex < 0 || toIndex >= character.goalQueue.length) return;
@@ -317,16 +442,17 @@ export class GoalManager {
     const currentCount = gameState.inventory.getCount(goal.targetItem);
 
     // Fix for "Hang at 0" / Resource Debt
-    // If inventory dropped below where we started (e.g. user sold items),
-    // float the startCount down so the user doesn't have to "pay back" the debt.
     if (currentCount < goal.startCount) {
       console.log(
-        `[GoalManager] Resource Debt detected for ${goal.targetItem}. Floating start from ${goal.startCount} to ${currentCount}.`,
+        `[GoalManager] Resource Debt. Corrent: ${currentCount}, Start: ${goal.startCount}. Resetting start.`,
       );
       goal.startCount = currentCount;
     }
 
     const targetTotal = goal.startCount + goal.targetQuantity;
+    console.log(
+      `[CheckProgress] ${goal.targetItem}: Cur=${currentCount} Start=${goal.startCount} Target=${targetTotal}`,
+    );
 
     if (currentCount >= targetTotal) {
       // Step Complete!

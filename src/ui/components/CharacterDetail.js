@@ -139,116 +139,122 @@ export class CharacterDetail {
   }
 
   static bindQueueDragEvents(container, char, uiManager) {
-    const list = container.querySelector(".goal-queue-list");
-    if (!list) return;
+    if (!container) return;
 
-    let draggedItem = null;
-    let draggedIndex = null; // Index from source data
+    // Helper to setup drag listeners
+    const setupDragListeners = (itemEl, index) => {
+      // Avoid binding twice on the same element instance
+      if (itemEl.dataset.dragBound) return;
 
-    // Drag Proxy variables
-    let dragProxy = null;
-    let startX = 0;
-    let startY = 0;
-
-    // Transparent empty image to hide default ghost
-    const emptyImg = new Image();
-    emptyImg.src =
-      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-
-    const items = list.querySelectorAll(".queue-item-card");
-    items.forEach((item) => {
-      item.addEventListener("dragstart", (e) => {
-        draggedItem = item;
-        // Don't rely on dataset index during move, logic relies on DOM order
-        draggedIndex = parseInt(item.dataset.index);
-
-        CharacterDetail.isDragging = true; // Pause updates
-
+      itemEl.addEventListener("dragstart", (e) => {
+        CharacterDetail.isDragging = true;
         e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setDragImage(emptyImg, 0, 0); // Hide default
-
-        // Create Custom Proxy
-        const rect = item.getBoundingClientRect();
-        dragProxy = item.cloneNode(true);
-        dragProxy.style.position = "fixed";
-        dragProxy.style.zIndex = "9999";
-        dragProxy.style.width = `${rect.width}px`;
-        dragProxy.style.height = `${rect.height}px`;
-        dragProxy.style.left = `${rect.left}px`;
-        dragProxy.style.top = `${rect.top}px`;
-        dragProxy.style.pointerEvents = "none";
-        dragProxy.style.boxShadow = "0 5px 15px rgba(0,0,0,0.5)"; // Moderate shadow
-        // dragProxy.style.transform = "scale(1.05)"; // Removed per feedback
-        dragProxy.style.opacity = "1";
-        dragProxy.style.backgroundColor = "#1e293b";
-        dragProxy.style.borderRadius = "4px";
-
-        document.body.appendChild(dragProxy);
-
-        startX = e.clientX - rect.left;
-        startY = e.clientY - rect.top;
-
-        // Hide original but keep in layout?
-        // User wants "list contents move".
-        // If we want gaps to close, we should display:none or similar?
-        // But usually standard behavior is the "gap" travels with the mouse.
-        // So we keep opacity 0 (invisible but takes space) and move IT around DOM.
-        item.style.opacity = "0";
+        e.dataTransfer.setData("text/plain", index.toString());
+        itemEl.classList.add("dragging");
+        itemEl.style.opacity = "0.5";
       });
 
-      // Update proxy position
-      item.addEventListener("drag", (e) => {
-        if (dragProxy && e.clientX !== 0 && e.clientY !== 0) {
-          dragProxy.style.left = `${e.clientX - startX}px`;
-          dragProxy.style.top = `${e.clientY - startY}px`;
+      itemEl.addEventListener("dragend", (e) => {
+        CharacterDetail.isDragging = false;
+        itemEl.classList.remove("dragging");
+        itemEl.style.opacity = "1";
+      });
+
+      // Visual reordering only for queue items
+      if (itemEl.classList.contains("queue-item-card")) {
+        itemEl.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        });
+      }
+
+      itemEl.dataset.dragBound = "true";
+    };
+
+    const list = container.querySelector(".goal-queue-list");
+    const activeGoalCard = container.querySelector(".active-goal-card");
+    // Use imported goalManager instead of window.goalManager
+
+    // Bind to Queue Items (ALWAYS run this check, as items might be new)
+    if (list) {
+      const items = list.querySelectorAll(".queue-item-card");
+      items.forEach((item) => {
+        setupDragListeners(item, parseInt(item.dataset.index));
+      });
+    }
+
+    // Bind to Active Card (ALWAYS run this check)
+    if (activeGoalCard) {
+      if (!activeGoalCard.dataset.dragBound) {
+        // Check if it's draggable (has data-index="-1")
+        if (activeGoalCard.getAttribute("data-index") === "-1") {
+          setupDragListeners(activeGoalCard, -1);
         }
-      });
 
-      item.addEventListener("dragend", () => {
-        CharacterDetail.isDragging = false; // Resume updates
-        item.style.opacity = "1";
-        if (dragProxy) {
-          dragProxy.remove();
-          dragProxy = null;
-        }
-      });
+        activeGoalCard.addEventListener("dragover", (e) => {
+          e.preventDefault(); // Allow drop
+          e.dataTransfer.dropEffect = "move";
+        });
 
-      item.addEventListener("dragover", (e) => {
-        e.preventDefault(); // allow drop
-        e.dataTransfer.dropEffect = "move";
+        activeGoalCard.dataset.dragBound = "true";
+      }
+    }
 
-        // Live Reordering Logic
-        if (draggedItem && draggedItem !== item) {
-          const rect = item.getBoundingClientRect();
-          const next = (e.clientY - rect.top) / rect.height > 0.5;
-          list.insertBefore(draggedItem, (next && item.nextSibling) || item);
-        }
-      });
-
-      item.addEventListener("drop", (e) => {
+    // Universal Drop Handler (Bind Once to Container)
+    // Only bind if not already bound
+    if (!container.dataset.dragBound) {
+      container.addEventListener("drop", (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        // On Drop, reconstruct the queue based on new DOM order
-        CharacterDetail.isDragging = false; // Resume updates
-        const newQueue = [];
-        const newDomItems = list.querySelectorAll(".queue-item-card");
+        const fromIndexStr = e.dataTransfer.getData("text/plain");
+        if (!fromIndexStr) return;
 
-        newDomItems.forEach((domItem) => {
-          const originalIndex = parseInt(domItem.dataset.index);
-          if (char.goalQueue[originalIndex]) {
-            newQueue.push(char.goalQueue[originalIndex]);
-          }
-        });
+        const fromIndex = parseInt(fromIndexStr);
+        let toIndex = -1; // Default target
 
-        // Update Model
-        char.goalQueue = newQueue;
+        const queueItem = e.target.closest(".queue-item-card");
+        const activeCard = e.target.closest(".active-goal-card");
+        const queueList = e.target.closest(".goal-queue-list");
+
+        if (activeCard) {
+          toIndex = -1;
+        } else if (queueItem) {
+          const rect = queueItem.getBoundingClientRect();
+          const isBefore = (e.clientY - rect.top) / rect.height < 0.5;
+          const targetIndex = parseInt(queueItem.dataset.index);
+          toIndex = targetIndex + (isBefore ? 0 : 1);
+        } else if (queueList) {
+          toIndex = char.goalQueue ? char.goalQueue.length : 0;
+        } else {
+          if (queueList) toIndex = char.goalQueue ? char.goalQueue.length : 0;
+          else toIndex = -1;
+        }
+
+        if (isNaN(fromIndex) || fromIndex === toIndex) {
+          CharacterDetail.isDragging = false;
+          return;
+        }
+
+        // Adjust for downward move (splice removal shifts indices left)
+        let finalToIndex = toIndex;
+        if (fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex) {
+          finalToIndex = toIndex - 1;
+        }
+
+        CharacterDetail.isDragging = false;
+        goalManager.reorderGoalQueue(char, fromIndex, finalToIndex);
         gameState.saveGame();
-
-        // Refresh UI
         uiManager.renderMainWindow();
       });
-    });
+
+      container.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      });
+
+      container.dataset.dragBound = "true";
+    }
   }
 
   renderDetailContent(container, char) {
@@ -301,7 +307,7 @@ export class CharacterDetail {
 
       goalSection.innerHTML = `
             ${headerHtml}
-                <div class="active-goal-card" style="margin-bottom: 10px; position: relative; padding-top: 15px;">
+                <div class="active-goal-card" draggable="true" data-index="-1" style="margin-bottom: 10px; position: relative; padding-top: 15px; cursor: grab;">
                     <button class="btn-cancel-goal" style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 6px; color: #fca5a5; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; font-size: 14px; padding: 0;" title="Cancel Current Task">✕</button>
                     <div class="goal-info">
                         <span class="goal-icon">${targetDef.icon}</span>
@@ -577,7 +583,7 @@ export class CharacterDetail {
 
           goalSection.innerHTML = `
                 ${headerHtml}
-                <div class="active-goal-card" style="margin-bottom: 10px; position: relative; padding-top: 15px;">
+                <div class="active-goal-card" draggable="true" data-index="-1" style="margin-bottom: 10px; position: relative; padding-top: 15px; cursor: grab;">
                     <button class="btn-cancel-goal" style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 6px; color: #fca5a5; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; font-size: 14px; padding: 0;" title="Cancel Current Task">✕</button>
                     <div class="goal-info">
                         <span class="goal-icon">${targetDef.icon}</span>

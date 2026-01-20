@@ -140,6 +140,67 @@ class GoalManager {
     character.goalQueue.push(goalGroup);
     return goalGroup;
   }
+
+  checkQueue(character) {
+    if (character.goalQueue && character.goalQueue.length > 0) {
+      const nextGroup = character.goalQueue.shift();
+
+      // DYNAMIC RE-CHECK LOGIC (Using mock methods)
+      if (nextGroup.steps && nextGroup.steps.length > 0) {
+        if (nextGroup.currentStepIndex === undefined)
+          nextGroup.currentStepIndex = 0;
+        const currentIdx = nextGroup.currentStepIndex;
+        if (currentIdx < nextGroup.steps.length) {
+          const step = nextGroup.steps[currentIdx];
+          // Uses mock gameState
+          const startCnt =
+            step.startCount !== undefined
+              ? step.startCount
+              : gameState.inventory.getCount(step.targetItem);
+          const targetTotal = startCnt + step.targetQuantity;
+          const currentInv = gameState.inventory.getCount(step.targetItem);
+          const remaining = Math.max(0, targetTotal - currentInv);
+
+          if (remaining > 0) {
+            const projected = this.getProjectedInventory(character);
+            const plan = this.resolveDependencies(
+              step.targetItem,
+              remaining,
+              projected,
+            );
+
+            if (
+              plan.length > 1 ||
+              (plan.length === 1 && plan[0].itemId !== step.targetItem)
+            ) {
+              const newSteps = plan.map((s) => ({
+                targetItem: s.itemId,
+                targetQuantity: s.quantity,
+                source: s.source,
+              }));
+              // Replace current step
+              nextGroup.steps.splice(currentIdx, 1, ...newSteps);
+            }
+          }
+        }
+      }
+
+      character.activeGoalGroup = nextGroup;
+      this.startFlaggedGoal(character, nextGroup);
+    }
+  }
+
+  startFlaggedGoal(character, group) {
+    // Mock start
+    if (!group || !group.steps) return;
+    const step = group.steps[group.currentStepIndex || 0];
+    if (step) {
+      if (step.startCount === undefined) {
+        step.startCount = gameState.inventory.getCount(step.targetItem);
+      }
+      character.activeGoal = step;
+    }
+  }
 }
 
 const gm = new GoalManager();
@@ -208,4 +269,93 @@ if (t6.steps.length === 2 && t6.steps[0].targetItem === "copper_ore") {
   console.log("\n✅ PASSED: Added redundant mining (Strict Conservative).");
 } else {
   console.log("\n❌ FAILED: Missed mining dependency (Active Gain Counted).");
+}
+
+// TEST 7: RESUME PROGRESS (Persistence)
+console.log("\n=== TEST 7: Resume Progress (Persistence) ===");
+gameState.inventory = new Inventory({ copper_ore: 5 });
+// Mock a task that was already half done
+// Goal: 10 Ore. StartCount: 0. Inv: 5. Done: 5. Remaining: 5.
+// If startCount is preserverd (0), targetTotal = 10. Inv=5. Remaining=5.
+// We must manually construct the group structure as if it came from the queue
+const mineResumeStep = {
+  targetItem: "copper_ore",
+  targetQuantity: 10,
+  source: { type: "GATHERING" },
+  status: "EXECUTING",
+  startCount: 0, // <--- KEY: Already set
+};
+const char7 = {
+  name: "Tester7",
+  goalQueue: [
+    {
+      mainGoal: { itemId: "copper_ore", quantity: 10 },
+      steps: [mineResumeStep],
+      currentStepIndex: 0,
+    },
+  ],
+};
+
+console.log("Resuming Mine 10 (Half done)...");
+gm.checkQueue(char7);
+// We need to inspect the 'step' object inside char7.activeGoalGroup
+// Wait, checkQueue MOVES it to activeGoalGroup
+const activeStep = char7.activeGoalGroup.steps[0].startCount;
+console.log(`Start Count: ${activeStep} (Expected: 0)`);
+
+if (activeStep === 0) {
+  console.log("✅ PASSED: startCount persisted.");
+} else {
+  console.log(`❌ FAILED: startCount reset to ${activeStep} (likely 5)`);
+}
+
+// TEST 8: DYNAMIC DEPENDENCY RE-CHECK
+console.log("\n=== TEST 8: Dynamic Dependency Re-Check ===");
+// Scenario: Started Smith 10. Had 10 Ore. Used 5. Paused. START COUNT = 0.
+// Then THREW AWAY remaining 5 ore. Inv = 0.
+// Resume. Need 10 total. Have 5 produced? No, this is raw production mock.
+// Let's say goal: Get 10 Bars.
+// StartCount: 0. Inv: 5 Bars (produced). Target: 10. Remaining: 5.
+// Dependency check for 5 Bars -> Needs 5 Ore.
+// Inv Ore: 0.
+gameState.inventory = new Inventory({ copperBar: 5, copper_ore: 0 });
+
+const smithResumeStep = {
+  targetItem: "copperBar",
+  targetQuantity: 10,
+  source: { type: "SKILL", skillId: "SMITHING", target: "copperBar" },
+  status: "EXECUTING",
+  startCount: 0,
+};
+
+// Queue it
+const char8 = {
+  name: "Tester8",
+  goalQueue: [
+    {
+      mainGoal: { itemId: "copperBar", quantity: 10 },
+      steps: [smithResumeStep],
+      currentStepIndex: 0,
+    },
+  ],
+};
+
+console.log("Resuming Smith 10 (5 done, 0 Ore left)...");
+gm.checkQueue(char8);
+// checkQueue should trigger resolveDependencies for remaining 5 bars.
+// 5 Bars cost 5 Ore. Inv Ore is 0.
+// Should add "Mine 5 Ore" to the steps.
+
+const newSteps = char8.activeGoalGroup.steps;
+console.log(
+  "New Steps:",
+  newSteps.map((s) => `${s.targetQuantity} ${s.targetItem}`),
+);
+
+// Expectation: Mine 5, Smith 5.
+// Note: original step "Smith 10" is replaced.
+if (newSteps.length > 1 && newSteps[0].targetItem === "copper_ore") {
+  console.log("✅ PASSED: Injected mining dependency.");
+} else {
+  console.log("❌ FAILED: Did not inject dependency.");
 }
