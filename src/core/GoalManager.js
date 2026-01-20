@@ -153,7 +153,13 @@ export class GoalManager {
     return inventory;
   }
 
-  resolveDependencies(itemId, quantity, baseInventory = null) {
+  resolveDependencies(
+    itemId,
+    quantity,
+    baseInventory = null,
+    generateFullTrace = false,
+    forceComplete = false,
+  ) {
     const plan = [];
     // Simulation inventory to track what we "will have" after each step
     // Use baseInventory (Projected) if provided, otherwise current
@@ -167,18 +173,43 @@ export class GoalManager {
     };
 
     // Recursive Requirement Finder
-    const addRequirement = (reqItem, reqQty, checkInventory = true) => {
+    const addRequirement = (
+      reqItem,
+      reqQty,
+      checkInventory = true,
+      forceComp = false,
+    ) => {
       const current = getSimCount(reqItem);
-
       let missing = reqQty;
-      if (checkInventory) {
+      let status = "PENDING"; // Default
+
+      // FORCE COMPLETE MODE: Ignore inventory, just mark complete and recurse
+      if (forceComp) {
+        status = "COMPLETED";
+        // We assume we 'consumed' it or it's virtual, so no sim adjustment needed for the item itself
+        // BUT we need to show the history of how we got it.
+      }
+      // STANDARD / TRACE MODE
+      else if (checkInventory) {
         if (current >= reqQty) {
-          // We have enough, assume we consume it
+          // We have enough
           adjustSimCount(reqItem, -reqQty);
-          return;
+
+          if (generateFullTrace) {
+            status = "COMPLETED";
+            // Fall through to generation w/ status=COMPLETED
+            // And we MUST recurse to show ingredients for this completed item
+            forceComp = true;
+          } else {
+            // Standard behavior: Skip if we have it
+            return;
+          }
+        } else {
+          missing = reqQty - current;
+          // Standard behavior: Produce missing amount
         }
-        missing = reqQty - current;
       } else {
+        // Root item (checkInventory=false) -> Always produce
         console.log(
           `[Dependency] Root Item ${reqItem}: checkInventory=false. Force producing ${reqQty}. (Current Inv: ${current})`,
         );
@@ -192,9 +223,6 @@ export class GoalManager {
       }
 
       // Check if it has recipe costs (Ingredients)
-      // Look up in SKILL_DEFINITIONS
-      // source has { type, skillId, target }
-      // SKILL_DEFINITIONS[source.skillId].options[source.target].cost
       let cost = null;
       const skillDef = SKILL_DEFINITIONS[source.skillId];
       if (skillDef && skillDef.options && skillDef.options[source.target]) {
@@ -204,26 +232,35 @@ export class GoalManager {
       // If dependencies exist, resolve them EARLIER
       if (cost) {
         Object.entries(cost).forEach(([ingId, ingPerUnit]) => {
-          const totalIngNeeded = ingPerUnit * missing;
-          addRequirement(ingId, totalIngNeeded, true);
+          // For COMPLETED items, we assume we needed the full amount.
+          // For PENDING items, we only need ingredients for the MISSING amount.
+          const quantityBase = status === "COMPLETED" ? reqQty : missing;
+          const totalIngNeeded = ingPerUnit * quantityBase;
+
+          // Recurse: If we are forced complete, children are forced complete.
+          addRequirement(ingId, totalIngNeeded, true, forceComp);
         });
       }
 
       // Add THIS task to plan
-      // We assume we gather/craft the MISSING amount
+      // STOCKPILE LOGIC: We always display the FULL requirement (reqQty), not just the missing amount.
+      // The progress logic (startCount=0) handles the fact that we might already have some.
       plan.push({
         itemId: reqItem,
-        quantity: missing,
+        quantity: reqQty,
         source: source,
+        status: status, // New property
       });
 
-      // "Produce" the item in sim
-      adjustSimCount(reqItem, missing);
-      // And "Consume" it for the parent (since we produced exactly what was missing + what we had = reqQty)
-      adjustSimCount(reqItem, -reqQty);
+      if (status !== "COMPLETED") {
+        // "Produce" the item in sim
+        adjustSimCount(reqItem, missing);
+        // And "Consume" it for the parent
+        adjustSimCount(reqItem, -reqQty);
+      }
     };
 
-    addRequirement(itemId, quantity, false);
+    addRequirement(itemId, quantity, false, forceComplete);
     return plan;
   }
 
@@ -232,9 +269,22 @@ export class GoalManager {
 
     const step = group.steps[group.currentStepIndex];
     step.startTime = Date.now();
-    // PERSISTENCE FIX: Only set startCount if not already defined (Resume case)
+    // HYBRID PROGRESS LOGIC
+    // If this step is the MAIN GOAL (the user requested item), we use Relative Progress.
+    // Meaning: "Make X new items". StartCount = Current Inventory.
+    // If this step is a DEPENDENCY, we use Absolute Progress (Stockpile).
+    // Meaning: "Ensure I have X items". StartCount = 0.
     if (step.startCount === undefined) {
-      step.startCount = gameState.inventory.getCount(step.targetItem);
+      const isMainGoal =
+        group.mainGoal && step.targetItem === group.mainGoal.itemId;
+
+      if (isMainGoal) {
+        // Relative: Count existing items as the "starting line"
+        step.startCount = gameState.inventory.getCount(step.targetItem);
+      } else {
+        // Absolute: Count from 0 (Stockpile behavior)
+        step.startCount = 0;
+      }
     }
     step.status = "EXECUTING";
 
@@ -284,56 +334,43 @@ export class GoalManager {
         if (currentIdx < nextGroup.steps.length) {
           const step = nextGroup.steps[currentIdx];
 
-          // DYNAMIC RE-CHECK LOGIC
-          // If Resuming (startCount defined), calculate remaining based on progress.
-          // If New (startCount undefined), use full Target Quantity (Ignore Inventory).
-          let remaining = step.targetQuantity;
+          // DYNAMIC RE-CHECK LOGIC (Full Re-Plan)
+          // We always want to re-evaluate the ENTIRE plan based on the Main Goal and Current Inventory.
+          // This ensures that if we gained items (offline/manual), we skip work (mark complted).
+          // If we lost items, we add work.
 
-          if (step.startCount !== undefined) {
-            const startCnt = step.startCount;
-            const targetTotal = startCnt + step.targetQuantity;
-            const currentInv = gameState.inventory.getCount(step.targetItem);
-            remaining = Math.max(0, targetTotal - currentInv);
-          }
-          // If startCount is undefined, we simply assume the FULL amount is needed.
-          // This prevents "Looking at inventory" for the main goal of a fresh task.
-
-          if (remaining > 0) {
-            const projected = this.getProjectedInventory(character);
-            const plan = this.resolveDependencies(
-              step.targetItem,
-              remaining,
-              projected,
+          if (nextGroup.mainGoal) {
+            console.log(
+              `[checkQueue] Re-Planning Group ${nextGroup.id} (Resuming)`,
             );
 
-            // If the plan is more complex than just "Do the step", inject dependencies
-            if (
-              plan.length > 1 ||
-              (plan.length === 1 && plan[0].itemId !== step.targetItem)
-            ) {
-              // Convert plan to steps
-              const newSteps = plan.map((s) => ({
-                targetItem: s.itemId,
-                targetQuantity: s.quantity,
-                source: s.source,
-              }));
+            const newPlan = this.resolveDependencies(
+              nextGroup.mainGoal.itemId,
+              nextGroup.mainGoal.quantity,
+              gameState.inventory.items, // Baseline: Current Real Inventory
+              true, // generateFullTrace: Keep history of completed items
+            );
 
-              // Splice logic:
-              // We replace the CURRENT step with the NEW plan.
-              // Why? Because "Smith 10" (Target) is replaced by "Mine 5, Smith 5" (Action).
-              // But we must be careful about "startCount".
-              // The new "Smith 5" step will be initialized fresh, so its startCount will be currentInv (5).
-              // Target 5. Total 10. This matches "Get 10".
+            // Update Group Steps
+            nextGroup.steps = newPlan.map((s) => ({
+              targetItem: s.itemId,
+              targetQuantity: s.quantity,
+              source: s.source,
+              startTime: null,
+              status: s.status || "PENDING",
+            }));
 
-              gameState.triggerNotification(
-                `${character.name}: Re-calculated dependencies for resumed task`,
-                "info",
-              );
+            // Find where to start (First non-completed step)
+            const firstPendingIndex = nextGroup.steps.findIndex(
+              (s) => s.status !== "COMPLETED",
+            );
+            nextGroup.currentStepIndex =
+              firstPendingIndex >= 0 ? firstPendingIndex : 0;
 
-              // Replace current step with new steps
-              nextGroup.steps.splice(currentIdx, 1, ...newSteps);
-            }
+            // If we are starting midway, we might need to fix the startCount logic for the new active step
+            // But startFlaggedGoal handles setting startCount if undefined.
           }
+          // Old logic removed
         }
       }
 
