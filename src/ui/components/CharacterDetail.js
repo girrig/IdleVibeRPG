@@ -94,14 +94,42 @@ export class CharacterDetail {
     return `<div class="goal-queue-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
           ${char.goalQueue
             .map((q, i) => {
-              const qDef = getItemDefinition(q.targetItem);
+              // Handle Group vs Legacy
+              const targetItem = q.mainGoal ? q.mainGoal.itemId : q.targetItem;
+              const targetQty = q.mainGoal
+                ? q.mainGoal.quantity
+                : q.targetQuantity;
+
+              const qDef = getItemDefinition(targetItem);
+              const isGroup = !!q.steps && q.steps.length > 1;
+
+              // Render Steps if it's a group
+              let stepsHtml = "";
+              if (isGroup) {
+                stepsHtml = `<div style="margin-top: 4px; padding-left: 0; display: flex; flex-direction: column; gap: 2px;">
+                    ${q.steps
+                      .map((step, idx) => {
+                        const sDef = getItemDefinition(step.targetItem);
+                        return `<div style="font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px;">
+                           <span style="opacity: 0.5; min-width: 12px;">${idx + 1}.</span> 
+                           <span>${sDef.icon}</span>
+                           <span>Get ${step.targetQuantity} ${sDef.name}</span>
+                        </div>`;
+                      })
+                      .join("")}
+                 </div>`;
+              }
+
               // Added draggable and data-index
-              return `<div class="queue-item-card" draggable="true" data-index="${i}" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; align-items: center; gap: 10px; cursor: grab;">
-                  <div style="color: #64748b; font-size: 12px; min-width: 15px; pointer-events: none;">${i + 1}.</div>
-                  <div style="font-size: 16px; pointer-events: none;">${qDef.icon}</div>
-                  <div style="flex: 1; font-size: 13px; color: #e2e8f0; pointer-events: none;">Get ${q.targetQuantity} ${qDef.name}</div>
-                  <div style="font-size: 11px; color: #94a3b8; pointer-events: none;">Queued</div>
-                  <button class="btn-remove-queue" data-index="${i}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px;">✕</button>
+              return `<div class="queue-item-card" draggable="true" data-index="${i}" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; display: flex; align-items: flex-start; gap: 10px; cursor: grab;">
+                  <div style="color: #64748b; font-size: 12px; min-width: 15px; pointer-events: none; margin-top: 2px;">${i + 1}.</div>
+                  <div style="font-size: 16px; pointer-events: none; margin-top: 0px;">${qDef.icon}</div>
+                  <div style="flex: 1; pointer-events: none;">
+                    <div style="font-size: 13px; color: #e2e8f0; font-weight: 500;">Get ${targetQty} ${qDef.name}</div>
+                    ${stepsHtml}
+                  </div>
+                  <div style="font-size: 11px; color: #94a3b8; pointer-events: none; margin-top: 2px;">Queued</div>
+                  <button class="btn-remove-queue" data-index="${i}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 2px; margin-top: 1px;">✕</button>
               </div>`;
             })
             .join("")}
@@ -282,6 +310,36 @@ export class CharacterDetail {
                     <div class="goal-status">
                         Status: <span style="color: ${UI_COLORS.STATUS_ACTIVE}">${goal.status}</span>
                     </div>
+                    ${
+                      char.activeGoalGroup &&
+                      char.activeGoalGroup.steps.length > 1
+                        ? `<div class="active-goal-steps" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 4px;">
+                            ${char.activeGoalGroup.steps
+                              .map((step, idx) => {
+                                const sDef = getItemDefinition(step.targetItem);
+                                const isCurrent =
+                                  idx === char.activeGoalGroup.currentStepIndex;
+                                const isDone =
+                                  idx < char.activeGoalGroup.currentStepIndex;
+                                const color = isCurrent
+                                  ? "#e2e8f0"
+                                  : isDone
+                                    ? "#4ade80"
+                                    : "#64748b";
+                                const icon = isDone ? "✓" : sDef.icon;
+                                const weight = isCurrent ? "500" : "400";
+                                return `
+                                <div style="font-size: 11px; color: ${color}; display: flex; align-items: center; gap: 6px; font-weight: ${weight};">
+                                    <span style="min-width: 12px; opacity: 0.7;">${idx + 1}.</span>
+                                    <span>${icon}</span>
+                                    <span>Get ${step.targetQuantity} ${sDef.name}</span>
+                                    ${isCurrent ? '<span style="font-size: 9px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 0 4px; border-radius: 2px;">Active</span>' : ""}
+                                </div>`;
+                              })
+                              .join("")}
+                        </div>`
+                        : ""
+                    }
                 </div>
             
             ${queueHtml}
@@ -528,6 +586,36 @@ export class CharacterDetail {
                     <div class="goal-status">
                         Status: <span style="color: ${UI_COLORS.STATUS_ACTIVE}">${goal.status}</span>
                     </div>
+                    ${
+                      char.activeGoalGroup &&
+                      char.activeGoalGroup.steps.length > 1
+                        ? `<div class="active-goal-steps" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 4px;">
+                            ${char.activeGoalGroup.steps
+                              .map((step, idx) => {
+                                const sDef = getItemDefinition(step.targetItem);
+                                const isCurrent =
+                                  idx === char.activeGoalGroup.currentStepIndex;
+                                const isDone =
+                                  idx < char.activeGoalGroup.currentStepIndex;
+                                const color = isCurrent
+                                  ? "#e2e8f0"
+                                  : isDone
+                                    ? "#4ade80"
+                                    : "#64748b";
+                                const icon = isDone ? "✓" : sDef.icon;
+                                const weight = isCurrent ? "500" : "400";
+                                return `
+                                <div style="font-size: 11px; color: ${color}; display: flex; align-items: center; gap: 6px; font-weight: ${weight};">
+                                    <span style="min-width: 12px; opacity: 0.7;">${idx + 1}.</span>
+                                    <span>${icon}</span>
+                                    <span>Get ${step.targetQuantity} ${sDef.name}</span>
+                                    ${isCurrent ? '<span style="font-size: 9px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 0 4px; border-radius: 2px;">Active</span>' : ""}
+                                </div>`;
+                              })
+                              .join("")}
+                        </div>`
+                        : ""
+                    }
                 </div>
                 
                 ${queueHtml}
@@ -621,6 +709,36 @@ export class CharacterDetail {
         // Update Status
         const statusSpan = goalSection.querySelector(".goal-status span");
         if (statusSpan) statusSpan.innerText = goal.status;
+
+        // Update Steps List (Active Goal Group)
+        const stepsContainer = goalSection.querySelector(".active-goal-steps");
+        if (
+          stepsContainer &&
+          char.activeGoalGroup &&
+          char.activeGoalGroup.steps.length > 1
+        ) {
+          stepsContainer.innerHTML = char.activeGoalGroup.steps
+            .map((step, idx) => {
+              const sDef = getItemDefinition(step.targetItem);
+              const isCurrent = idx === char.activeGoalGroup.currentStepIndex;
+              const isDone = idx < char.activeGoalGroup.currentStepIndex;
+              const color = isCurrent
+                ? "#e2e8f0"
+                : isDone
+                  ? "#4ade80"
+                  : "#64748b";
+              const icon = isDone ? "✓" : sDef.icon;
+              const weight = isCurrent ? "500" : "400";
+              return `
+                <div style="font-size: 11px; color: ${color}; display: flex; align-items: center; gap: 6px; font-weight: ${weight};">
+                    <span style="min-width: 12px; opacity: 0.7;">${idx + 1}.</span>
+                    <span>${icon}</span>
+                    <span>Get ${step.targetQuantity} ${sDef.name}</span>
+                    ${isCurrent ? '<span style="font-size: 9px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 0 4px; border-radius: 2px;">Active</span>' : ""}
+                </div>`;
+            })
+            .join("");
+        }
 
         // Update Queue List (Fix for stale queue visibility)
         const currentQueueList = goalSection.querySelector(".goal-queue-list");

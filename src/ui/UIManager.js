@@ -138,17 +138,18 @@ export class UIManager {
       const now = Date.now();
       const lastSave = this.lastManualSave || 0;
       if (now - lastSave >= 10000) {
-        if (gameState.saveGame()) {
-          this.showNotification("Game Saved!", "success");
-          this.lastManualSave = now;
-          saveBtn.disabled = true;
-          saveBtn.innerText = "Saved";
+        // Use manualSave to reset autosave timer
+        gameState.manualSave();
 
-          setTimeout(() => {
-            saveBtn.disabled = false;
-            saveBtn.innerText = "Save";
-          }, 10000);
-        }
+        // UI Feedback
+        this.lastManualSave = now;
+        saveBtn.disabled = true;
+        saveBtn.innerText = "Saved";
+
+        setTimeout(() => {
+          saveBtn.disabled = false;
+          saveBtn.innerText = "Save";
+        }, 10000);
       }
     });
   }

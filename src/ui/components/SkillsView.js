@@ -113,13 +113,7 @@ export class SkillsView {
                 ${isLocked ? '<div class="lock-overlay">🔒</div>' : ""}
              `;
 
-        if (!isLocked) {
-          card.addEventListener("click", () => {
-            this.uiManager.handleStartActivity(activeSkill.id, key);
-            this.uiManager.renderMainWindow();
-          });
-          card.dataset.hasListener = "true";
-        }
+        // View-Only: No click listeners attached here anymore!
 
         grid.appendChild(card);
       });
@@ -163,34 +157,13 @@ export class SkillsView {
             overlay.className = "lock-overlay";
             overlay.innerText = "🔒";
             card.appendChild(overlay);
-
-            // Remove click listener if needed (though difficult to remove anonymous fn,
-            // css pointer-events: none usually handles this for locked items or we can clone node)
           }
         } else {
           card.classList.remove("locked");
           const overlay = card.querySelector(".lock-overlay");
           if (overlay) overlay.remove();
 
-          // Re-binding click listener is tricky if we don't track it.
-          // A safer full re-render approach might be needed if we want to enable clicking on unlock.
-          // BUT, for now, let's just assume the user will likely switch tabs or we can just attach the listener
-          // initially but gate it logic-wise?
-          // Actually, the initial render adds listener ONLY if !isLocked.
-          // So if it unlocks, we need to add the listener.
-          // Simplest fix for "Unlock on the fly" without full re-render:
-          // Just verify if it HAS a listener.
-          // Actually, cloning the node to strip listeners and re-adding is a nuclear option.
-          // Let's rely on checking if it WAS locked.
-
-          if (!card.dataset.hasListener) {
-            card.addEventListener("click", () => {
-              if (card.classList.contains("locked")) return; // double check
-              this.uiManager.handleStartActivity(activeSkill.id, key);
-              this.uiManager.renderMainWindow();
-            });
-            card.dataset.hasListener = "true";
-          }
+          // View-Only: No click listeners to safeguard or re-attach
         }
         cardIndex++;
       });

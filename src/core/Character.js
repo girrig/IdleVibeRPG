@@ -43,7 +43,7 @@ export class Character {
     this.talentPoints = 3; // Start with 3 for testing
     this.currentActivity = null; // e.g. { type: 'MINING', target: 'copper_ore', startTime: 12345, quantity: 10, progress: 0 }
     this.activityQueue = []; // Array of { type, target, quantity }
-    this.goalQueue = []; // Array of Goal objects
+    this.activeGoalGroup = null; // Current GoalGroup being executed
   }
 
   static fromData(data) {
@@ -64,6 +64,7 @@ export class Character {
     // Resume queue
     char.activityQueue = data.activityQueue || [];
     char.goalQueue = data.goalQueue || [];
+    char.activeGoalGroup = data.activeGoalGroup || null;
 
     return char;
   }

@@ -103,6 +103,16 @@ class GameState {
     );
   }
 
+  manualSave() {
+    const success = this.saveGame();
+    if (success) {
+      if (this.settings.autoSave) {
+        this.startAutoSave(); // Resets timer
+      }
+      this.triggerNotification("Game Saved Manually", "success");
+    }
+  }
+
   loadGame() {
     const data = SaveManager.load("idleVibeRPG_save");
     if (!data) return false;
