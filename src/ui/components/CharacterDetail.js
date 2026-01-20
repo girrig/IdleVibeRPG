@@ -9,6 +9,8 @@ function getItemDefinition(id) {
 }
 
 export class CharacterDetail {
+  static isDragging = false;
+
   constructor(uiManager) {
     this.uiManager = uiManager;
   }
@@ -160,6 +162,8 @@ export class CharacterDetail {
         // Don't rely on dataset index during move, logic relies on DOM order
         draggedIndex = parseInt(item.dataset.index);
 
+        CharacterDetail.isDragging = true; // Pause updates
+
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setDragImage(emptyImg, 0, 0); // Hide default
 
@@ -201,6 +205,7 @@ export class CharacterDetail {
       });
 
       item.addEventListener("dragend", () => {
+        CharacterDetail.isDragging = false; // Resume updates
         item.style.opacity = "1";
         if (dragProxy) {
           dragProxy.remove();
@@ -225,6 +230,7 @@ export class CharacterDetail {
         e.stopPropagation();
 
         // On Drop, reconstruct the queue based on new DOM order
+        CharacterDetail.isDragging = false; // Resume updates
         const newQueue = [];
         const newDomItems = list.querySelectorAll(".queue-item-card");
 
@@ -747,7 +753,11 @@ export class CharacterDetail {
         if (currentQueueList) {
           if (newQueueHtml) {
             // Replace existing queue
-            if (currentQueueList.outerHTML !== newQueueHtml) {
+            // SKIP UPDATE IF DRAGGING
+            if (
+              !CharacterDetail.isDragging &&
+              currentQueueList.outerHTML !== newQueueHtml
+            ) {
               currentQueueList.outerHTML = newQueueHtml;
               CharacterDetail.bindQueueDragEvents(goalSection, char, uiManager);
 
