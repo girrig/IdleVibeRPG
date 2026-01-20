@@ -111,16 +111,19 @@ export class GoalManager {
         quantityToProduce = remaining;
       }
 
-      // Output: We WILL get this item (ONLY if Active or NOT Queued?)
-      // Wait, "activeGoal" is not in "goalQueue".
-      // So if it's in "goalQueue", we treat it as "Future".
-      // Policy: Ignore Gains for QUEUED items. Count Gains for ACTIVE item.
+      // Output: We WILL get this item (Only if Active)
+      // Reverted to Conservative Projection per user request.
+      // Queued tasks do NOT add to projected inventory.
+      // Output: We WILL get this item (Only if Active)
+      // STRICT CONSERVATIVE UPDATE: Ignore Active Gain too.
+      // User Request: "queue up 10 copper ore then queue up 10 copper bars" -> Should add Mine 10.
+      // If we count active gains, it assumes the CURRENT mining task covers the FUTURE smithing task.
+      // The user wants independent chains. So we ignore ALL output.
 
-      const isActive = step === character.activeGoal;
-
-      if (isActive) {
-        adjust(step.targetItem, quantityToProduce);
-      }
+      // const isActive = step === character.activeGoal;
+      // if (isActive) {
+      //   adjust(step.targetItem, quantityToProduce);
+      // }
 
       // Input: Did it cost anything? (Count Costs for EVERYONE)
       if (step.source && step.source.type === "SKILL") {
@@ -135,7 +138,13 @@ export class GoalManager {
             Object.entries(cost).forEach(([ingId, costPerUnit]) => {
               const totalCost = costPerUnit * quantityToProduce;
               // Input: We WILL consume this
-              adjust(ingId, -totalCost);
+              // CLAMP AT ZERO: Do not go negative.
+              // If we don't have it, we assume the task will generate a dependency to get it.
+              // We just want to know if we consume EXISTING inventory.
+              inventory[ingId] = Math.max(
+                0,
+                (inventory[ingId] || 0) - totalCost,
+              );
             });
           }
         }
