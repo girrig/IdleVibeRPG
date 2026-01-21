@@ -347,6 +347,7 @@ export class CharacterDetail {
                                   0,
                                   sCurrent - sStart,
                                 );
+                                const weight = isCurrent ? "500" : "400";
 
                                 return `
                                 <div style="font-size: 11px; color: ${color}; display: flex; align-items: center; gap: 6px; font-weight: ${weight};">
@@ -632,6 +633,7 @@ export class CharacterDetail {
                                   0,
                                   sCurrent - sStart,
                                 );
+                                const weight = isCurrent ? "500" : "400";
 
                                 return `
                                 <div style="font-size: 11px; color: ${color}; display: flex; align-items: center; gap: 6px; font-weight: ${weight};">
@@ -758,6 +760,7 @@ export class CharacterDetail {
               const sCurrent = gameState.inventory.getCount(step.targetItem);
               const sStart = step.startCount || 0;
               const sCollected = Math.max(0, sCurrent - sStart);
+              const weight = isCurrent ? "500" : "400";
 
               return `
                 <div style="font-size: 11px; color: ${color}; display: flex; align-items: center; gap: 6px; font-weight: ${weight};">
