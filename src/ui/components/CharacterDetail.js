@@ -312,8 +312,7 @@ export class CharacterDetail {
                     <div class="goal-info">
                         <span class="goal-icon">${targetDef.icon}</span>
                         <div class="goal-text">
-                            <div class="goal-name">Get ${targetQuantity} ${targetDef.name}</div>
-                            <div class="goal-progress-text">${collected} / ${targetQuantity}</div>
+                            <div class="goal-name">Get ${targetQuantity} ${targetDef.name} <span class="goal-progress-inline" style="color: #94a3b8; font-size: 0.9em; margin-left: 6px;">(${collected}/${targetQuantity})</span></div>
                         </div>
                     </div>
                     <div class="goal-progress-bar-bg">
@@ -339,12 +338,21 @@ export class CharacterDetail {
                                     ? "#4ade80"
                                     : "#64748b";
                                 const icon = isDone ? "✓" : sDef.icon;
-                                const weight = isCurrent ? "500" : "400";
+                                // Sub-task Progress
+                                const sCurrent = gameState.inventory.getCount(
+                                  step.targetItem,
+                                );
+                                const sStart = step.startCount || 0;
+                                const sCollected = Math.max(
+                                  0,
+                                  sCurrent - sStart,
+                                );
+
                                 return `
                                 <div style="font-size: 11px; color: ${color}; display: flex; align-items: center; gap: 6px; font-weight: ${weight};">
                                     <span style="min-width: 12px; opacity: 0.7;">${idx + 1}.</span>
                                     <span>${icon}</span>
-                                    <span>Get ${step.targetQuantity} ${sDef.name}</span>
+                                    <span>Get ${step.targetQuantity} ${sDef.name} <span style="opacity: 0.7;">(${sCollected}/${step.targetQuantity})</span></span>
                                     ${isCurrent ? '<span style="font-size: 9px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 0 4px; border-radius: 2px;">Active</span>' : ""}
                                 </div>`;
                               })
@@ -615,12 +623,21 @@ export class CharacterDetail {
                                     ? "#4ade80"
                                     : "#64748b";
                                 const icon = isDone ? "✓" : sDef.icon;
-                                const weight = isCurrent ? "500" : "400";
+                                // Sub-task Progress
+                                const sCurrent = gameState.inventory.getCount(
+                                  step.targetItem,
+                                );
+                                const sStart = step.startCount || 0;
+                                const sCollected = Math.max(
+                                  0,
+                                  sCurrent - sStart,
+                                );
+
                                 return `
                                 <div style="font-size: 11px; color: ${color}; display: flex; align-items: center; gap: 6px; font-weight: ${weight};">
                                     <span style="min-width: 12px; opacity: 0.7;">${idx + 1}.</span>
                                     <span>${icon}</span>
-                                    <span>Get ${step.targetQuantity} ${sDef.name}</span>
+                                    <span>Get ${step.targetQuantity} ${sDef.name} <span style="opacity: 0.7;">(${sCollected}/${step.targetQuantity})</span></span>
                                     ${isCurrent ? '<span style="font-size: 9px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 0 4px; border-radius: 2px;">Active</span>' : ""}
                                 </div>`;
                               })
@@ -699,15 +716,12 @@ export class CharacterDetail {
         );
 
         // Update Text
-        const progressText = goalSection.querySelector(".goal-progress-text");
-        if (progressText) {
-          progressText.innerText = `${collected} / ${targetQuantity}`;
-        }
+        // Progress text element removed in favor of inline display
 
         // Update Name and Icon (Fix for auto-advancing tasks)
         const nameEl = goalSection.querySelector(".goal-name");
         if (nameEl)
-          nameEl.innerText = `Get ${targetQuantity} ${targetDef.name}`;
+          nameEl.innerHTML = `Get ${targetQuantity} ${targetDef.name} <span class="goal-progress-inline" style="color: #94a3b8; font-size: 0.9em; margin-left: 6px;">(${collected}/${targetQuantity})</span>`;
 
         const iconEl = goalSection.querySelector(".goal-icon");
         if (iconEl) iconEl.innerText = targetDef.icon;
@@ -740,12 +754,16 @@ export class CharacterDetail {
                   ? "#4ade80"
                   : "#64748b";
               const icon = isDone ? "✓" : sDef.icon;
-              const weight = isCurrent ? "500" : "400";
+              // Sub-task Progress
+              const sCurrent = gameState.inventory.getCount(step.targetItem);
+              const sStart = step.startCount || 0;
+              const sCollected = Math.max(0, sCurrent - sStart);
+
               return `
                 <div style="font-size: 11px; color: ${color}; display: flex; align-items: center; gap: 6px; font-weight: ${weight};">
                     <span style="min-width: 12px; opacity: 0.7;">${idx + 1}.</span>
                     <span>${icon}</span>
-                    <span>Get ${step.targetQuantity} ${sDef.name}</span>
+                    <span>Get ${step.targetQuantity} ${sDef.name} <span style="opacity: 0.7;">(${sCollected}/${step.targetQuantity})</span></span>
                     ${isCurrent ? '<span style="font-size: 9px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 0 4px; border-radius: 2px;">Active</span>' : ""}
                 </div>`;
             })

@@ -344,11 +344,17 @@ export class GoalManager {
               `[checkQueue] Re-Planning Group ${nextGroup.id} (Resuming)`,
             );
 
+            // IGNORE existing inventory for the Main Goal item itself.
+            // We want to "Produce X", not "Ensure I have X".
+            // Dependencies ("Stockpile") will still use the real inventory.
+            const planningInventory = { ...gameState.inventory.items };
+            planningInventory[nextGroup.mainGoal.itemId] = 0;
+
             const newPlan = this.resolveDependencies(
               nextGroup.mainGoal.itemId,
               nextGroup.mainGoal.quantity,
-              gameState.inventory.items, // Baseline: Current Real Inventory
-              true, // generateFullTrace: Keep history of completed items
+              planningInventory, // Modified Inventory
+              true, // generateFullTrace
             );
 
             // Update Group Steps
