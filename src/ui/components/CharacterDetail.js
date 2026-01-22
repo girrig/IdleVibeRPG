@@ -243,7 +243,7 @@ export class CharacterDetail {
         }
 
         CharacterDetail.isDragging = false;
-        goalManager.reorderGoalQueue(char, fromIndex, finalToIndex);
+        goalManager.reorderGoalQueue(gameState, char, fromIndex, finalToIndex);
         gameState.saveGame();
         uiManager.renderMainWindow();
       });
@@ -372,7 +372,7 @@ export class CharacterDetail {
       goalSection
         .querySelector(".btn-cancel-goal")
         .addEventListener("click", () => {
-          goalManager.clearGoal(char);
+          goalManager.clearGoal(gameState, char);
           this.uiManager.renderMainWindow();
         });
 
@@ -380,7 +380,7 @@ export class CharacterDetail {
       goalSection.querySelectorAll(".btn-remove-queue").forEach((btn) => {
         btn.addEventListener("click", (e) => {
           const idx = parseInt(e.target.dataset.index);
-          goalManager.removeGoalFromQueue(char, idx);
+          goalManager.removeGoalFromQueue(gameState, char, idx);
           this.uiManager.renderMainWindow();
         });
       });
@@ -389,7 +389,7 @@ export class CharacterDetail {
         .querySelector(".btn-top-action")
         .addEventListener("click", () => {
           this.uiManager.showItemSelectionModal((itemId, quantity) => {
-            goalManager.setGoal(char, itemId, quantity);
+            goalManager.setGoal(gameState, char, itemId, quantity);
             this.uiManager.renderMainWindow();
           });
         });
@@ -411,7 +411,7 @@ export class CharacterDetail {
         .querySelector(".btn-top-action")
         .addEventListener("click", () => {
           this.uiManager.showItemSelectionModal((itemId, quantity) => {
-            goalManager.setGoal(char, itemId, quantity);
+            goalManager.setGoal(gameState, char, itemId, quantity);
             this.uiManager.renderMainWindow();
           });
         });
@@ -658,7 +658,7 @@ export class CharacterDetail {
           goalSection
             .querySelector(".btn-cancel-goal")
             .addEventListener("click", () => {
-              goalManager.clearGoal(char);
+              goalManager.clearGoal(gameState, char);
               uiManager.renderMainWindow();
             });
 
@@ -666,7 +666,7 @@ export class CharacterDetail {
           goalSection.querySelectorAll(".btn-remove-queue").forEach((btn) => {
             btn.addEventListener("click", (e) => {
               const idx = parseInt(e.target.dataset.index);
-              goalManager.removeGoalFromQueue(char, idx);
+              goalManager.removeGoalFromQueue(gameState, char, idx);
               uiManager.renderMainWindow();
             });
           });
@@ -675,7 +675,7 @@ export class CharacterDetail {
             .querySelector(".btn-top-action")
             .addEventListener("click", () => {
               uiManager.showItemSelectionModal((itemId, quantity) => {
-                goalManager.setGoal(char, itemId, quantity);
+                goalManager.setGoal(gameState, char, itemId, quantity);
                 uiManager.renderMainWindow();
               });
             });
@@ -698,7 +698,7 @@ export class CharacterDetail {
             .querySelector(".btn-top-action")
             .addEventListener("click", () => {
               uiManager.showItemSelectionModal((itemId, quantity) => {
-                goalManager.setGoal(char, itemId, quantity);
+                goalManager.setGoal(gameState, char, itemId, quantity);
                 uiManager.renderMainWindow();
               });
             });
