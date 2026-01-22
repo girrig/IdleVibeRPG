@@ -1,9 +1,6 @@
 import { gameState } from "../../core/GameState";
 import { UI_COLORS } from "../../core/Constants";
 import { CharacterTasksPanel } from "./panels/CharacterTasksPanel";
-import { CharacterAttributesPanel } from "./panels/CharacterAttributesPanel";
-import { CharacterEquipmentPanel } from "./panels/CharacterEquipmentPanel";
-import { CharacterSkillsPanel } from "./panels/CharacterSkillsPanel";
 
 export class CharacterDetail {
   constructor(uiManager) {
@@ -102,26 +99,16 @@ export class CharacterDetail {
     container.appendChild(dashboard);
 
     // -- LEFT COLUMN (Main) --
+    // Now takes full width
     const leftCol = document.createElement("div");
     leftCol.className = "dash-col-main";
+    leftCol.style.flex = "1"; // Take full space
     dashboard.appendChild(leftCol);
 
     // 1. Goal Section
     CharacterTasksPanel.render(leftCol, char, this.uiManager);
 
-    // 2. Skills Section
-    CharacterSkillsPanel.render(leftCol, char);
-
-    // -- RIGHT COLUMN (Side) --
-    const rightCol = document.createElement("div");
-    rightCol.className = "dash-col-side";
-    dashboard.appendChild(rightCol);
-
-    // 3. Attributes Panel
-    CharacterAttributesPanel.render(rightCol, char);
-
-    // 4. Equipment Section
-    CharacterEquipmentPanel.render(rightCol, char);
+    // -- RIGHT COLUMN REMOVED (Moved to Sidebar) --
   }
 
   static updateContent(container, uiManager) {
@@ -162,8 +149,5 @@ export class CharacterDetail {
 
     // Update Sub-Panels
     CharacterTasksPanel.update(container, char, uiManager);
-    CharacterAttributesPanel.update(container, char);
-    CharacterSkillsPanel.update(container, char);
-    CharacterEquipmentPanel.update(container, char);
   }
 }

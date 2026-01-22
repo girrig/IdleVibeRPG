@@ -369,20 +369,24 @@
   background: #ef4444;
 }
 
-/* Character Dashboard Layout */
+/* Character Dashboard Layout - Simplified */
 .char-dashboard-layout {
   display: flex;
+  flex-direction: column; /* Vertical only now */
   gap: 20px;
   flex: 1;
-  min-height: 0; /* Enable scrolling in children */
+  width: 100%;
+  height: 100%; /* Fill space */
+  overflow-y: auto;
+  padding-bottom: 20px;
 }
 
 .dash-col-main {
-  flex: 2;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  overflow-y: auto;
+  /* overflow-y: auto; REMOVED sidebar logic from here */
 }
 
 .dash-col-side {

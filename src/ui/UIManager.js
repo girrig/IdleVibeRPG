@@ -7,6 +7,7 @@ import { NotificationDisplay } from "./components/NotificationDisplay";
 import { TalentsView } from "./components/TalentsView";
 import { EquipmentView } from "./components/EquipmentView";
 import { StoreView } from "./components/StoreView";
+import { CharacterSummarySidebar } from "./components/CharacterSummarySidebar";
 
 import { ITEM_DEFINITIONS } from "../core/ItemRegistry";
 import { sourceRegistry } from "../core/SourceRegistry";
@@ -31,6 +32,7 @@ export class UIManager {
     this.storeView = new StoreView(this);
     this.equipmentView = new EquipmentView();
     this.inventoryView = new InventoryView();
+    this.summarySidebar = new CharacterSummarySidebar(this);
   }
 
   getAvatarUrl(spriteKey) {
@@ -98,6 +100,11 @@ export class UIManager {
     `;
     this.container.appendChild(this.mainWindow);
 
+    // Right Sidebar (Persistent Stats)
+    this.rightSidebarContainer = document.createElement("div");
+    this.rightSidebarContainer.id = "right-sidebar-container";
+    this.container.appendChild(this.rightSidebarContainer);
+
     // Global Save Button
     const saveBtn = document.createElement("button");
     saveBtn.id = "global-save-btn";
@@ -106,7 +113,15 @@ export class UIManager {
     this.container.appendChild(saveBtn);
 
     this.bindEvents();
-    this.renderMainWindow(); // Initial Render
+
+    // Initial Renders
+    this.renderMainWindow();
+    this.renderRightSidebar();
+  }
+
+  renderRightSidebar() {
+    if (!this.rightSidebarContainer) return;
+    this.summarySidebar.render(this.rightSidebarContainer);
   }
 
   bindEvents() {
@@ -372,6 +387,11 @@ export class UIManager {
       if (invGrid) {
         invGrid.innerHTML = InventoryView.getInventoryHTML();
       }
+    }
+
+    // Always update Right Sidebar
+    if (this.rightSidebarContainer) {
+      this.summarySidebar.update(this.rightSidebarContainer);
     }
   }
 }
