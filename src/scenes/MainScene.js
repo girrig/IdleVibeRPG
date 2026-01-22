@@ -15,15 +15,26 @@ export class MainScene extends Phaser.Scene {
 
   create() {
     console.log("MainScene started");
-    gameState.initialize();
-    uiManager.initialize();
+    try {
+      gameState.initialize();
+      console.log("GameState initialized. calling uiManager.initialize()...");
+      uiManager.initialize();
+      console.log("UIManager initialized");
 
-    // Centered on the "World Origin" of our scene objects (512, 384)
-    this.cameras.main.centerOn(512, 384);
+      // Centered on the "World Origin" of our scene objects (512, 384)
+      this.cameras.main.centerOn(512, 384);
+      this.cameras.main.setBackgroundColor(0x4ade80); // Default Green immediate set
+      console.log("Background color set to Green");
 
-    // Initial listeners
-    this.scale.on("resize", this.handleResize, this);
-    this.handleResize(this.scale.gameSize);
+      // Initial listeners
+      this.scale.on("resize", this.handleResize, this);
+      this.handleResize(this.scale.gameSize);
+
+      // Force initial scene render
+      this.switchScene("IDLE");
+    } catch (e) {
+      console.error("CRITICAL ERROR in MainScene.create:", e);
+    }
   }
 
   handleResize(gameSize) {
