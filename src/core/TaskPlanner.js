@@ -101,6 +101,7 @@ export class TaskPlanner {
     baseInventory,
     generateFullTrace = false,
     forceComplete = false,
+    character = null,
   ) {
     const plan = [];
     // Simulation inventory to track what we "will have" after each step
@@ -143,6 +144,20 @@ export class TaskPlanner {
       if (!source) {
         console.warn(`No source found for dependency ${reqItem}`);
         return;
+      }
+
+      // Skill Level Check
+      if (character && source.type === "SKILL") {
+        const charSkill = character.skills[source.skillId.toLowerCase()];
+        console.log(
+          `[TaskPlanner] Checking ${reqItem} (Req: ${source.reqLevel}) vs char ${source.skillId} (Has: ${charSkill ? charSkill.level : "undefined"})`,
+        );
+
+        if (charSkill && charSkill.level < source.reqLevel) {
+          throw new Error(
+            `Level ${source.reqLevel} ${source.skillId} required`,
+          );
+        }
       }
 
       // Dependencies

@@ -15,11 +15,20 @@ export class GoalManager {
     );
 
     // 2. Resolve based on Projection
-    const plan = taskPlanner.resolveDependencies(
-      itemId,
-      quantity,
-      projectedInventory,
-    );
+    let plan = [];
+    try {
+      plan = taskPlanner.resolveDependencies(
+        itemId,
+        quantity,
+        projectedInventory,
+        false, // generateFullTrace
+        false, // forceComplete
+        character, // pass character for skill checks
+      );
+    } catch (e) {
+      gameState.triggerNotification(e.message, "error");
+      return false;
+    }
 
     if (plan.length === 0) {
       gameState.triggerNotification(
@@ -112,12 +121,26 @@ export class GoalManager {
             const planningInventory = { ...gameState.inventory.items };
             planningInventory[nextGroup.mainGoal.itemId] = 0;
 
-            const newPlan = taskPlanner.resolveDependencies(
-              nextGroup.mainGoal.itemId,
-              nextGroup.mainGoal.quantity,
-              planningInventory, // Modified Inventory
-              true, // generateFullTrace
-            );
+            let newPlan = [];
+            try {
+              newPlan = taskPlanner.resolveDependencies(
+                nextGroup.mainGoal.itemId,
+                nextGroup.mainGoal.quantity,
+                planningInventory, // Modified Inventory
+                true, // generateFullTrace
+                false, // forceComplete
+                character, // pass character for skill checks
+              );
+            } catch (e) {
+              console.error("Failed to resume group:", e);
+              // If we fail here, we should probably cancel the group or notify?
+              gameState.triggerNotification(
+                `Task Paused: ${e.message}`,
+                "error",
+              );
+              character.activeGoalGroup = null; // Abort
+              return;
+            }
 
             // Update Group Steps
             nextGroup.steps = newPlan.map((s) => ({

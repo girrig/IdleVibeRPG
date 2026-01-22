@@ -70,4 +70,18 @@ describe("TaskPlanner", () => {
     const oreStep = plan.find((s) => s.itemId === "copper_ore");
     expect(oreStep.status).toBe("COMPLETED");
   });
+
+  // NEW TEST CASE
+  it("should fail if character does not meet skill requirements", () => {
+    // Mock Character with low level
+    const mockChar = {
+      skills: {
+        mining: { level: 1 },
+      },
+    };
+
+    expect(() => {
+      taskPlanner.resolveDependencies("coal", 1, {}, false, false, mockChar);
+    }).toThrow(/Level 10 MINING required/);
+  });
 });
