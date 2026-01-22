@@ -9,6 +9,7 @@ import { EquipmentView } from "./components/EquipmentView";
 import { StoreView } from "./components/StoreView";
 
 import { ITEM_DEFINITIONS } from "../core/ItemRegistry";
+import { sourceRegistry } from "../core/SourceRegistry";
 
 // Helper
 function getItemDefinition(id) {
@@ -245,14 +246,38 @@ export class UIManager {
              <div class="goals-grid" style="overflow-y: auto; padding: 10px;">
                 ${Object.entries(ITEM_DEFINITIONS)
                   .sort(([, a], [, b]) => a.name.localeCompare(b.name))
-                  .map(
-                    ([id, def]) => `
-                    <div class="goal-item-card" data-id="${id}">
+                  .map(([id, def]) => {
+                    const char = gameState.characters[this.selectedCharIndex];
+                    const source = sourceRegistry.getSource(id);
+                    let reqInfo = "";
+                    let isLocked = false;
+
+                    if (source && source.type === "SKILL") {
+                      // Match case-insensitive logic from TaskPlanner
+                      const skillId = source.skillId.toLowerCase();
+                      const reqLevel = source.reqLevel;
+                      const charSkill = char.skills[skillId];
+                      const charLevel = charSkill ? charSkill.level : 0;
+
+                      if (charLevel < reqLevel) {
+                        isLocked = true;
+                        reqInfo = `<div style="color: #ef4444; font-size: 10px; margin-top: 2px;">Req: Lv ${reqLevel} ${source.skillId}</div>`;
+                      }
+                    }
+
+                    const opacity = isLocked ? "0.5" : "1";
+                    const cursor = isLocked ? "not-allowed" : "pointer";
+                    // If locked, maybe check later on click too, or verify UI handles it. (TaskPlanner handles validation)
+                    // We will allow click but show visual feedback here.
+
+                    return `
+                    <div class="goal-item-card" data-id="${id}" style="opacity: ${opacity}; cursor: ${cursor}; position: relative;">
                         <div class="goal-item-icon">${def.icon}</div>
                         <div class="goal-item-name">${def.name}</div>
+                        ${reqInfo}
                     </div>
-                `,
-                  )
+                `;
+                  })
                   .join("")}
             </div>
         </div>
