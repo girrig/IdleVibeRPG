@@ -10,6 +10,7 @@ export class TalentsView {
     this.activeCategory = "Fighting";
     this.categories = [
       { id: "Fighting", label: "Fighting", icon: "⚔️", columns: [6, 7] },
+      { id: "Smithing", label: "Smithing", icon: "🔨", columns: [8] },
       { id: "Fishing", label: "Fishing", icon: "🎣", columns: [5] },
       { id: "Mining", label: "Mining", icon: "⛏️", columns: [3] },
       { id: "Woodcutting", label: "Woodcutting", icon: "🪓", columns: [4] },
@@ -26,6 +27,7 @@ export class TalentsView {
 
     const skillMap = {
       Mining: "mining",
+      Smithing: "smithing",
       Woodcutting: "woodcutting",
       Fishing: "fishing",
       Fighting: "fighting",
@@ -132,8 +134,9 @@ export class TalentsView {
       "Mining",
       "Woodcutting",
       "Fishing",
-      "Fighting (Offense)",
-      "Fighting (Defense)",
+      "Offense",
+      "Defense",
+      "Smithing",
     ];
 
     // Collect talents for active columns
@@ -149,54 +152,51 @@ export class TalentsView {
       }
     });
 
-    // Render columns
-    const columnsHtml = validCols
-      .map((colIndex) => {
+    // Generate CSS Grid Layout
+    // Use fixed 72px to match row height for a perfect square grid
+    const gridStyle = `grid-template-columns: repeat(${validCols.length}, 72px);`;
+
+    // Nodes
+    const nodesHtml = validCols
+      .map((colIndex, i) => {
         const colTalents = cols[colIndex] || [];
-        return `
-            <div class="talent-col" data-col="${colIndex}">
-                <div class="talent-col-header">${headers[colIndex] || "Unknown"}</div>
-                ${colTalents
-                  .sort((a, b) => a.position.row - b.position.row)
-                  .map((def) => {
-                    const unlocked = char.talents[def.id];
-                    const prereqMet = def.prerequisites.every(
-                      (id) => char.talents[id],
-                    );
-                    const affordable = char.talentPoints >= def.cost;
+        return colTalents
+          .map((def) => {
+            const unlocked = char.talents[def.id];
+            const prereqMet = def.prerequisites.every((id) => char.talents[id]);
 
-                    let statusClass = "locked";
-                    if (unlocked) statusClass = "unlocked";
-                    else if (prereqMet) statusClass = "available";
+            let statusClass = "locked";
+            if (unlocked) statusClass = "unlocked";
+            else if (prereqMet) statusClass = "available";
 
-                    if (unlocked) statusClass += " purchased";
+            if (unlocked) statusClass += " purchased";
 
-                    // Only apply colored border if purchased/unlocked
-                    const style = unlocked
-                      ? `style="border-color: ${activeColor}"`
-                      : "";
+            const style = unlocked ? `border-color: ${activeColor};` : "";
 
-                    return `
-                        <div class="talent-node-wrapper">
-                            <div class="talent-node ${statusClass}" id="talent-node-${def.id}" data-id="${def.id}" 
-                                 title="${def.name}: ${def.description} (Cost: ${def.cost})"
-                                 ${style}>
-                                <div class="talent-icon">${def.icon}</div>
-                                <div class="talent-name">${def.name}</div>
-                                ${unlocked ? '<div class="check">✔</div>' : ""}
-                            </div>
-                        </div>
-                    `;
-                  })
-                  .join("")}
-            </div>
-          `;
+            // Grid Position: Row + 1 (No headers)
+            const gridPos = `grid-column: ${i + 1}; grid-row: ${def.position.row + 1};`;
+
+            return `
+                <div class="talent-node-wrapper" style="${gridPos}">
+                    <div class="talent-node ${statusClass}" id="talent-node-${def.id}" data-id="${def.id}" 
+                            title="${def.name}: ${def.description} (Cost: ${def.cost})"
+                            style="${style}">
+                        <div class="talent-icon">${def.icon}</div>
+                        <div class="talent-name">${def.name}</div>
+                        ${unlocked ? '<div class="check">✔</div>' : ""}
+                    </div>
+                </div>
+            `;
+          })
+          .join("");
       })
       .join("");
 
     return `
-        <svg class="talent-connections-svg"></svg>
-        ${columnsHtml}
+        <div class="talents-grid-container" style="${gridStyle}">
+            <svg class="talent-connections-svg"></svg>
+            ${nodesHtml}
+        </div>
       `;
   }
 
@@ -208,7 +208,7 @@ export class TalentsView {
     svg.innerHTML = "";
 
     // Set SVG size to match grid scroll area
-    const grid = document.querySelector(".talents-grid");
+    const grid = document.querySelector(".talents-grid-container");
     if (!grid) return;
 
     svg.setAttribute("width", grid.scrollWidth);
@@ -238,15 +238,19 @@ export class TalentsView {
 
   drawConnectorLine(svg, startEl, endEl, isUnlocked) {
     const gridRect = document
-      .querySelector(".talents-grid")
+      .querySelector(".talents-grid-container")
       .getBoundingClientRect();
     const startRect = startEl.getBoundingClientRect();
     const endRect = endEl.getBoundingClientRect();
 
     // Calculate center points relative to the grid container
     // We add scroll values because the SVG covers the full scrollable area
-    const gridScrollLeft = document.querySelector(".talents-grid").scrollLeft;
-    const gridScrollTop = document.querySelector(".talents-grid").scrollTop;
+    const gridScrollLeft = document.querySelector(
+      ".talents-grid-container",
+    ).scrollLeft;
+    const gridScrollTop = document.querySelector(
+      ".talents-grid-container",
+    ).scrollTop;
 
     const x1 =
       startRect.left - gridRect.left + startRect.width / 2 + gridScrollLeft;

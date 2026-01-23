@@ -23,6 +23,20 @@ export const SKILL_DEFINITIONS = {
         interval: 4000,
       },
       coal: { name: "Coal", level: 10, xp: 30, icon: "⚫", interval: 6000 },
+      gold_ore: {
+        name: "Gold Ore",
+        level: 20,
+        xp: 45,
+        icon: "🟡",
+        interval: 8000,
+      },
+      mithril_ore: {
+        name: "Mithril Ore",
+        level: 30,
+        xp: 60,
+        icon: "🔵",
+        interval: 10000,
+      },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
@@ -48,6 +62,8 @@ export const SKILL_DEFINITIONS = {
       oak_log: { name: "Oak Log", level: 1, xp: 10, icon: "🌳" },
       willow_log: { name: "Willow Log", level: 5, xp: 20, icon: "🌿" },
       maple_log: { name: "Maple Log", level: 10, xp: 30, icon: "🍁" },
+      yew_log: { name: "Yew Log", level: 20, xp: 45, icon: "🌲" },
+      magic_log: { name: "Magic Log", level: 30, xp: 60, icon: "✨" },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
@@ -70,6 +86,8 @@ export const SKILL_DEFINITIONS = {
       raw_trout: { name: "Raw Trout", level: 1, xp: 10, icon: "🐟" },
       raw_salmon: { name: "Raw Salmon", level: 5, xp: 20, icon: "🐠" },
       raw_tuna: { name: "Raw Tuna", level: 10, xp: 30, icon: "🦈" },
+      raw_lobster: { name: "Raw Lobster", level: 20, xp: 45, icon: "🦞" },
+      raw_swordfish: { name: "Raw Swordfish", level: 30, xp: 60, icon: "🗡️" },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
@@ -98,6 +116,20 @@ export const SKILL_DEFINITIONS = {
         icon: "👹",
       },
       wolf: { name: "Wolf", level: 10, xp: 30, drop: "wolf_fur", icon: "🐺" },
+      skeleton: {
+        name: "Skeleton",
+        level: 20,
+        xp: 45,
+        drop: "bones",
+        icon: "💀",
+      },
+      demon: {
+        name: "Demon",
+        level: 30,
+        xp: 60,
+        drop: "demon_ashes",
+        icon: "👿",
+      },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
@@ -133,6 +165,27 @@ export const SKILL_DEFINITIONS = {
         icon: "⬜",
         cost: { iron_ore: 1, coal: 1 },
       },
+      steel_bar: {
+        name: "Steel Bar",
+        level: 10,
+        xp: 45,
+        icon: "⚙️",
+        cost: { iron_ore: 1, coal: 2 },
+      },
+      gold_bar: {
+        name: "Gold Bar",
+        level: 20,
+        xp: 60,
+        icon: "🟨",
+        cost: { gold_ore: 1 },
+      },
+      mithril_bar: {
+        name: "Mithril Bar",
+        level: 30,
+        xp: 80,
+        icon: "🔷",
+        cost: { mithril_ore: 1, coal: 2 },
+      },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
@@ -161,7 +214,11 @@ export const SKILL_DEFINITIONS = {
         });
       }
 
-      gameState.inventory.addItem(targetId, 1);
+      let amount = 1;
+      // smithing_2: 10% chance for double bars
+      if (char.talents.smithing_2 && Math.random() < 0.1) amount = 2;
+
+      gameState.inventory.addItem(targetId, amount);
       char.gainXp("smithing", option.xp);
     },
   },

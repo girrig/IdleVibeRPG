@@ -1,97 +1,4 @@
 export const TALENT_DEFINITIONS = {
-  // Strength Path
-  str_1: {
-    id: "str_1",
-    name: "Brawn",
-    description: "Increases Strength by 5",
-    icon: "💪",
-    cost: 1,
-    prerequisites: [],
-    position: { row: 0, col: 0 },
-    effect: (char) => {
-      char.stats.strength += 5;
-    },
-    removeEffect: (char) => {
-      char.stats.strength -= 5;
-    },
-  },
-  str_2: {
-    id: "str_2",
-    name: "Mighty Blow",
-    description: "Increases Strength by 10",
-    icon: "💥",
-    cost: 1,
-    prerequisites: ["str_1"],
-    position: { row: 1, col: 0 },
-    effect: (char) => {
-      char.stats.strength += 10;
-    },
-    removeEffect: (char) => {
-      char.stats.strength -= 10;
-    },
-  },
-  // Dexterity Path
-  dex_1: {
-    id: "dex_1",
-    name: "Agility",
-    description: "Increases Dexterity by 5",
-    icon: "🦵",
-    cost: 1,
-    prerequisites: [],
-    position: { row: 0, col: 1 },
-    effect: (char) => {
-      char.stats.dexterity += 5;
-    },
-    removeEffect: (char) => {
-      char.stats.dexterity -= 5;
-    },
-  },
-  dex_2: {
-    id: "dex_2",
-    name: "Swift Step",
-    description: "Increases Dexterity by 10",
-    icon: "💨",
-    cost: 1,
-    prerequisites: ["dex_1"],
-    position: { row: 1, col: 1 },
-    effect: (char) => {
-      char.stats.dexterity += 10;
-    },
-    removeEffect: (char) => {
-      char.stats.dexterity -= 10;
-    },
-  },
-  // Intelligence Path
-  int_1: {
-    id: "int_1",
-    name: "Focus",
-    description: "Increases Intelligence by 5",
-    icon: "🧠",
-    cost: 1,
-    prerequisites: [],
-    position: { row: 0, col: 2 },
-    effect: (char) => {
-      char.stats.intelligence += 5;
-    },
-    removeEffect: (char) => {
-      char.stats.intelligence -= 5;
-    },
-  },
-  int_2: {
-    id: "int_2",
-    name: "Mind Blast",
-    description: "Increases Intelligence by 10",
-    icon: "🔮",
-    cost: 1,
-    prerequisites: ["int_1"],
-    position: { row: 1, col: 2 },
-    effect: (char) => {
-      char.stats.intelligence += 10;
-    },
-    removeEffect: (char) => {
-      char.stats.intelligence -= 10;
-    },
-  },
   // Mining Path
   mining_1: {
     id: "mining_1",
@@ -188,7 +95,7 @@ export const TALENT_DEFINITIONS = {
     icon: "🛡️",
     cost: 1,
     prerequisites: ["fighting_1"], // Branch from Fighting 1
-    position: { row: 1, col: 7 }, // Next to Loot Goblin (Col 6)
+    position: { row: 1, col: 7 },
     effect: (char) => {},
   },
   fighting_def_2: {
@@ -240,68 +147,6 @@ export const TALENT_DEFINITIONS = {
   },
 
   // Dexterity
-  dex_3: {
-    id: "dex_3",
-    name: "Lightning Reflexes",
-    description: "Increases Dexterity by 15",
-    icon: "⚡",
-    cost: 2,
-    prerequisites: ["dex_2"],
-    position: { row: 2, col: 1 },
-    effect: (char) => {
-      char.stats.dexterity += 15;
-    },
-    removeEffect: (char) => {
-      char.stats.dexterity -= 15;
-    },
-  },
-  dex_4: {
-    id: "dex_4",
-    name: "Godspeed",
-    description: "Increases Dexterity by 20",
-    icon: "🐆",
-    cost: 3,
-    prerequisites: ["dex_3"],
-    position: { row: 3, col: 1 },
-    effect: (char) => {
-      char.stats.dexterity += 20;
-    },
-    removeEffect: (char) => {
-      char.stats.dexterity -= 20;
-    },
-  },
-
-  // Intelligence
-  int_3: {
-    id: "int_3",
-    name: "Arcane Wisdom",
-    description: "Increases Intelligence by 15",
-    icon: "📜",
-    cost: 2,
-    prerequisites: ["int_2"],
-    position: { row: 2, col: 2 },
-    effect: (char) => {
-      char.stats.intelligence += 15;
-    },
-    removeEffect: (char) => {
-      char.stats.intelligence -= 15;
-    },
-  },
-  int_4: {
-    id: "int_4",
-    name: "Omniscience",
-    description: "Increases Intelligence by 20",
-    icon: "👁️",
-    cost: 3,
-    prerequisites: ["int_3"],
-    position: { row: 3, col: 2 },
-    effect: (char) => {
-      char.stats.intelligence += 20;
-    },
-    removeEffect: (char) => {
-      char.stats.intelligence -= 20;
-    },
-  },
 
   // Mining
   mining_3: {
@@ -389,6 +234,27 @@ export const TALENT_DEFINITIONS = {
     prerequisites: ["fighting_3"],
     position: { row: 3, col: 6 },
     effect: (char) => {},
+  },
+  // Smithing
+  smithing_1: {
+    id: "smithing_1",
+    name: "Blacksmith",
+    description: "Increases Smithing XP by 10%",
+    icon: "🔨",
+    cost: 1,
+    prerequisites: [],
+    position: { row: 0, col: 8 },
+    effect: (char) => {}, // Handled in gainXp
+  },
+  smithing_2: {
+    id: "smithing_2",
+    name: "Forge Master",
+    description: "10% chance to smelt double bars",
+    icon: "🔥",
+    cost: 1,
+    prerequisites: ["smithing_1"],
+    position: { row: 1, col: 8 },
+    effect: (char) => {}, // Handled in Smithing Action
   },
 };
 
