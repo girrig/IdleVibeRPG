@@ -44,8 +44,9 @@ export class CharacterSkillsPanel {
     const skillsSection = container.querySelector(".char-skills-section");
     if (skillsSection) {
       // For now, full re-render is easiest as skill list is small
+      const parent = skillsSection.parentNode;
       skillsSection.remove();
-      CharacterSkillsPanel.render(container, char);
+      CharacterSkillsPanel.render(parent, char);
     }
   }
 }

@@ -93,6 +93,11 @@ export class CharacterDetail {
             <h2>${char.name}</h2>
             <span>Level ${char.stats.level} ${char.type}</span>
         </div>
+        <div class="char-header-stats" style="margin-left: auto; display: flex; gap: 15px; align-items: center;">
+             <div class="stat-pill char-header-stat-str" style="background:rgba(239, 68, 68, 0.15); color:#fca5a5; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 14px; border: 1px solid rgba(239, 68, 68, 0.3);">STR ${char.stats.strength}</div>
+             <div class="stat-pill char-header-stat-dex" style="background:rgba(34, 197, 94, 0.15); color:#86efac; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 14px; border: 1px solid rgba(34, 197, 94, 0.3);">DEX ${char.stats.dexterity}</div>
+             <div class="stat-pill char-header-stat-int" style="background:rgba(59, 130, 246, 0.15); color:#93c5fd; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 14px; border: 1px solid rgba(59, 130, 246, 0.3);">INT ${char.stats.intelligence}</div>
+        </div>
     `;
     container.appendChild(header);
 
@@ -108,22 +113,19 @@ export class CharacterDetail {
     leftCol.style.flex = "1"; // Take full space
     dashboard.appendChild(leftCol);
 
-    // 1. Goal Section
-    CharacterTasksPanel.render(leftCol, char, this.uiManager);
-
-    // 2. Skills Section
-    CharacterSkillsPanel.render(leftCol, char);
-
     // -- RIGHT COLUMN (Side) --
     const rightCol = document.createElement("div");
     rightCol.className = "dash-col-side";
     dashboard.appendChild(rightCol);
 
-    // 3. Attributes Panel
-    CharacterAttributesPanel.render(rightCol, char);
+    // 1. Goal Section
+    CharacterTasksPanel.render(leftCol, char, this.uiManager);
 
-    // 4. Equipment Section
+    // 2. Equipment Section
     CharacterEquipmentPanel.render(rightCol, char);
+
+    // 3. Skills Section
+    CharacterSkillsPanel.render(rightCol, char);
   }
 
   static updateContent(container, uiManager) {
@@ -162,9 +164,16 @@ export class CharacterDetail {
     const lvlSpan = container.querySelector(".char-detail-title span");
     if (lvlSpan) lvlSpan.innerText = `Level ${char.stats.level} ${char.type}`;
 
+    // Update Header Stats
+    const strEl = container.querySelector(".char-header-stat-str");
+    if (strEl) strEl.innerText = `STR ${char.stats.strength}`;
+    const dexEl = container.querySelector(".char-header-stat-dex");
+    if (dexEl) dexEl.innerText = `DEX ${char.stats.dexterity}`;
+    const intEl = container.querySelector(".char-header-stat-int");
+    if (intEl) intEl.innerText = `INT ${char.stats.intelligence}`;
+
     // Update Sub-Panels
     CharacterTasksPanel.update(container, char, uiManager);
-    CharacterAttributesPanel.update(container, char);
     CharacterSkillsPanel.update(container, char);
     CharacterEquipmentPanel.update(container, char);
   }
