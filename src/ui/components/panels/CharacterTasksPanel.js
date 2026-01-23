@@ -107,8 +107,12 @@ export class CharacterTasksPanel {
             const icon = isDone ? "✓" : sDef.icon;
             // Sub-task Progress
             const sCurrent = gameState.inventory.getCount(step.targetItem);
-            const sStart = step.startCount || 0;
-            const sCollected = Math.max(0, sCurrent - sStart);
+            // If undefined (Pending), assume we start from NOW (Relative)
+            const sStart =
+              step.startCount !== undefined ? step.startCount : sCurrent;
+            const sCollected = isDone
+              ? step.targetQuantity
+              : Math.max(0, sCurrent - sStart);
             const weight = isCurrent ? "500" : "400";
 
             return `
@@ -138,6 +142,17 @@ export class CharacterTasksPanel {
               const qDef = getItemDefinition(targetItem);
               const isGroup = !!q.steps && q.steps.length > 1;
 
+              // Progress Logic Helper
+              const getProgressHtml = (step, isDone = false) => {
+                const sCurrent = gameState.inventory.getCount(step.targetItem);
+                const sStart =
+                  step.startCount !== undefined ? step.startCount : sCurrent;
+                const sCollected = isDone
+                  ? step.targetQuantity
+                  : Math.max(0, sCurrent - sStart);
+                return `<span style="opacity: 0.7; font-size: 0.9em; margin-left: 4px;">(${sCollected}/${step.targetQuantity})</span>`;
+              };
+
               // Render Steps if it's a group
               let stepsHtml = "";
               if (isGroup) {
@@ -145,14 +160,24 @@ export class CharacterTasksPanel {
                     ${q.steps
                       .map((step, idx) => {
                         const sDef = getItemDefinition(step.targetItem);
+                        const isDone = (q.currentStepIndex || 0) > idx;
+                        const checkMark = isDone ? "✓" : "";
+
                         return `<div style="font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px;">
-                           <span style="opacity: 0.5; min-width: 12px;">${idx + 1}.</span> 
+                           <span style="opacity: 0.5; min-width: 12px;">${checkMark || idx + 1 + "."}</span> 
                            <span>${sDef.icon}</span>
-                           <span>Get ${step.targetQuantity} ${sDef.name}</span>
+                           <span>Get ${step.targetQuantity} ${sDef.name} ${getProgressHtml(step, isDone)}</span>
                         </div>`;
                       })
                       .join("")}
                  </div>`;
+              }
+
+              // If NOT a group (or effectively single step which is the main goal), we show progress on the main line
+              // But 'q' might be a Group object, so we look at q.steps[0] if available for the progress data.
+              let mainProgress = "";
+              if (!isGroup && q.steps && q.steps.length > 0) {
+                mainProgress = getProgressHtml(q.steps[0], false);
               }
 
               // Added draggable and data-index
@@ -160,7 +185,7 @@ export class CharacterTasksPanel {
                   <div style="color: #64748b; font-size: 12px; min-width: 15px; pointer-events: none; margin-top: 2px;">${i + 1}.</div>
                   <div style="font-size: 16px; pointer-events: none; margin-top: 0px;">${qDef.icon}</div>
                   <div style="flex: 1; pointer-events: none;">
-                    <div style="font-size: 13px; color: #e2e8f0; font-weight: 500;">Get ${targetQty} ${qDef.name}</div>
+                    <div style="font-size: 13px; color: #e2e8f0; font-weight: 500;">Get ${targetQty} ${qDef.name} ${mainProgress}</div>
                     ${stepsHtml}
                   </div>
                   <div style="font-size: 11px; color: #94a3b8; pointer-events: none; margin-top: 2px;">Queued</div>

@@ -177,7 +177,7 @@ export class TaskPlanner {
 
       plan.push({
         itemId: reqItem,
-        quantity: reqQty,
+        quantity: checkInventory && status !== "COMPLETED" ? missing : reqQty,
         source: source,
         status: status,
       });
