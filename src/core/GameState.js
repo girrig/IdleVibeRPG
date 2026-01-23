@@ -55,7 +55,6 @@ class GameState {
         new Character(Date.now(), this.generateRandomName(), "WARRIOR"),
       );
       // Give some starting money
-      this.inventory.addItem("coins", 1000);
     }
     this.startAutoSave();
   }

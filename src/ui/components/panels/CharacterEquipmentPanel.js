@@ -1,34 +1,109 @@
+import { ITEM_DEFINITIONS } from "../../../core/ItemRegistry";
+
 export class CharacterEquipmentPanel {
   static render(container, char) {
     const equipSection = document.createElement("div");
     equipSection.className = "char-detail-section char-equip-section";
+
+    // Split Layout Container
     equipSection.innerHTML = `
          <div class="section-title">Equipment</div>
-         <div class="equip-slots-layout">
-            <div class="equip-row">
-                <div class="equip-slot-mini" title="Head">🧢</div>
+         <div class="equip-split-layout">
+            
+            <!-- LEFT GROUP: Main Equipment (Pyramidish) -->
+            <div class="equip-main-group">
+                <!-- Row 1: Head -->
+                <div class="equip-row">
+                    <div class="mini-slot" data-slot="head" title="Head">🧢</div>
+                </div>
+                <!-- Row 2: Main Hand | Chest | Off Hand -->
+                <div class="equip-row">
+                    <div class="mini-slot" data-slot="mainHand" title="Main Hand">⚔️</div>
+                    <div class="mini-slot" data-slot="chest" title="Chest">👕</div>
+                    <div class="mini-slot" data-slot="offHand" title="Off Hand">🛡️</div>
+                </div>
+                <!-- Row 3: Gloves | Legs | Belt -->
+                <div class="equip-row">
+                    <div class="mini-slot" data-slot="gloves" title="Gloves">🧤</div>
+                    <div class="mini-slot" data-slot="legs" title="Legs">👖</div>
+                    <div class="mini-slot" data-slot="belt" title="Belt">🥋</div>
+                </div>
+                <!-- Row 4: Feet -->
+                <div class="equip-row">
+                     <div class="mini-slot" data-slot="feet" title="Feet">👢</div>
+                </div>
             </div>
-            <div class="equip-row">
-                <div class="equip-slot-mini" title="Main Hand">⚔️</div>
-                <div class="equip-slot-mini" title="Chest">👕</div>
-                <div class="equip-slot-mini" title="Off Hand">🛡️</div>
+
+            <!-- RIGHT GROUP: Jewelry Column -->
+            <div class="equip-jewelry-group">
+                 <div class="mini-slot" data-slot="ring1" title="Ring 1">💍</div>
+                 <div class="mini-slot" data-slot="ring2" title="Ring 2">💍</div>
+                 <div class="mini-slot" data-slot="trinket1" title="Trinket 1">🧿</div>
+                 <div class="mini-slot" data-slot="trinket2" title="Trinket 2">🧿</div>
             </div>
-            <div class="equip-row">
-                 <div class="equip-slot-mini" title="Gloves">🧤</div>
-                 <div class="equip-slot-mini" title="Legs">👖</div>
-                 <div class="equip-slot-mini" title="Belt">🥋</div>
-            </div>
-             <div class="equip-row">
-                 <div class="equip-slot-mini" title="Ring">💍</div>
-                 <div class="equip-slot-mini" title="Feet">👢</div>
-                 <div class="equip-slot-mini" title="Trinket">🧿</div>
-            </div>
+
         </div>
     `;
     container.appendChild(equipSection);
+
+    // Initial update
+    this.update(container, char);
   }
 
   static update(container, char) {
-    // Equipment update logic would go here
+    if (!char) return;
+
+    const equipSection = container.querySelector(".char-equip-section");
+    if (!equipSection) return;
+
+    // Update Slots
+    const slots = equipSection.querySelectorAll(".mini-slot");
+    slots.forEach((slot) => {
+      const slotName = slot.dataset.slot;
+      const equippedItemId = char.equipment[slotName];
+
+      if (equippedItemId) {
+        const itemDef = ITEM_DEFINITIONS[equippedItemId];
+        if (itemDef) {
+          slot.innerText = itemDef.icon;
+          slot.title = itemDef.name;
+          slot.classList.add("equipped");
+        }
+      } else {
+        // Reset to default icon
+        const defaultIcons = {
+          head: "🧢",
+          chest: "👕",
+          belt: "🥋",
+          gloves: "🧤",
+          legs: "👖",
+          feet: "👢",
+          mainHand: "⚔️",
+          offHand: "🛡️",
+          ring1: "💍",
+          ring2: "💍",
+          trinket1: "🧿",
+          trinket2: "🧿",
+        };
+        const defaultLabels = {
+          head: "Head",
+          chest: "Chest",
+          belt: "Belt",
+          gloves: "Gloves",
+          legs: "Legs",
+          feet: "Feet",
+          mainHand: "Main Hand",
+          offHand: "Off Hand",
+          ring1: "Ring 1",
+          ring2: "Ring 2",
+          trinket1: "Trinket 1",
+          trinket2: "Trinket 2",
+        };
+
+        slot.innerText = defaultIcons[slotName] || "❓";
+        slot.title = defaultLabels[slotName];
+        slot.classList.remove("equipped");
+      }
+    });
   }
 }

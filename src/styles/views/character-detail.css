@@ -435,43 +435,62 @@
   color: #fff;
 }
 
-/* Equipment Visual Layout */
-.equip-slots-layout {
+/* Mini Layout (Replaces old visual layout) */
+
+/* Split Layout Container */
+.equip-split-layout {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+/* Left Group: Stacked Rows */
+.equip-main-group {
   display: flex;
   flex-direction: column;
+  gap: 8px;
   align-items: center;
-  gap: 10px;
 }
 
+/* Right Group: Vertical Column */
+.equip-jewelry-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Reusing mini-slot styling */
 .equip-row {
   display: flex;
-  gap: 10px;
   justify-content: center;
+  gap: 8px;
+  width: 100%;
 }
 
-/* Enhancing Equip Slots in Detail View */
-.equip-slot-mini {
-  width: 28px;
-  height: 28px;
+.mini-slot {
+  width: 36px; /* Slightly larger for easier clicking */
+  height: 36px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 18px;
+  cursor: help;
+  transition: all 0.2s;
 }
 
-.char-equip-section .equip-slot-mini {
-  width: 48px;
-  height: 48px;
-  font-size: 24px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.mini-slot:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.mini-slot.equipped {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.3);
 }
 
 .char-list-badge {
