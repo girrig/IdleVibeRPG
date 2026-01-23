@@ -232,6 +232,21 @@ export class UIManager {
       const allItems = Object.entries(ITEM_DEFINITIONS);
       const filtered = allItems
         .filter(([id, def]) => {
+          const char = gameState.characters[this.selectedCharIndex];
+          const source = sourceRegistry.getSource(id);
+
+          // Check Requirements
+          if (source && source.type === "SKILL") {
+            const skillId = source.skillId.toLowerCase();
+            const reqLevel = source.reqLevel;
+            const charSkill = char.skills[skillId];
+            const charLevel = charSkill ? charSkill.level : 0;
+
+            if (charLevel < reqLevel) {
+              return false; // Hide inaccessible
+            }
+          }
+
           const matchesSearch = def.name
             .toLowerCase()
             .includes(searchTerm.toLowerCase());
@@ -242,31 +257,10 @@ export class UIManager {
       // Grid HTML
       const gridHtml = filtered
         .map(([id, def]) => {
-          const char = gameState.characters[this.selectedCharIndex];
-          const source = sourceRegistry.getSource(id);
-          let reqInfo = "";
-          let isLocked = false;
-
-          if (source && source.type === "SKILL") {
-            const skillId = source.skillId.toLowerCase();
-            const reqLevel = source.reqLevel;
-            const charSkill = char.skills[skillId];
-            const charLevel = charSkill ? charSkill.level : 0;
-
-            if (charLevel < reqLevel) {
-              isLocked = true;
-              reqInfo = `<div style="color: #ef4444; font-size: 10px; margin-top: 2px;">Req: Lv ${reqLevel} ${source.skillId}</div>`;
-            }
-          }
-
-          const opacity = isLocked ? "0.5" : "1";
-          const cursor = isLocked ? "not-allowed" : "pointer";
-
           return `
-              <div class="goal-item-card" data-id="${id}" style="opacity: ${opacity}; cursor: ${cursor};">
+              <div class="goal-item-card" data-id="${id}" style="cursor: pointer;">
                   <div class="goal-item-icon">${def.icon}</div>
                   <div class="goal-item-name">${def.name}</div>
-                  ${reqInfo}
               </div>
           `;
         })
@@ -292,7 +286,10 @@ export class UIManager {
                     <button class="quantity-preset-btn" data-qty="100">100</button>
                     <button class="quantity-preset-btn" data-qty="1000">1000</button>
                     <!-- Persistent Custom Input -->
-                     <input type="number" id="goal-quantity-input" placeholder="#" class="quantity-input" style="width: 70px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px; text-align: center; background: rgba(0,0,0,0.2);" />
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <input type="number" id="goal-quantity-input" placeholder="#" class="quantity-input" style="width: 70px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px; text-align: center; background: rgba(0,0,0,0.2);" />
+                        <button id="btn-clear-qty" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #ccc; cursor: pointer; font-size: 14px; padding: 2px 8px; display: none;">✕</button>
+                    </div>
                 </div>
                 
                 <!-- Search Bar Inline (Far Right) -->
@@ -328,8 +325,7 @@ export class UIManager {
     });
 
     const qtyInput = modal.querySelector("#goal-quantity-input");
-    // const containerX = modal.querySelector("#custom-qty-container"); // Removed
-    // const btnX = modal.querySelector("#btn-qty-x"); // Removed
+    const clearBtn = modal.querySelector("#btn-clear-qty");
     let currentQty = 1;
     let lastClickedQty = null;
 
@@ -338,9 +334,22 @@ export class UIManager {
       const val = parseInt(qtyInput.value, 10);
       if (val > 0) {
         currentQty = val;
-        lastClickedQty = null; // Reset if user types manually
+        lastClickedQty = null;
+        if (clearBtn) clearBtn.style.display = "block";
+      } else {
+        if (clearBtn) clearBtn.style.display = "none";
       }
     };
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        qtyInput.value = "";
+        currentQty = 1;
+        lastClickedQty = null;
+        clearBtn.style.display = "none";
+        qtyInput.focus();
+      });
+    }
 
     // Input events
     qtyInput.addEventListener("input", syncQty);
@@ -350,15 +359,24 @@ export class UIManager {
       btn.addEventListener("click", () => {
         const btnVal = parseInt(btn.dataset.qty);
 
-        if (lastClickedQty === btnVal) {
-          currentQty += btnVal;
-        } else {
+        // Strictly Additive Logic
+        // If the input is empty (user cleared it), we treat current as 0 effectively before adding (but currentQty is 1 by default logic).
+        // Let's check if the input is actually showing a number.
+        const inputVal = parseInt(qtyInput.value, 10);
+        if (isNaN(inputVal)) {
+          // If empty/cleared, start from 0 + btnVal
           currentQty = btnVal;
+        } else {
+          currentQty += btnVal;
         }
 
         lastClickedQty = btnVal;
         if (currentQty > 9999) currentQty = 9999;
-        if (qtyInput) qtyInput.value = currentQty;
+
+        if (qtyInput) {
+          qtyInput.value = currentQty;
+          if (clearBtn) clearBtn.style.display = "block";
+        }
       });
     });
 
