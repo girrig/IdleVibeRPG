@@ -30,6 +30,11 @@
   backdrop-filter: blur(20px);
 }
 
+.modal-content.modal-lg {
+  width: 900px;
+  max-width: 90vw;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -114,6 +119,7 @@
   font-family: inherit;
   text-align: center;
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .quantity-input:focus {
@@ -149,7 +155,6 @@
 .quantity-presets {
   display: flex;
   gap: 8px;
-  margin-left: auto;
 }
 
 .quantity-preset-btn {
@@ -173,4 +178,62 @@
 
 .quantity-preset-btn:active {
   transform: translateY(0);
+}
+
+/* Modal Improvements */
+.search-bar {
+  margin-left: auto; /* Push to right */
+  width: 250px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-bar:focus {
+  border-color: #3b82f6;
+}
+
+/* Enhanced Grid */
+.goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 12px;
+  padding: 24px;
+  overflow-y: auto;
+  max-height: 400px; /* Fallback */
+}
+
+.goal-item-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.goal-item-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.goal-item-icon {
+  font-size: 24px;
+}
+
+.goal-item-name {
+  font-size: 11px;
+  color: #cbd5e1;
+  line-height: 1.3;
 }

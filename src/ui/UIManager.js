@@ -224,8 +224,59 @@ export class UIManager {
   showItemSelectionModal(onSelect) {
     const modal = document.createElement("div");
     modal.className = "game-modal";
+
+    let searchTerm = "";
+
+    const render = () => {
+      // Filter Items
+      const allItems = Object.entries(ITEM_DEFINITIONS);
+      const filtered = allItems
+        .filter(([id, def]) => {
+          const matchesSearch = def.name
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase());
+          return matchesSearch;
+        })
+        .sort(([, a], [, b]) => a.name.localeCompare(b.name));
+
+      // Grid HTML
+      const gridHtml = filtered
+        .map(([id, def]) => {
+          const char = gameState.characters[this.selectedCharIndex];
+          const source = sourceRegistry.getSource(id);
+          let reqInfo = "";
+          let isLocked = false;
+
+          if (source && source.type === "SKILL") {
+            const skillId = source.skillId.toLowerCase();
+            const reqLevel = source.reqLevel;
+            const charSkill = char.skills[skillId];
+            const charLevel = charSkill ? charSkill.level : 0;
+
+            if (charLevel < reqLevel) {
+              isLocked = true;
+              reqInfo = `<div style="color: #ef4444; font-size: 10px; margin-top: 2px;">Req: Lv ${reqLevel} ${source.skillId}</div>`;
+            }
+          }
+
+          const opacity = isLocked ? "0.5" : "1";
+          const cursor = isLocked ? "not-allowed" : "pointer";
+
+          return `
+              <div class="goal-item-card" data-id="${id}" style="opacity: ${opacity}; cursor: ${cursor};">
+                  <div class="goal-item-icon">${def.icon}</div>
+                  <div class="goal-item-name">${def.name}</div>
+                  ${reqInfo}
+              </div>
+          `;
+        })
+        .join("");
+
+      return gridHtml;
+    };
+
     modal.innerHTML = `
-        <div class="modal-content" style="width: 600px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="modal-content modal-lg" style="max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
             <div class="modal-header">
                 <h2>Select Target Item</h2>
                 <button class="btn-close">×</button>
@@ -233,64 +284,39 @@ export class UIManager {
             
             <div class="quantity-selector-container">
                 <label for="goal-quantity-input" class="quantity-label">Target Quantity:</label>
-                
-                <div class="quantity-control-wrapper">
-                    <button class="quantity-btn-step minus" id="btn-qty-minus">−</button>
-                    <input type="number" id="goal-quantity-input" value="1" min="1" max="9999" class="quantity-input" />
-                    <button class="quantity-btn-step plus" id="btn-qty-plus">+</button>
-                </div>
-                
+                <!-- Presets First -->
                 <div class="quantity-presets">
                     <button class="quantity-preset-btn" data-qty="1">1</button>
                     <button class="quantity-preset-btn" data-qty="10">10</button>
+                    <button class="quantity-preset-btn" data-qty="50">50</button>
                     <button class="quantity-preset-btn" data-qty="100">100</button>
                     <button class="quantity-preset-btn" data-qty="1000">1000</button>
+                    <!-- Persistent Custom Input -->
+                     <input type="number" id="goal-quantity-input" placeholder="#" class="quantity-input" style="width: 70px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px; text-align: center; background: rgba(0,0,0,0.2);" />
                 </div>
+                
+                <!-- Search Bar Inline (Far Right) -->
+                <input type="text" class="search-bar" placeholder="Search items..." id="item-search-input">
             </div>
 
-             <div class="goals-grid" style="overflow-y: auto; padding: 10px;">
-                ${Object.entries(ITEM_DEFINITIONS)
-                  .sort(([, a], [, b]) => a.name.localeCompare(b.name))
-                  .map(([id, def]) => {
-                    const char = gameState.characters[this.selectedCharIndex];
-                    const source = sourceRegistry.getSource(id);
-                    let reqInfo = "";
-                    let isLocked = false;
-
-                    if (source && source.type === "SKILL") {
-                      // Match case-insensitive logic from TaskPlanner
-                      const skillId = source.skillId.toLowerCase();
-                      const reqLevel = source.reqLevel;
-                      const charSkill = char.skills[skillId];
-                      const charLevel = charSkill ? charSkill.level : 0;
-
-                      if (charLevel < reqLevel) {
-                        isLocked = true;
-                        reqInfo = `<div style="color: #ef4444; font-size: 10px; margin-top: 2px;">Req: Lv ${reqLevel} ${source.skillId}</div>`;
-                      }
-                    }
-
-                    const opacity = isLocked ? "0.5" : "1";
-                    const cursor = isLocked ? "not-allowed" : "pointer";
-                    // If locked, maybe check later on click too, or verify UI handles it. (TaskPlanner handles validation)
-                    // We will allow click but show visual feedback here.
-
-                    return `
-                    <div class="goal-item-card" data-id="${id}" style="opacity: ${opacity}; cursor: ${cursor}; position: relative;">
-                        <div class="goal-item-icon">${def.icon}</div>
-                        <div class="goal-item-name">${def.name}</div>
-                        ${reqInfo}
-                    </div>
-                `;
-                  })
-                  .join("")}
+             <div class="goals-grid" id="goals-grid-container">
+                ${render()}
             </div>
         </div>
      `;
 
     document.body.appendChild(modal);
 
-    // Close events
+    // State Management for Re-rendering Grid
+    const updateGrid = () => {
+      const grid = modal.querySelector("#goals-grid-container");
+      if (grid) {
+        grid.innerHTML = render();
+        bindGridEvents();
+      }
+    };
+
+    // Events
     const close = () => {
       modal.classList.add("hidden");
       setTimeout(() => modal.remove(), 200);
@@ -301,42 +327,68 @@ export class UIManager {
       if (e.target === modal) close();
     });
 
-    // Custom Quantity Control Logic
     const qtyInput = modal.querySelector("#goal-quantity-input");
-    const updateQty = (delta) => {
-      let val = parseInt(qtyInput.value, 10) || 0;
-      val += delta;
-      if (val < 1) val = 1;
-      if (val > 9999) val = 9999;
-      qtyInput.value = val;
+    // const containerX = modal.querySelector("#custom-qty-container"); // Removed
+    // const btnX = modal.querySelector("#btn-qty-x"); // Removed
+    let currentQty = 1;
+    let lastClickedQty = null;
+
+    // Helper to sync state from input
+    const syncQty = () => {
+      const val = parseInt(qtyInput.value, 10);
+      if (val > 0) {
+        currentQty = val;
+        lastClickedQty = null; // Reset if user types manually
+      }
     };
 
-    modal
-      .querySelector("#btn-qty-minus")
-      .addEventListener("click", () => updateQty(-1));
-    modal
-      .querySelector("#btn-qty-plus")
-      .addEventListener("click", () => updateQty(1));
+    // Input events
+    qtyInput.addEventListener("input", syncQty);
+    qtyInput.addEventListener("change", syncQty);
 
-    // Quantity Preset Buttons
     modal.querySelectorAll(".quantity-preset-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        if (qtyInput) {
-          qtyInput.value = btn.dataset.qty;
+        const btnVal = parseInt(btn.dataset.qty);
+
+        if (lastClickedQty === btnVal) {
+          currentQty += btnVal;
+        } else {
+          currentQty = btnVal;
         }
+
+        lastClickedQty = btnVal;
+        if (currentQty > 9999) currentQty = 9999;
+        if (qtyInput) qtyInput.value = currentQty;
       });
     });
 
-    // Item Click
-    modal.querySelectorAll(".goal-item-card").forEach((el) => {
-      el.addEventListener("click", () => {
-        const id = el.dataset.id;
-        const qtyInput = modal.querySelector("#goal-quantity-input");
-        const qty = parseInt(qtyInput.value, 10) || 1;
-        onSelect(id, qty);
-        close();
-      });
+    // Search
+    const searchInput = modal.querySelector("#item-search-input");
+    searchInput.addEventListener("input", (e) => {
+      searchTerm = e.target.value;
+      updateGrid();
     });
+
+    // Grid Item Clicks (Need to re-bind on render)
+    const bindGridEvents = () => {
+      modal.querySelectorAll(".goal-item-card").forEach((el) => {
+        el.addEventListener("click", () => {
+          const id = el.dataset.id;
+          // Use currentQty state or input value
+          // If input is showing, use input value. If X is showing with number, use currentQty.
+          // Actually input value should be in sync if we managing it correctly.
+          const qty = parseInt(qtyInput.value, 10) || currentQty || 1;
+          onSelect(id, qty);
+          close();
+        });
+      });
+    };
+
+    // Initial Bind
+    bindGridEvents();
+
+    // Auto focus search
+    searchInput.focus();
   }
 
   handleStartActivity(skillId, targetId, quantity = 1) {
