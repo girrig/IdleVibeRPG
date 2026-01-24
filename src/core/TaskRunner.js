@@ -15,11 +15,15 @@ export class TaskRunner {
     // HYBRID PROGRESS LOGIC
     // If this step is the MAIN GOAL, we use Relative Progress.
     // If this step is a DEPENDENCY, we use Absolute Progress.
-    if (step.startCount === undefined) {
-      // ALWAYS use Relative Progress (Count existing items as "starting line")
-      // This ensures that we produce 'step.quantity' NEW items.
-      // TaskPlanner now ensures 'step.quantity' is the delta (missing amount).
+    const isMainGoal =
+      group && group.mainGoal && step.targetItem === group.mainGoal.itemId;
+
+    if (isMainGoal) {
+      // Relative: Count existing items as the "starting line"
       step.startCount = gameState.inventory.getCount(step.targetItem);
+    } else {
+      // Absolute: Count from 0 (Stockpile behavior)
+      step.startCount = 0;
     }
     step.status = "EXECUTING";
 

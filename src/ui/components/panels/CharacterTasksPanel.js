@@ -46,7 +46,7 @@ export class CharacterTasksPanel {
 
     goalSection.innerHTML = `
             ${headerHtml}
-                <div class="active-goal-card" draggable="true" data-index="-1" style="margin-bottom: 10px; position: relative; padding-top: 15px; cursor: grab;">
+                <div class="active-goal-card" draggable="true" data-index="-1" data-group-id="${char.activeGoalGroup ? char.activeGoalGroup.id : ""}" style="margin-bottom: 10px; position: relative; padding-top: 15px; cursor: grab;">
                     <button class="btn-cancel-goal" style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 6px; color: #fca5a5; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; font-size: 14px; padding: 0;" title="Cancel Current Task">✕</button>
                     <div class="goal-info">
                         <span class="goal-icon">${targetDef.icon}</span>
@@ -354,7 +354,6 @@ export class CharacterTasksPanel {
     const hasActiveGoal = !!char.activeGoal;
     const isShowingActive = !!goalSection.querySelector(".active-goal-card");
 
-    // Render Strategy:
     // If Global State (Active vs Empty) Changed, full re-render of this section
     if (hasActiveGoal !== isShowingActive) {
       goalSection.innerHTML = "";
@@ -364,6 +363,44 @@ export class CharacterTasksPanel {
         CharacterTasksPanel.renderEmptyState(goalSection, char, uiManager);
       }
       return;
+    }
+
+    // Check if the Goal Group ID changed (e.g. Next Task in Queue activated)
+    if (hasActiveGoal) {
+      const activeCard = goalSection.querySelector(".active-goal-card");
+      const renderedGroupId = activeCard ? activeCard.dataset.groupId : null;
+      const currentGroupId = char.activeGoalGroup
+        ? char.activeGoalGroup.id.toString()
+        : "";
+
+      // If IDs are mismatched (and we have IDs), force re-render
+      if (
+        renderedGroupId &&
+        currentGroupId &&
+        renderedGroupId !== currentGroupId
+      ) {
+        console.log(
+          `[TaskPanel] Detected Group Switch (${renderedGroupId} -> ${currentGroupId}). Re-rendering.`,
+        );
+        goalSection.innerHTML = "";
+        CharacterTasksPanel.renderActiveState(goalSection, char, uiManager);
+        return;
+      }
+
+      // Also check if structure changed (Steps vs No Steps)
+      // If we have steps but UI doesn't show them (or vice versa)
+      const hasStepsUI = !!goalSection.querySelector(".active-goal-steps");
+      const needsStepsui =
+        char.activeGoalGroup && char.activeGoalGroup.steps.length > 1;
+
+      if (hasStepsUI !== needsStepsui) {
+        console.log(
+          `[TaskPanel] Structure Mismatch (Steps: ${hasStepsUI} vs ${needsStepsui}). Re-rendering.`,
+        );
+        goalSection.innerHTML = "";
+        CharacterTasksPanel.renderActiveState(goalSection, char, uiManager);
+        return;
+      }
     }
 
     // If we are dragging, DO NOT UPDATE DOM to prevent glitches

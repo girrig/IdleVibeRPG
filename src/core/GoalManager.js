@@ -69,9 +69,18 @@ export class GoalManager {
   }
 
   startFlaggedGoal(gameState, character, group) {
-    if (!group || group.currentStepIndex >= group.steps.length) return;
+    if (!group || group.currentStepIndex >= group.steps.length) {
+      console.warn(
+        `[startFlaggedGoal] Invalid group or index. Index: ${group?.currentStepIndex}, Steps: ${group?.steps?.length}`,
+      );
+      return;
+    }
 
     const step = group.steps[group.currentStepIndex];
+    console.log(
+      `[startFlaggedGoal] Starting step ${group.currentStepIndex}: ${step.targetQuantity} ${step.targetItem}`,
+    );
+
     taskRunner.startTask(gameState, character, step, group);
     this.executeGoal(character);
   }
@@ -112,12 +121,15 @@ export class GoalManager {
         const currentIdx = nextGroup.currentStepIndex;
         if (currentIdx < nextGroup.steps.length) {
           // DYNAMIC RE-CHECK LOGIC (Full Re-Plan)
+          // As requested: "Only reevaluate their subtasks when they become the active task again"
+          // We re-run the planner to account for any inventory changes (spent resources, etc.) while the task was queued.
           if (nextGroup.mainGoal) {
             console.log(
               `[checkQueue] Re-Planning Group ${nextGroup.id} (Resuming)`,
             );
 
-            // IGNORE existing inventory for the Main Goal item itself.
+            // IGNORE existing inventory for the Main Goal item itself to ensure we plan for the full target
+            // (TaskPlanner will check what is *missing* inside resolveDependencies)
             const planningInventory = { ...gameState.inventory.items };
             planningInventory[nextGroup.mainGoal.itemId] = 0;
 
@@ -133,7 +145,6 @@ export class GoalManager {
               );
             } catch (e) {
               console.error("Failed to resume group:", e);
-              // If we fail here, we should probably cancel the group or notify?
               gameState.triggerNotification(
                 `Task Paused: ${e.message}`,
                 "error",
@@ -142,16 +153,28 @@ export class GoalManager {
               return;
             }
 
-            // Update Group Steps
-            nextGroup.steps = newPlan.map((s) => ({
-              targetItem: s.itemId,
-              targetQuantity: s.quantity,
-              source: s.source,
-              startTime: null,
-              status: s.status || "PENDING",
-            }));
+            // Update Group Steps with new Plan
+            // This ensures "tasks keep track of all aspects" by refreshing the state based on reality.
+            if (!newPlan || newPlan.length === 0) {
+              console.warn(
+                `[checkQueue] Re-planning returned empty plan for ${nextGroup.mainGoal.itemId}. Fallback to original steps.`,
+              );
+              // Fallback: Don't update steps, just reset status if needed or assume user has context
+              // Actually, if plan is empty, maybe we completed it?
+              // But let's trust the logic that if we forced 0 inventory, we SHOULD have steps.
+            } else {
+              // Update Group Steps with new Plan
+              nextGroup.steps = newPlan.map((s) => ({
+                targetItem: s.itemId,
+                targetQuantity: s.quantity,
+                source: s.source,
+                startTime: null,
+                status: s.status || "PENDING",
+              }));
+            }
 
             // Find where to start (First non-completed step)
+            // If fallback: uses old steps. If new plan: uses new steps.
             const firstPendingIndex = nextGroup.steps.findIndex(
               (s) => s.status !== "COMPLETED",
             );
@@ -162,6 +185,9 @@ export class GoalManager {
       }
 
       character.activeGoalGroup = nextGroup;
+      console.log(
+        `[checkQueue] Set active group: ${nextGroup.id}. Steps: ${nextGroup.steps.length}`,
+      );
 
       gameState.triggerNotification(
         `${character.name} starting next group: Get ${nextGroup.mainGoal.quantity} ${nextGroup.mainGoal.itemId}`,
