@@ -56,10 +56,10 @@ export class GoalManager {
     if (character.activeGoalGroup || character.activeGoal) {
       if (!character.goalQueue) character.goalQueue = [];
       character.goalQueue.push(goalGroup);
-      gameState.triggerNotification(
-        `${character.name}: Queued Group - Get ${quantity} ${itemId}`,
-        "info",
-      );
+      // gameState.triggerNotification(
+      //   `${character.name}: Queued Group - Get ${quantity} ${itemId}`,
+      //   "info",
+      // );
     } else {
       character.activeGoalGroup = goalGroup;
       this.startFlaggedGoal(gameState, character, goalGroup);
@@ -189,10 +189,10 @@ export class GoalManager {
         `[checkQueue] Set active group: ${nextGroup.id}. Steps: ${nextGroup.steps.length}`,
       );
 
-      gameState.triggerNotification(
-        `${character.name} starting next group: Get ${nextGroup.mainGoal.quantity} ${nextGroup.mainGoal.itemId}`,
-        "info",
-      );
+      // gameState.triggerNotification(
+      //   `${character.name} starting next group: Get ${nextGroup.mainGoal.quantity} ${nextGroup.mainGoal.itemId}`,
+      //   "info",
+      // );
 
       this.startFlaggedGoal(gameState, character, nextGroup);
     }

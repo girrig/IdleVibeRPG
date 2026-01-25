@@ -202,11 +202,13 @@ export class Character {
     const notifType =
       def && def.color ? { id: "activity", color: def.color } : "activity";
 
-    if (window.gameState)
+    // Only notify if NOT driven by a goal (TaskRunner handles goal start notification)
+    if (window.gameState) {
       window.gameState.triggerNotification(
         `${this.name} started ${type} on ${target} (x${quantity > 0 ? quantity : "∞"})`,
         notifType,
       );
+    }
   }
 
   completeCurrentTask() {

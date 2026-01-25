@@ -311,6 +311,7 @@ class GameState {
             }
           }
 
+          // Build robustness: Ensure lastActionTime exists
           if (now - lastTime >= interval) {
             skillDef.action(this, char);
             char.currentActivity.lastActionTime = now;

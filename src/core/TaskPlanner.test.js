@@ -84,4 +84,21 @@ describe("TaskPlanner", () => {
       taskPlanner.resolveDependencies("coal", 1, {}, false, false, mockChar);
     }).toThrow(/Level 10 MINING required/);
   });
+
+  it("should show TOTAL requirement even if partial inventory exists", () => {
+    // Want 10 Copper Bars. Cost: 10 Ore.
+    // Have 5 Copper Ore.
+    // Expect: Copper Ore step with quantity 10 (Total), but Status PENDING (since we need 5 more).
+
+    // Note: In resolveDependencies, if checkInventory is true and current < reqQty,
+    // it subtracts current from simInventory but adds the FULL reqQty to the plan object.
+
+    const inventory = { copper_ore: 5 };
+    const plan = taskPlanner.resolveDependencies("copper_bar", 10, inventory); // 10 Bars needs 10 Ore
+
+    const oreStep = plan.find((s) => s.itemId === "copper_ore");
+    expect(oreStep).toBeDefined();
+    expect(oreStep.quantity).toBe(10); // NOT 5 (Missing), but 10 (Total)
+    expect(oreStep.status).toBe("PENDING");
+  });
 });

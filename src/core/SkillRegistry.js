@@ -209,8 +209,8 @@ export const SKILL_DEFINITIONS = {
         Object.entries(option.cost).forEach(([item, qty]) => {
           gameState.inventory.removeItem(item, qty);
           // Optional: Negative notification?
-          const def = getItemDefinition(item);
-          gameState.triggerNotification(`-${qty} ${def.name}`, "item");
+          // const def = getItemDefinition(item);
+          // gameState.triggerNotification(`-${qty} ${def.name}`, "item");
         });
       }
 

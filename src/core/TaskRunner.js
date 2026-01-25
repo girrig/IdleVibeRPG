@@ -28,10 +28,10 @@ export class TaskRunner {
     step.status = "EXECUTING";
 
     character.activeGoal = step;
-    gameState.triggerNotification(
-      `${character.name} goal set: Get ${step.targetQuantity} ${step.targetItem}`,
-      "info",
-    );
+    // gameState.triggerNotification(
+    //   `${character.name} goal set: Get ${step.targetQuantity} ${step.targetItem}`,
+    //   "info",
+    // );
     this.ensureActivity(character);
   }
 
