@@ -4,6 +4,7 @@ import { getSkillDefinition } from "./SkillRegistry";
 import { SaveManager } from "./SaveManager";
 import { goalManager } from "./GoalManager";
 import { getItemDefinition } from "./ItemRegistry";
+import { mapManager } from "./MapManager";
 
 import { GAME_CONFIG } from "./Constants";
 
@@ -56,6 +57,10 @@ class GameState {
       );
       // Give some starting money
     }
+
+    // Initialize map (creates new if needed)
+    mapManager.initialize();
+
     this.startAutoSave();
   }
 
@@ -94,6 +99,7 @@ class GameState {
       inventory: this.inventory.items,
       lastTick: this.lastTick,
       settings: this.settings,
+      map: mapManager.getMapData(),
     };
     return SaveManager.save(
       "idleVibeRPG_save",
@@ -126,6 +132,10 @@ class GameState {
 
     // Restore Global State
     this.lastTick = data.lastTick || Date.now();
+
+    // Restore Map
+    mapManager.initialize(data.map);
+
     if (data.settings) {
       // Deep merge settings to ensure new keys exist
       this.settings = {
