@@ -9,10 +9,16 @@ export class MapView {
     this.element.style.display = "flex";
     this.element.style.flexDirection = "column";
     this.element.style.alignItems = "center";
-    this.element.style.overflow = "hidden"; // Hide scrollbars for custom drag
+    this.element.style.overflow = "auto"; // Restore scrollbars
     this.element.style.boxSizing = "border-box";
     this.element.style.cursor = "grab";
     this.element.style.userSelect = "none"; // Prevent text selection
+    this.element.style.position = "relative"; // For absolute positioning of controls
+
+    // Map State
+    this.zoomLevel = 24; // Default tile size
+    this.minZoom = 12;
+    this.maxZoom = 64;
 
     // Drag State
     this.isDragging = false;
@@ -51,6 +57,26 @@ export class MapView {
       this.element.scrollLeft = this.scrollLeft - walkX;
       this.element.scrollTop = this.scrollTop - walkY;
     });
+
+    // Wheel Zoom
+    this.element.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        const delta = Math.sign(e.deltaY);
+        // Zoom step
+        const step = 4; // Zoom speed
+        if (delta < 0) {
+          // Zoom In
+          this.zoomLevel = Math.min(this.zoomLevel + step, this.maxZoom);
+        } else {
+          // Zoom Out
+          this.zoomLevel = Math.max(this.zoomLevel - step, this.minZoom);
+        }
+        this.update();
+      },
+      { passive: false },
+    );
   }
 
   render(container) {
@@ -88,18 +114,77 @@ export class MapView {
     const width = mapManager.width;
     const height = mapManager.height;
 
+    // Zoom Controls
+    const controls = document.createElement("div");
+    controls.style.position = "sticky";
+    controls.style.bottom = "20px";
+    controls.style.right = "20px";
+    controls.style.alignSelf = "flex-end";
+    controls.style.marginRight = "20px";
+    controls.style.marginBottom = "20px";
+    controls.style.display = "flex";
+    controls.style.gap = "0px"; // Changed to 0 gap for connected buttons look potentially, but gap 10 is fine.
+    controls.style.zIndex = "100";
+    controls.style.pointerEvents = "auto"; // Ensure clicks pass
+
+    // Actually sticky might be tricky if parent scrolls.
+    // Let's use fixed relative to the container if possible, but container has overflow:auto.
+    // Fixed is relative to viewport. Absolute is relative to nearest positioned ancestor.
+    // Position: absolute works if we update it on scroll, or just let it float over content?
+    // If we want it "floating" on the screen regardless of scroll, we need a wrapper.
+    // BUT we are modifying MapView which is the scroll container itself.
+    // To have fixed controls, we should probably have a wrapper for the map.
+    // For now, let's just prepend controls and make them fixed.
+
+    // Easier approach: Render controls outside the scrolling grid.
+    // But `this.element` IS the scrolling container.
+    // Let's create a controls overlay.
+    const zoomInBtn = document.createElement("button");
+    zoomInBtn.innerText = "+";
+    zoomInBtn.style.width = "40px";
+    zoomInBtn.style.height = "40px";
+    zoomInBtn.style.fontSize = "24px";
+    zoomInBtn.style.cursor = "pointer";
+    zoomInBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.zoomLevel = Math.min(this.zoomLevel + 4, this.maxZoom);
+      this.update();
+    };
+
+    const zoomOutBtn = document.createElement("button");
+    zoomOutBtn.innerText = "-";
+    zoomOutBtn.style.width = "40px";
+    zoomOutBtn.style.height = "40px";
+    zoomOutBtn.style.fontSize = "24px";
+    zoomOutBtn.style.cursor = "pointer";
+    zoomOutBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.zoomLevel = Math.max(this.zoomLevel - 4, this.minZoom);
+      this.update();
+    };
+
+    // We'll wrap controls in a container that stays fixed relative to the view
+    // Since we handle render() by clearing this.element, we can append controls there.
+    // But this.element has overflow:auto.
+    // Sticky positioning should work inside scrolling container!
+    controls.style.position = "sticky"; // Sticky needs a top/bottom/etc
+    controls.style.bottom = "20px";
+    controls.style.left = "calc(100% - 100px)"; // Hacky positioning
+
+    // Re-thinking: sticky within overflow container works if content is larger.
+    controls.appendChild(zoomInBtn);
+    controls.appendChild(zoomOutBtn);
+
     const grid = document.createElement("div");
     grid.style.flex = "1";
     grid.style.width = "100%";
-    // Maintain aspect ratio or just fill? Let's fill but keep square tiles if possible
-    // Actually user said "take up whole container", so filling is best.
     grid.style.display = "grid";
-    grid.style.gridTemplateColumns = `repeat(${width}, 24px)`;
-    grid.style.gridTemplateRows = `repeat(${height}, 24px)`;
-    grid.style.gap = "0"; // No gap for seamless look
+    grid.style.gridTemplateColumns = `repeat(${width}, ${this.zoomLevel}px)`;
+    grid.style.gridTemplateRows = `repeat(${height}, ${this.zoomLevel}px)`;
+    grid.style.gap = "0";
     grid.style.backgroundColor = "#000";
     grid.style.border = "none";
-    // grid.style.boxShadow = "0 0 20px rgba(0,0,0,0.5)"; // Shadow might look weird if full screen
+    grid.style.transformOrigin = "top left";
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
@@ -107,8 +192,9 @@ export class MapView {
         const tileEl = document.createElement("div");
         tileEl.style.width = "100%";
         tileEl.style.height = "100%";
-        tileEl.style.fontSize = "14px"; // Slightly smaller font
-        tileEl.style.lineHeight = "24px";
+        // Font size scales with zoom?
+        tileEl.style.fontSize = `${Math.max(10, this.zoomLevel * 0.6)}px`;
+        tileEl.style.lineHeight = `${this.zoomLevel}px`;
 
         const typeInfo = Object.values(TERRAIN_TYPES).find(
           (t) => t.id === tile.type,
@@ -121,7 +207,6 @@ export class MapView {
         tileEl.title = `${typeInfo ? typeInfo.id : "UNKNOWN"} (${x}, ${y})`;
 
         tileEl.innerText = typeInfo ? typeInfo.symbol : "?";
-        tileEl.style.fontSize = "16px";
 
         // Hover effect
         tileEl.onmouseenter = () => {
@@ -136,5 +221,6 @@ export class MapView {
     }
 
     this.element.appendChild(grid);
+    this.element.appendChild(controls);
   }
 }
