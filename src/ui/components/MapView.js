@@ -24,7 +24,13 @@ export class MapView {
     // Canvas Element
     this.canvas = document.createElement("canvas");
     this.ctx = this.canvas.getContext("2d", { alpha: false }); // Optimize for no transparency
+    this.canvas.style.display = "block"; // Remove inline-block spacing
     this.mapContainer.appendChild(this.canvas);
+
+    // Offscreen Canvas for static background (colors)
+    this.offscreenCanvas = document.createElement("canvas");
+    this.offscreenCtx = this.offscreenCanvas.getContext("2d", { alpha: false });
+    this.mapDataDirty = true; // Flag to redraw offscreen canvas
 
     // Sidebar
     this.sidebar = document.createElement("div");
@@ -58,12 +64,14 @@ export class MapView {
 
     // Events
     this.bindEvents();
-
-    // Checkboard pattern for missing data
-    this.checkboardPattern = null;
   }
 
   bindEvents() {
+    // Scroll event for symbol culling updates
+    this.mapContainer.addEventListener("scroll", () => {
+      this.renderMainCanvas(); // Redraw main canvas (with culling) on scroll
+    });
+
     // Mouse Move (Hover)
     this.canvas.addEventListener("mousemove", (e) => {
       const rect = this.canvas.getBoundingClientRect();
@@ -90,18 +98,47 @@ export class MapView {
     });
 
     // Wheel Zoom
+    // Wheel Zoom
     this.mapContainer.addEventListener("wheel", (e) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        const delta = Math.sign(e.deltaY);
-        const step = 2; // Smaller step
-        if (delta < 0) {
-          this.zoomLevel = Math.min(this.zoomLevel + step, 64);
-        } else {
-          this.zoomLevel = Math.max(this.zoomLevel - step, 2); // Allow zoom out more
-        }
-        this.update();
+      e.preventDefault(); // Always prevent scroll when over map
+
+      const oldZoom = this.zoomLevel;
+      const delta = Math.sign(e.deltaY);
+      const step = 2; // Smaller step
+
+      // Calculate new zoom
+      let newZoom = oldZoom;
+      if (delta < 0) {
+        newZoom = Math.min(oldZoom + step, 64);
+      } else {
+        newZoom = Math.max(oldZoom - step, 2);
       }
+
+      if (newZoom === oldZoom) return;
+
+      // Calculate center in "World/Tile" coordinates
+      // The pixel visible at the center of the view relative to the canvas
+      const viewCenterX =
+        this.mapContainer.scrollLeft + this.mapContainer.clientWidth / 2;
+      const viewCenterY =
+        this.mapContainer.scrollTop + this.mapContainer.clientHeight / 2;
+
+      // Tile at the center
+      const tileCenterX = viewCenterX / oldZoom;
+      const tileCenterY = viewCenterY / oldZoom;
+
+      this.zoomLevel = newZoom;
+      this.update(); // Resizes canvas
+
+      // Calculate new center in pixels
+      const newViewCenterX = tileCenterX * newZoom;
+      const newViewCenterY = tileCenterY * newZoom;
+
+      // New scroll position = New center - half viewport
+      this.mapContainer.scrollLeft =
+        newViewCenterX - this.mapContainer.clientWidth / 2;
+      this.mapContainer.scrollTop =
+        newViewCenterY - this.mapContainer.clientHeight / 2;
     });
 
     // Handle "click" to log or interact
@@ -199,80 +236,153 @@ export class MapView {
     this.update();
   }
 
+  // Called when map data or zoom/filters change
   update() {
     this.renderSidebar();
-
-    const mapData = mapManager.getMapData();
-    const tiles = mapData.tiles;
-
-    if (!tiles || tiles.length === 0) {
-      // Show regen button
-      return;
-    }
 
     const width = mapManager.width;
     const height = mapManager.height;
 
-    // Resize Canvas
+    // Resize Main Canvas
     this.canvas.width = width * this.zoomLevel;
     this.canvas.height = height * this.zoomLevel;
 
-    // clear
-    this.ctx.fillStyle = "#000";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // Resize Offscreen Canvas if needed (dimensions only map dimensions)
+    if (
+      this.offscreenCanvas.width !== width ||
+      this.offscreenCanvas.height !== height
+    ) {
+      this.offscreenCanvas.width = width;
+      this.offscreenCanvas.height = height;
+      this.mapDataDirty = true;
+    }
 
-    // Draw Tiles
-    // Optimization: Loop creates many calls.
-    // FillRect might be slow for 250k.
-    // But Canvas is usually fast enough for a single frame paint.
+    if (this.mapDataDirty) {
+      this.renderOffscreenCanvas();
+      this.mapDataDirty = false;
+    }
 
-    // Pre-calculate fonts
-    const fontSize = Math.floor(this.zoomLevel * 0.7);
-    this.ctx.font = `${fontSize}px sans-serif`;
-    this.ctx.textAlign = "center";
-    this.ctx.textBaseline = "middle";
+    this.renderMainCanvas();
+  }
+
+  // Renders terrain colors to the small offscreen canvas (once per dataset change)
+  renderOffscreenCanvas() {
+    const width = mapManager.width;
+    const height = mapManager.height;
+    const mapData = mapManager.getMapData();
+    const tiles = mapData.tiles;
+
+    if (!tiles || tiles.length === 0) return;
+
+    // Create ImageData
+    const imageData = this.offscreenCtx.createImageData(width, height);
+    const data = imageData.data;
+
+    // Helper to parse hex color
+    const hexToRgb = (hex) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result
+        ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16),
+          }
+        : { r: 0, g: 0, b: 0 };
+    };
+
+    // Cache colors
+    const colorCache = {};
+    Object.values(TERRAIN_TYPES).forEach((t) => {
+      colorCache[t.id] = hexToRgb(t.color);
+    });
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const tile = tiles[y][x];
+        // If hidden, render dark gray, else terrain color
+        let color = { r: 17, g: 17, b: 17 }; // #111
 
-        // Skip hidden types
-        if (this.hiddenTerrainTypes.has(tile.type)) {
-          this.ctx.fillStyle = "#111"; // Dimmed
-          this.ctx.fillRect(
-            x * this.zoomLevel,
-            y * this.zoomLevel,
-            this.zoomLevel,
-            this.zoomLevel,
-          );
-          continue;
+        if (!this.hiddenTerrainTypes.has(tile.type)) {
+          color = colorCache[tile.type] || color;
         }
+
+        const index = (y * width + x) * 4;
+        data[index] = color.r;
+        data[index + 1] = color.g;
+        data[index + 2] = color.b;
+        data[index + 3] = 255; // Alpha
+      }
+    }
+
+    this.offscreenCtx.putImageData(imageData, 0, 0);
+  }
+
+  // Renders visible portion of offscreen canvas + symbols to main canvas
+  renderMainCanvas() {
+    this.ctx.imageSmoothingEnabled = false; // Keep sharp pixels (NO BLURRY)
+
+    // 1. Draw scaled background
+    this.ctx.drawImage(
+      this.offscreenCanvas,
+      0,
+      0,
+      this.offscreenCanvas.width,
+      this.offscreenCanvas.height,
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height,
+    );
+
+    // 2. Draw Symbols (Viewport Culling)
+    if (this.zoomLevel <= 10) return; // Skip symbols if zoomed out too far
+
+    const mapData = mapManager.getMapData();
+    const tiles = mapData.tiles;
+    if (!tiles) return;
+
+    // Calculate viewport in tile coordinates
+    const scrollLeft = this.mapContainer.scrollLeft;
+    const scrollTop = this.mapContainer.scrollTop;
+    const containerWidth = this.mapContainer.clientWidth;
+    const containerHeight = this.mapContainer.clientHeight;
+
+    const startX = Math.floor(scrollLeft / this.zoomLevel);
+    const startY = Math.floor(scrollTop / this.zoomLevel);
+    // Add buffer of 1-2 tiles to avoid popping
+    const endX = Math.min(
+      mapManager.width,
+      Math.ceil((scrollLeft + containerWidth) / this.zoomLevel) + 1,
+    );
+    const endY = Math.min(
+      mapManager.height,
+      Math.ceil((scrollTop + containerHeight) / this.zoomLevel) + 1,
+    );
+
+    const validStartX = Math.max(0, startX);
+    const validStartY = Math.max(0, startY);
+
+    const fontSize = Math.floor(this.zoomLevel * 0.7);
+    this.ctx.font = `${fontSize}px sans-serif`;
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillStyle = "rgba(0,0,0,0.5)"; // Shadow?
+
+    for (let y = validStartY; y < endY; y++) {
+      for (let x = validStartX; x < endX; x++) {
+        const tile = tiles[y][x];
+        if (this.hiddenTerrainTypes.has(tile.type)) continue;
 
         const typeInfo = Object.values(TERRAIN_TYPES).find(
           (t) => t.id === tile.type,
         );
-        const color = typeInfo ? typeInfo.color : "#ff00ff";
+        const symbol = typeInfo ? typeInfo.symbol : "?";
 
-        // Draw Background
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(
-          x * this.zoomLevel,
-          y * this.zoomLevel,
-          this.zoomLevel,
-          this.zoomLevel,
+        this.ctx.fillText(
+          symbol,
+          x * this.zoomLevel + this.zoomLevel / 2,
+          y * this.zoomLevel + this.zoomLevel / 2,
         );
-
-        // Draw Symbol (only if zoom is big enough)
-        if (this.zoomLevel > 10) {
-          const symbol = typeInfo ? typeInfo.symbol : "?";
-          this.ctx.fillStyle = "rgba(0,0,0,0.5)"; // Shadow/contrast?
-          // Actually, emoji colors can't be set by fillStyle easily, they are distinct.
-          this.ctx.fillText(
-            symbol,
-            x * this.zoomLevel + this.zoomLevel / 2,
-            y * this.zoomLevel + this.zoomLevel / 2,
-          );
-        }
       }
     }
   }
@@ -298,6 +408,7 @@ export class MapView {
     regenBtn.onclick = () => {
       if (confirm("Regenerate world?")) {
         mapManager.generateMap({ newSeed: true });
+        this.mapDataDirty = true; // Mark dirty
         if (window.gameState) window.gameState.saveGame();
         this.update();
       }
@@ -319,6 +430,9 @@ export class MapView {
       item.onclick = () => {
         if (isHidden) this.hiddenTerrainTypes.delete(type.id);
         else this.hiddenTerrainTypes.add(type.id);
+
+        // Since showing/hiding changes the background colors, we need to rebuild offscreen canvas
+        this.mapDataDirty = true;
         this.update();
       };
 
