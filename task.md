@@ -1,4 +1,4 @@
-# Idle RPG Task List
+# IdleVibeRPG Task List
 
 - [x] Project Setup <!-- id: 0 -->
   - [x] Initialize Vite + Phaser project <!-- id: 1 -->
