@@ -21,10 +21,21 @@ export class MapView {
     this.mapContainer.style.cursor = "crosshair";
     this.mapContainer.style.backgroundColor = "#000";
 
-    // Canvas Element
+    // Spacer for Virtual Scroll
+    this.spacer = document.createElement("div");
+    this.spacer.style.position = "absolute";
+    this.spacer.style.top = "0";
+    this.spacer.style.left = "0";
+    // Dimensions set in update()
+    this.mapContainer.appendChild(this.spacer);
+
+    // Canvas Element (Sticky Virtual Viewport)
     this.canvas = document.createElement("canvas");
     this.ctx = this.canvas.getContext("2d", { alpha: false }); // Optimize for no transparency
-    this.canvas.style.display = "block"; // Remove inline-block spacing
+    this.canvas.style.display = "block";
+    this.canvas.style.position = "sticky";
+    this.canvas.style.top = "0";
+    this.canvas.style.left = "0";
     this.mapContainer.appendChild(this.canvas);
 
     // Offscreen Canvas for static background (colors)
@@ -67,19 +78,24 @@ export class MapView {
   }
 
   bindEvents() {
-    // Scroll event for symbol culling updates
+    // Scroll event for rendering updates
     this.mapContainer.addEventListener("scroll", () => {
-      this.renderMainCanvas(); // Redraw main canvas (with culling) on scroll
+      this.renderMainCanvas();
     });
 
     // Mouse Move (Hover)
     this.canvas.addEventListener("mousemove", (e) => {
       const rect = this.canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      // Mouse relative to Canvas (Viewport)
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-      const tileX = Math.floor(x / this.zoomLevel);
-      const tileY = Math.floor(y / this.zoomLevel);
+      // Add scroll offset to get "World" pixels
+      const worldX = mouseX + this.mapContainer.scrollLeft;
+      const worldY = mouseY + this.mapContainer.scrollTop;
+
+      const tileX = Math.floor(worldX / this.zoomLevel);
+      const tileY = Math.floor(worldY / this.zoomLevel);
 
       const tile = mapManager.getTile(tileX, tileY);
 
@@ -98,7 +114,6 @@ export class MapView {
     });
 
     // Wheel Zoom
-    // Wheel Zoom
     this.mapContainer.addEventListener("wheel", (e) => {
       e.preventDefault(); // Always prevent scroll when over map
 
@@ -106,18 +121,25 @@ export class MapView {
       const delta = Math.sign(e.deltaY);
       const step = 2; // Smaller step
 
+      // Dynamic Min Zoom Calculation (Redundant but safe to keep fresh)
+      const containerWidth = this.mapContainer.clientWidth;
+      const containerHeight = this.mapContainer.clientHeight;
+      const minZoomX = containerWidth / mapManager.width;
+      const minZoomY = containerHeight / mapManager.height;
+      const safeMinZoom = Math.ceil(Math.max(minZoomX, minZoomY, 1));
+
       // Calculate new zoom
       let newZoom = oldZoom;
       if (delta < 0) {
         newZoom = Math.min(oldZoom + step, 64);
       } else {
-        newZoom = Math.max(oldZoom - step, 2);
+        newZoom = Math.max(oldZoom - step, safeMinZoom);
       }
 
       if (newZoom === oldZoom) return;
 
       // Calculate center in "World/Tile" coordinates
-      // The pixel visible at the center of the view relative to the canvas
+      // Center of Viewport + Scroll
       const viewCenterX =
         this.mapContainer.scrollLeft + this.mapContainer.clientWidth / 2;
       const viewCenterY =
@@ -128,21 +150,40 @@ export class MapView {
       const tileCenterY = viewCenterY / oldZoom;
 
       this.zoomLevel = newZoom;
-      this.update(); // Resizes canvas
+      this.update(); // Resizes spacer
 
       // Calculate new center in pixels
       const newViewCenterX = tileCenterX * newZoom;
       const newViewCenterY = tileCenterY * newZoom;
 
-      // New scroll position = New center - half viewport
+      // New scroll position
       this.mapContainer.scrollLeft =
         newViewCenterX - this.mapContainer.clientWidth / 2;
       this.mapContainer.scrollTop =
         newViewCenterY - this.mapContainer.clientHeight / 2;
     });
 
-    // Handle "click" to log or interact
-    // We need to distinguish click from drag
+    // Handle Resize Observer for both dynamic min zoom AND virtual canvas resizing
+    const resizeObserver = new ResizeObserver(() => {
+      // 1. Dynamic Min Zoom Logic
+      const containerWidth = this.mapContainer.clientWidth;
+      const containerHeight = this.mapContainer.clientHeight;
+      const minZoomX = containerWidth / mapManager.width;
+      const minZoomY = containerHeight / mapManager.height;
+      const safeMinZoom = Math.ceil(Math.max(minZoomX, minZoomY, 1));
+
+      if (this.zoomLevel < safeMinZoom) {
+        this.zoomLevel = safeMinZoom;
+      }
+
+      // 2. Virtual Canvas Resize
+      // Canvas always matches viewport size to save memory/gpu
+      // Note: We avoid setting width/height every frame if unchanged, but resize event implies change
+      this.update();
+    });
+    resizeObserver.observe(this.mapContainer);
+
+    // Handle "click"
     this.canvas.addEventListener("click", (e) => {
       if (!this.isDragging && this.hoverTile) {
         console.log("Clicked Tile:", this.hoverTile);
@@ -216,11 +257,22 @@ export class MapView {
     const name = typeInfo ? typeInfo.id : tile.type;
     const symbol = typeInfo ? typeInfo.symbol : "?";
 
-    // Calculate position relative to the mapContainer including scroll
-    // mapContainer is "relative", so absolute children are positioned relative to its padding box.
-    // If we want it at the mouse position (x,y from viewport), we need to adjust for container position and scroll.
+    // x, y are mouse client coordinates.
+    // Tooltip is inside mapContainer (relative).
     const containerRect = this.mapContainer.getBoundingClientRect();
 
+    // With sticky canvas, container scroll affects content, but tooltip position needs
+    // to track the mouse relative to the container *viewport*.
+    // However, if we append tooltip to mapContainer (which scrolls),
+    // we need to add scrollLeft/scrollTop to keep it at the mouse position relative to the *content*?
+    // Wait, if mapContainer scrolls, 'absolute' children move with scroll.
+    // The mouse event gives us client coordinates.
+
+    // We want the tooltip to float near the mouse cursor.
+    // Easiest is to position it relative to the visible viewport (fixed-ish behavior),
+    // OR calculated "absolute" position including scroll.
+
+    // Let's use absolute relative to the Scrollable Content.
     const relativeX = x - containerRect.left + this.mapContainer.scrollLeft;
     const relativeY = y - containerRect.top + this.mapContainer.scrollTop;
 
@@ -240,22 +292,37 @@ export class MapView {
   update() {
     this.renderSidebar();
 
-    const width = mapManager.width;
-    const height = mapManager.height;
+    const mapWidthTotal = mapManager.width * this.zoomLevel;
+    const mapHeightTotal = mapManager.height * this.zoomLevel;
 
-    // Resize Main Canvas
-    this.canvas.width = width * this.zoomLevel;
-    this.canvas.height = height * this.zoomLevel;
-    this.canvas.style.width = width * this.zoomLevel + "px";
-    this.canvas.style.height = height * this.zoomLevel + "px";
-    // Crucial: Override any global CSS that might squash the canvas
+    // 1. Resize Spacer (This creates the scrollbars)
+    this.spacer.style.width = mapWidthTotal + "px";
+    this.spacer.style.height = mapHeightTotal + "px";
+
+    // 2. Resize Canvas (Matches Viewport)
+    const viewportWidth = this.mapContainer.clientWidth || 800; // Fallback for headless/init
+    const viewportHeight = this.mapContainer.clientHeight || 600;
+
+    // Only resize canvas if changed to avoid flicker/perf hit (though 2d context survives)
+    if (
+      this.canvas.width !== viewportWidth ||
+      this.canvas.height !== viewportHeight
+    ) {
+      this.canvas.width = viewportWidth;
+      this.canvas.height = viewportHeight;
+      this.canvas.style.width = viewportWidth + "px";
+      this.canvas.style.height = viewportHeight + "px";
+      // Reset flags because context reset
+      this.ctx.imageSmoothingEnabled = false;
+    }
+
+    // Ensure styles to prevent squashing
     this.canvas.style.maxWidth = "none";
     this.canvas.style.maxHeight = "none";
-    this.canvas.style.minWidth = "0";
-    this.canvas.style.minHeight = "0";
-    this.canvas.style.flexShrink = "0";
 
-    // Resize Offscreen Canvas if needed (dimensions only map dimensions)
+    // 3. Offscreen Canvas (1:1 with Map Tiles)
+    const width = mapManager.width;
+    const height = mapManager.height;
     if (
       this.offscreenCanvas.width !== width ||
       this.offscreenCanvas.height !== height
@@ -327,57 +394,71 @@ export class MapView {
 
   // Renders visible portion of offscreen canvas + symbols to main canvas
   renderMainCanvas() {
-    this.ctx.imageSmoothingEnabled = false; // Keep sharp pixels (NO BLURRY)
+    this.ctx.imageSmoothingEnabled = false; // Ensure Sharpness
 
-    // 1. Draw scaled background
-    this.ctx.drawImage(
-      this.offscreenCanvas,
-      0,
-      0,
-      this.offscreenCanvas.width,
-      this.offscreenCanvas.height,
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height,
-    );
+    // Clear Canvas
+    this.ctx.fillStyle = "#000";
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // 2. Draw Symbols (Viewport Culling)
-    if (this.zoomLevel <= 10) return; // Skip symbols if zoomed out too far
+    // --- 1. Draw Background from Offscreen Canvas ---
+    // Source: Offscreen Canvas (500x500)
+    // Dest: Main Canvas (Viewport Size)
+    // We need to map ViewportRect -> WorldRect -> TileRect
 
-    const mapData = mapManager.getMapData();
-    const tiles = mapData.tiles;
-    if (!tiles) return;
-
-    // Calculate viewport in tile coordinates
     const scrollLeft = this.mapContainer.scrollLeft;
     const scrollTop = this.mapContainer.scrollTop;
-    const containerWidth = this.mapContainer.clientWidth;
-    const containerHeight = this.mapContainer.clientHeight;
+    // Note: canvas width/height IS the viewport width/height
+    const viewportWidth = this.canvas.width;
+    const viewportHeight = this.canvas.height;
 
-    const startX = Math.floor(scrollLeft / this.zoomLevel);
-    const startY = Math.floor(scrollTop / this.zoomLevel);
-    // Add buffer of 1-2 tiles to avoid popping
-    const endX = Math.min(
-      mapManager.width,
-      Math.ceil((scrollLeft + containerWidth) / this.zoomLevel) + 1,
-    );
-    const endY = Math.min(
-      mapManager.height,
-      Math.ceil((scrollTop + containerHeight) / this.zoomLevel) + 1,
+    // Calculate the generic Source Rectangle on the Offscreen Canvas
+    // sourceX = scrollLeft / zoom
+    const sourceX = scrollLeft / this.zoomLevel;
+    const sourceY = scrollTop / this.zoomLevel;
+    const sourceW = viewportWidth / this.zoomLevel;
+    const sourceH = viewportHeight / this.zoomLevel;
+
+    // Draw parameters
+    // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+    this.ctx.drawImage(
+      this.offscreenCanvas,
+      sourceX,
+      sourceY,
+      sourceW,
+      sourceH, // Source (Tiles)
+      0,
+      0,
+      viewportWidth,
+      viewportHeight, // Dest (Screen pixels)
     );
 
+    // --- 2. Draw Symbols (Viewport Culling) ---
+    if (this.zoomLevel <= 10) return;
+
+    // Calculate Tile Range visible in Viewport
+    // We already have sourceX/Y/W/H which ARE tile coordinates!
+    const startX = Math.floor(sourceX);
+    const startY = Math.floor(sourceY);
+    const endX = Math.ceil(sourceX + sourceW);
+    const endY = Math.ceil(sourceY + sourceH);
+
+    // Clamp
     const validStartX = Math.max(0, startX);
     const validStartY = Math.max(0, startY);
+    const validEndX = Math.min(mapManager.width, endX);
+    const validEndY = Math.min(mapManager.height, endY);
+
+    const tiles = mapManager.getMapData().tiles;
+    if (!tiles) return;
 
     const fontSize = Math.floor(this.zoomLevel * 0.7);
     this.ctx.font = `${fontSize}px sans-serif`;
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
-    this.ctx.fillStyle = "rgba(0,0,0,0.5)"; // Shadow?
+    this.ctx.fillStyle = "rgba(0,0,0,0.5)";
 
-    for (let y = validStartY; y < endY; y++) {
-      for (let x = validStartX; x < endX; x++) {
+    for (let y = validStartY; y < validEndY; y++) {
+      for (let x = validStartX; x < validEndX; x++) {
         const tile = tiles[y][x];
         if (this.hiddenTerrainTypes.has(tile.type)) continue;
 
@@ -386,10 +467,16 @@ export class MapView {
         );
         const symbol = typeInfo ? typeInfo.symbol : "?";
 
+        // Calculate Screen Position
+        // WorldPos = x * zoom
+        // ScreenPos = WorldPos - ScrollLeft
+        const screenX = x * this.zoomLevel - scrollLeft;
+        const screenY = y * this.zoomLevel - scrollTop;
+
         this.ctx.fillText(
           symbol,
-          x * this.zoomLevel + this.zoomLevel / 2,
-          y * this.zoomLevel + this.zoomLevel / 2,
+          screenX + this.zoomLevel / 2,
+          screenY + this.zoomLevel / 2,
         );
       }
     }
