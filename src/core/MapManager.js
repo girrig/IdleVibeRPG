@@ -45,6 +45,10 @@ export class MapManager {
   }
 
   generateMap(options = {}) {
+    if (options.newSeed) {
+      this.seed = Date.now();
+    }
+
     const { scale = 0.02, seaLevel = -0.2, moistureOffset = 0 } = options;
 
     this.tiles = [];

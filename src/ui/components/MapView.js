@@ -179,9 +179,6 @@ export class MapView {
     // Render Sidebar
     this.renderSidebar();
 
-    // Zoom Controls (Moved to mapContainer)
-    this.renderControls();
-
     const grid = document.createElement("div");
     // grid.style.flex = "1"; // Remove flex, let it size by content
     grid.style.width = "fit-content"; // Ensure it expands to hold all columns
@@ -239,56 +236,6 @@ export class MapView {
     this.mapContainer.appendChild(grid);
   }
 
-  renderControls() {
-    const controls = document.createElement("div");
-    controls.style.position = "sticky";
-    controls.style.bottom = "20px";
-    controls.style.right = "20px";
-    controls.style.alignSelf = "flex-end";
-    controls.style.marginRight = "20px";
-    controls.style.marginBottom = "20px";
-    controls.style.marginLeft = "auto"; // Push to right
-    controls.style.display = "flex";
-    controls.style.zIndex = "100";
-
-    // Position relative to mapContainer
-    // Since mapContainer has overflow:auto and relative, sticky works.
-    // Actually, sticky needs to be inside the flow.
-    // If we append it after grid, it might be at bottom.
-    // Let's use absolute positioning relative to mapContainer which is relative.
-    controls.style.position = "absolute";
-    controls.style.bottom = "20px";
-    controls.style.right = "20px";
-
-    const zoomInBtn = this.createZoomButton("+", () => {
-      this.zoomLevel = Math.min(this.zoomLevel + 4, this.maxZoom);
-      this.update();
-    });
-
-    const zoomOutBtn = this.createZoomButton("-", () => {
-      this.zoomLevel = Math.max(this.zoomLevel - 4, this.minZoom);
-      this.update();
-    });
-
-    controls.appendChild(zoomInBtn);
-    controls.appendChild(zoomOutBtn);
-    this.mapContainer.appendChild(controls);
-  }
-
-  createZoomButton(label, onClick) {
-    const btn = document.createElement("button");
-    btn.innerText = label;
-    btn.style.width = "40px";
-    btn.style.height = "40px";
-    btn.style.fontSize = "24px";
-    btn.style.cursor = "pointer";
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      onClick();
-    };
-    return btn;
-  }
-
   renderSidebar() {
     const header = document.createElement("h3");
     header.innerText = "Filter Terrain";
@@ -314,7 +261,7 @@ export class MapView {
     regenBtn.style.borderRadius = "4px";
     regenBtn.onclick = () => {
       if (confirm("Are you sure? This will replace the current world map.")) {
-        mapManager.generateMap();
+        mapManager.generateMap({ newSeed: true });
         if (window.gameState) {
           window.gameState.saveGame();
         }
