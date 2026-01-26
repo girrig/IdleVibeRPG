@@ -333,8 +333,10 @@ export class MapView {
     }
 
     if (this.mapDataDirty) {
-      this.renderOffscreenCanvas();
-      this.mapDataDirty = false;
+      const success = this.renderOffscreenCanvas();
+      if (success) {
+        this.mapDataDirty = false;
+      }
     }
 
     this.renderMainCanvas();
@@ -347,7 +349,7 @@ export class MapView {
     const mapData = mapManager.getMapData();
     const tiles = mapData.tiles;
 
-    if (!tiles || tiles.length === 0) return;
+    if (!tiles || tiles.length === 0) return false;
 
     // Create ImageData
     const imageData = this.offscreenCtx.createImageData(width, height);
@@ -390,6 +392,7 @@ export class MapView {
     }
 
     this.offscreenCtx.putImageData(imageData, 0, 0);
+    return true;
   }
 
   // Renders visible portion of offscreen canvas + symbols to main canvas
@@ -397,7 +400,7 @@ export class MapView {
     this.ctx.imageSmoothingEnabled = false; // Ensure Sharpness
 
     // Clear Canvas
-    this.ctx.fillStyle = "#000";
+    this.ctx.fillStyle = "#111"; // Dark grey instead of pitch black
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // --- 1. Draw Background from Offscreen Canvas ---
