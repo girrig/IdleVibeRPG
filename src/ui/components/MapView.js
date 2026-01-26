@@ -25,6 +25,8 @@ export class MapView {
     this.mapContainer.style.userSelect = "none";
     this.mapContainer.style.display = "flex"; // To center grid if small? or just block.
     this.mapContainer.style.flexDirection = "column";
+    // Prevent rubber-banding/bouncing which reveals background
+    this.mapContainer.style.overscrollBehavior = "none";
 
     // Sidebar Container
     this.sidebar = document.createElement("div");
@@ -46,8 +48,14 @@ export class MapView {
 
     // Map State
     this.zoomLevel = 24; // Default tile size
-    this.minZoom = 12;
+    this.minZoom = 12; // Will be updated dynamically
     this.maxZoom = 64;
+
+    // Monitor container size to update minZoom
+    this.resizeObserver = new ResizeObserver(() => {
+      this.updateMinZoom();
+    });
+    this.resizeObserver.observe(this.mapContainer);
 
     // Drag State
     this.isDragging = false;
@@ -72,6 +80,31 @@ export class MapView {
       },
       { passive: false },
     );
+  }
+
+  updateMinZoom() {
+    // Calculate min zoom required to cover the container
+    const containerWidth = this.mapContainer.clientWidth;
+    const containerHeight = this.mapContainer.clientHeight;
+
+    // Need mapManager dimensions
+    // If not rendered yet, can't calc accurately or need direct access
+    // But mapManager is imported.
+    const tilesX = mapManager.width;
+    const tilesY = mapManager.height;
+
+    if (tilesX === 0 || tilesY === 0) return;
+
+    const minZoomX = Math.ceil(containerWidth / tilesX);
+    const minZoomY = Math.ceil(containerHeight / tilesY);
+
+    this.minZoom = Math.max(12, Math.max(minZoomX, minZoomY));
+
+    // Enforce current zoom
+    if (this.zoomLevel < this.minZoom) {
+      this.zoomLevel = this.minZoom;
+      this.update();
+    }
   }
 
   bindDragEvents() {
