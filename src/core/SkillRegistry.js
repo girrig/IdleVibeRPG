@@ -1,5 +1,6 @@
 import { getItemDefinition } from "./ItemRegistry";
 import { SKILL_COLORS, GAME_CONFIG } from "./Constants";
+import { mapManager } from "./MapManager";
 
 export const SKILL_DEFINITIONS = {
   MINING: {
@@ -220,6 +221,148 @@ export const SKILL_DEFINITIONS = {
 
       gameState.inventory.addItem(targetId, amount);
       char.gainXp("smithing", option.xp);
+    },
+  },
+  EXPLORING: {
+    id: "EXPLORING",
+    name: "Exploring",
+    icon: "🧭",
+    color: SKILL_COLORS.EXPLORING,
+    options: {
+      wander: {
+        name: "Wander",
+        level: 1,
+        xp: 15,
+        icon: "🥾",
+      },
+      // Target Specific Biomes
+      find_grassland: {
+        name: "Find Grassland",
+        level: 1,
+        xp: 20,
+        icon: "🌾",
+        biomeId: "TEMPERATE_GRASSLAND",
+      },
+      find_forest: {
+        name: "Find Forest",
+        level: 5,
+        xp: 30,
+        icon: "🌲",
+        biomeId: "TEMPERATE_DECIDUOUS_FOREST",
+      },
+      find_desert: {
+        name: "Find Desert",
+        level: 10,
+        xp: 40,
+        icon: "🌵",
+        biomeId: "SUBTROPICAL_DESERT",
+      },
+      find_mountain: {
+        name: "Find Mountain",
+        level: 20,
+        xp: 60,
+        icon: "⛰️",
+        biomeId: "ALPINE",
+      },
+      find_ocean: {
+        name: "Find Ocean",
+        level: 30,
+        xp: 80,
+        icon: "🌊",
+        biomeId: "OCEAN",
+      },
+    },
+    interval: 3000,
+    action: (gameState, char) => {
+      const targetId = char.currentActivity.target;
+      const option = SKILL_DEFINITIONS.EXPLORING.options[targetId];
+
+      let nextPos = null;
+      let isSeeking = false;
+
+      // Logic: If target is specific biome, try to move towards it
+      if (option && option.biomeId) {
+        isSeeking = true;
+        const { x, y } = char.position;
+
+        // 1. Are we already there?
+        const currentTile = mapManager.getTile(x, y);
+        if (currentTile && currentTile.type === option.biomeId) {
+          // We found it! Just wander inside it or stop?
+          // Let's wander to find MORE of it (XP farming)
+        }
+
+        // 2. Scan for nearest KNOWN tile of this type
+        const target = mapManager.findNearestExploredTile(option.biomeId, x, y);
+
+        if (target) {
+          // Move towards target
+          // Simple step towards delta
+          const dx = Math.sign(target.x - x);
+          const dy = Math.sign(target.y - y);
+
+          // Apply movement (Grid based, no diagonal for simplicity or mix?)
+          // Let's do Manhattan steps
+          if (dx !== 0 && Math.random() < 0.5) {
+            nextPos = { x: x + dx, y: y };
+          } else if (dy !== 0) {
+            nextPos = { x: x, y: y + dy };
+          } else if (dx !== 0) {
+            nextPos = { x: x + dx, y: y };
+          }
+        }
+      }
+
+      // Fallback: Random Wander (if not seeking or no target found)
+      if (!nextPos) {
+        const { x, y } = char.position;
+        const neighbors = [
+          { x: x + 1, y: y },
+          { x: x - 1, y: y },
+          { x: x, y: y + 1 },
+          { x: x, y: y - 1 },
+        ];
+        const validNeighbors = neighbors.filter(
+          (n) =>
+            n.x >= 0 &&
+            n.x < mapManager.width &&
+            n.y >= 0 &&
+            n.y < mapManager.height,
+        );
+        if (validNeighbors.length > 0) {
+          nextPos =
+            validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
+        }
+      }
+
+      if (!nextPos) return;
+
+      // Move
+      char.position = nextPos;
+
+      // Explore
+      const revealed = mapManager.exploreTile(nextPos.x, nextPos.y);
+
+      // XP Logic
+      // If we were seeking and found the biome (entered it), maybe bonus logic?
+      // For now, keep simple: Bonus for new tiles.
+
+      const newTile = mapManager.getTile(nextPos.x, nextPos.y);
+      let xpGain = Math.floor(option.xp * 0.1); // Default low XP (walking)
+
+      if (revealed) {
+        xpGain = option.xp; // Full XP for discovery
+        gameState.triggerNotification("Discovered new area!", "success");
+      }
+
+      // Bonus if we are standing on the target biome type (farming)
+      if (isSeeking && newTile.type === option.biomeId) {
+        xpGain = Math.max(xpGain, Math.floor(option.xp * 0.5)); // 50% XP for patrolling target biome
+      }
+
+      if (xpGain > 0) {
+        char.gainXp("exploring", xpGain);
+      }
     },
   },
 };

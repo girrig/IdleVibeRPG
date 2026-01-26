@@ -14,14 +14,76 @@ export class CharacterTasksPanel {
     const goalSection = document.createElement("div");
     goalSection.className = "char-detail-section char-goal-section";
 
-    // Check if we need to render Active or Empty state
+    // Check if we need to render Active Goal, Active Activity (Non-Goal), or Empty state
     if (char.activeGoal) {
       CharacterTasksPanel.renderActiveState(goalSection, char, uiManager);
+    } else if (char.currentActivity) {
+      CharacterTasksPanel.renderActivityState(goalSection, char, uiManager);
     } else {
       CharacterTasksPanel.renderEmptyState(goalSection, char, uiManager);
     }
 
     container.appendChild(goalSection);
+  }
+
+  static renderActivityState(goalSection, char, uiManager) {
+    // This is for activities WITHOUT a Goal (e.g. Exploring)
+    const activity = char.currentActivity;
+
+    // Try to find definition in Skills or Items
+    // Ideally we know the skill definition from SkillRegistry
+    // We can iterate skills to look for options? Or pass metadata?
+    // Since activity.target is the ID.
+
+    let icon = "⚡";
+    let name = activity.target;
+
+    // Hacky lookup? Or standard?
+    // Exploring options are in SkillRegistry.
+    // We can try to import SKILL_DEFINITIONS or just heuristics.
+    // Let's assume the icon/name is sufficient or we can fetch it if we imports.
+    // We imported ITEM_DEFINITIONS. We can import SKILL_DEFINITIONS too?
+    // Or just display the target string formatted.
+
+    const formattedName = name
+      .split("_")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+    const headerHtml = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="section-title" style="margin-bottom: 0;">Current Activity</div>
+        </div>`;
+
+    goalSection.innerHTML = `
+            ${headerHtml}
+            <div class="active-goal-card" style="margin-bottom: 10px; position: relative; padding-top: 15px; border-color: #fbbf24;">
+                <button class="btn-stop-activity" style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 6px; color: #fca5a5; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; font-size: 14px; padding: 0;" title="Stop Activity">⏹</button>
+                <div class="goal-info">
+                    <span class="goal-icon">${icon}</span>
+                    <div class="goal-text">
+                        <div class="goal-name">${formattedName}</div>
+                        <div style="font-size: 11px; color: #94a3b8;">Ongoing...</div>
+                    </div>
+                </div>
+                 <div class="goal-progress-bar-bg" style="background: rgba(255,255,255,0.05);">
+                    <div class="goal-progress-bar-fill" style="width: 100%; animation: pulse 2s infinite; background: #fbbf24;"></div>
+                </div>
+            </div>
+            
+             <div class="goal-queue-list" style="margin-top: 10px;">
+                <div style="font-size: 11px; color: #64748b; font-style: italic;">
+                    To set specific goals or queues, use the "+ New Task" button when idle.
+                </div>
+             </div>
+      `;
+
+    // Bind Stop
+    goalSection
+      .querySelector(".btn-stop-activity")
+      .addEventListener("click", () => {
+        char.stopActivity();
+        uiManager.renderMainWindow();
+      });
   }
 
   static renderActiveState(goalSection, char, uiManager) {

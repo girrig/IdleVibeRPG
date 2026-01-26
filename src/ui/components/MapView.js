@@ -340,6 +340,24 @@ export class MapView {
     }
 
     this.renderMainCanvas();
+
+    // Initial Center (Delayed to ensure layout)
+    if (!this.hasCentered) {
+      setTimeout(() => this.centerOnHome(), 50);
+    }
+  }
+
+  centerOnHome() {
+    const viewportWidth = this.mapContainer.clientWidth;
+    const viewportHeight = this.mapContainer.clientHeight;
+
+    if (viewportWidth > 0 && viewportHeight > 0) {
+      const centerX = (mapManager.width * this.zoomLevel) / 2;
+      const centerY = (mapManager.height * this.zoomLevel) / 2;
+      this.mapContainer.scrollLeft = centerX - viewportWidth / 2;
+      this.mapContainer.scrollTop = centerY - viewportHeight / 2;
+      this.hasCentered = true;
+    }
   }
 
   // Renders terrain colors to the small offscreen canvas (once per dataset change)
@@ -513,42 +531,98 @@ export class MapView {
     };
     this.sidebar.appendChild(regenBtn);
 
-    // Filters
-    Object.values(TERRAIN_TYPES).forEach((type) => {
+    // 1. Home / Specials
+    const homeType = TERRAIN_TYPES.HOME;
+    if (homeType) {
       const item = document.createElement("div");
       item.style.display = "flex";
       item.style.alignItems = "center";
       item.style.padding = "4px";
       item.style.cursor = "pointer";
-      item.style.color = "#fff";
+      item.style.color = "#FFD700"; // Gold
+      item.style.fontWeight = "bold";
+      item.style.marginBottom = "5px";
 
-      const isHidden = this.hiddenTerrainTypes.has(type.id);
-      item.style.opacity = isHidden ? "0.5" : "1";
+      item.onclick = () => this.centerOnHome();
 
-      item.onclick = () => {
-        if (isHidden) this.hiddenTerrainTypes.delete(type.id);
-        else this.hiddenTerrainTypes.add(type.id);
-
-        // Since showing/hiding changes the background colors, we need to rebuild offscreen canvas
-        this.mapDataDirty = true;
-        this.update();
-      };
+      // Add hover effect
+      item.onmouseenter = () =>
+        (item.style.backgroundColor = "rgba(255, 255, 255, 0.1)");
+      item.onmouseleave = () => (item.style.backgroundColor = "transparent");
 
       const box = document.createElement("div");
       box.style.width = "16px";
       box.style.height = "16px";
-      box.style.minWidth = "16px"; // Extra safety
-      box.style.flexShrink = "0"; // Prevent shrinking
-      box.style.backgroundColor = type.color;
+      box.style.minWidth = "16px";
+      box.style.flexShrink = "0";
+      box.style.backgroundColor = homeType.color;
       box.style.marginRight = "8px";
+      box.style.border = "1px solid #fff"; // Highlight it
 
       const text = document.createElement("span");
-      text.innerText = type.id;
+      text.innerText = "Home (Click to Center)";
       text.style.fontSize = "12px";
 
       item.appendChild(box);
       item.appendChild(text);
       this.sidebar.appendChild(item);
+    }
+
+    // Separator
+    const sep = document.createElement("hr");
+    sep.style.borderColor = "rgba(255,255,255,0.1)";
+    sep.style.margin = "10px 0";
+    this.sidebar.appendChild(sep);
+
+    // Filters (Biomes)
+    const sortedTypes = Object.values(TERRAIN_TYPES)
+      .filter((t) => t.id !== "HOME")
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    sortedTypes.forEach((type) => {
+      this.createSidebarItem(type);
     });
+  }
+
+  createSidebarItem(type, labelOverride = null, isHeader = false) {
+    const item = document.createElement("div");
+    item.style.display = "flex";
+    item.style.alignItems = "center";
+    item.style.padding = "4px";
+    item.style.cursor = "pointer";
+    item.style.color = "#fff";
+
+    if (isHeader) {
+      item.style.fontWeight = "bold";
+      item.style.color = "#FFD700";
+    }
+
+    const isHidden = this.hiddenTerrainTypes.has(type.id);
+    item.style.opacity = isHidden ? "0.5" : "1";
+
+    item.onclick = () => {
+      if (isHidden) this.hiddenTerrainTypes.delete(type.id);
+      else this.hiddenTerrainTypes.add(type.id);
+
+      // Since showing/hiding changes the background colors, we need to rebuild offscreen canvas
+      this.mapDataDirty = true;
+      this.update();
+    };
+
+    const box = document.createElement("div");
+    box.style.width = "16px";
+    box.style.height = "16px";
+    box.style.minWidth = "16px"; // Extra safety
+    box.style.flexShrink = "0"; // Prevent shrinking
+    box.style.backgroundColor = type.color;
+    box.style.marginRight = "8px";
+
+    const text = document.createElement("span");
+    text.innerText = labelOverride || type.id;
+    text.style.fontSize = "12px";
+
+    item.appendChild(box);
+    item.appendChild(text);
+    this.sidebar.appendChild(item);
   }
 }

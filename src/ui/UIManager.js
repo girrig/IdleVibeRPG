@@ -11,6 +11,8 @@ import { MapView } from "./components/MapView";
 
 import { ITEM_DEFINITIONS } from "../core/ItemRegistry";
 import { sourceRegistry } from "../core/SourceRegistry";
+import { SKILL_DEFINITIONS } from "../core/SkillRegistry";
+import { goalManager } from "../core/GoalManager";
 
 // Helper
 function getItemDefinition(id) {
@@ -82,8 +84,8 @@ export class UIManager {
       <div class="sidebar-item" id="nav-equip" title="Equipment" style="font-size: 24px;">🛡️</div>
       <div class="sidebar-item" id="nav-skills" title="Skills" style="font-size: 24px;">⭐</div>
       <div class="sidebar-item" id="nav-talents" title="Talents" style="font-size: 24px;">🌳</div>
-      <div class="sidebar-item" id="nav-map" title="Map" style="font-size: 24px;">🗺️</div>
       <div class="sidebar-item" id="nav-store" title="Store" style="font-size: 24px;">🏪</div>
+      <div class="sidebar-item" id="nav-map" title="Map" style="font-size: 24px;">🗺️</div>
       <div class="sidebar-item" id="nav-settings" title="Settings" style="font-size: 24px;">⚙️</div>
     `;
     this.container.appendChild(this.sidebar);
@@ -235,45 +237,103 @@ export class UIManager {
     modal.className = "game-modal";
 
     let searchTerm = "";
+    let activeTab = "ITEMS"; // ITEMS or EXPLORATION
+
+    // Styles for tabs
+    const tabStyle = `
+      padding: 8px 16px; 
+      cursor: pointer; 
+      border-bottom: 2px solid transparent; 
+      color: #aaa; 
+      font-weight: bold;
+    `;
+    const activeTabStyle = `
+      padding: 8px 16px; 
+      cursor: pointer; 
+      border-bottom: 2px solid #FFD700; 
+      color: #fff; 
+      font-weight: bold;
+    `;
 
     const render = () => {
-      // Filter Items
-      const allItems = Object.entries(ITEM_DEFINITIONS);
-      const filtered = allItems
-        .filter(([id, def]) => {
-          const char = gameState.characters[this.selectedCharIndex];
-          const source = sourceRegistry.getSource(id);
+      let gridHtml = "";
 
-          // Check Requirements
-          if (source && source.type === "SKILL") {
-            const skillId = source.skillId.toLowerCase();
-            const reqLevel = source.reqLevel;
-            const charSkill = char.skills[skillId];
-            const charLevel = charSkill ? charSkill.level : 0;
+      if (activeTab === "ITEMS") {
+        // Filter Items
+        const allItems = Object.entries(ITEM_DEFINITIONS);
+        const filtered = allItems
+          .filter(([id, def]) => {
+            const char = gameState.characters[this.selectedCharIndex];
+            const source = sourceRegistry.getSource(id);
 
-            if (charLevel < reqLevel) {
-              return false; // Hide inaccessible
+            // Check Requirements
+            if (source && source.type === "SKILL") {
+              const skillId = source.skillId.toLowerCase();
+              const reqLevel = source.reqLevel;
+              const charSkill = char.skills[skillId];
+              const charLevel = charSkill ? charSkill.level : 0;
+
+              if (charLevel < reqLevel) {
+                return false; // Hide inaccessible
+              }
             }
-          }
 
-          const matchesSearch = def.name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase());
-          return matchesSearch;
-        })
-        .sort(([, a], [, b]) => a.name.localeCompare(b.name));
+            const matchesSearch = def.name
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase());
+            return matchesSearch;
+          })
+          .sort(([, a], [, b]) => a.name.localeCompare(b.name));
 
-      // Grid HTML
-      const gridHtml = filtered
-        .map(([id, def]) => {
-          return `
-              <div class="goal-item-card" data-id="${id}" style="cursor: pointer;">
-                  <div class="goal-item-icon">${def.icon}</div>
-                  <div class="goal-item-name">${def.name}</div>
-              </div>
-          `;
-        })
-        .join("");
+        // Grid HTML
+        gridHtml = filtered
+          .map(([id, def]) => {
+            return `
+                  <div class="goal-item-card" data-id="${id}" style="cursor: pointer;">
+                      <div class="goal-item-icon">${def.icon}</div>
+                      <div class="goal-item-name">${def.name}</div>
+                  </div>
+              `;
+          })
+          .join("");
+      } else if (activeTab === "EXPLORATION") {
+        // Exploring Options
+        const exploring = SKILL_DEFINITIONS.EXPLORING;
+        if (exploring && exploring.options) {
+          const char = gameState.characters[this.selectedCharIndex];
+          const charLevel = char.skills.exploring
+            ? char.skills.exploring.level
+            : 1;
+
+          const options = Object.entries(exploring.options)
+            .filter(([id, opt]) => {
+              // Level Check
+              if (opt.level > charLevel) return false;
+
+              // Search Check
+              if (
+                searchTerm &&
+                !opt.name.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+                return false;
+
+              return true;
+            })
+            .sort((a, b) => a[1].level - b[1].level); // Sort by level
+
+          gridHtml = options
+            .map(([id, opt]) => {
+              return `
+                  <div class="goal-item-card" data-id="${id}" style="cursor: pointer; border-color: ${SKILL_DEFINITIONS.EXPLORING.color}">
+                      <div class="goal-item-icon">${opt.icon}</div>
+                      <div class="goal-item-name">${opt.name}</div>
+                      <div style="font-size: 10px; color: #888;">Lvl ${opt.level}</div>
+                  </div>
+                 `;
+            })
+            .join("");
+        }
+      }
 
       return gridHtml;
     };
@@ -281,10 +341,16 @@ export class UIManager {
     modal.innerHTML = `
         <div class="modal-content modal-lg" style="max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
             <div class="modal-header">
-                <h2>Select Target Item</h2>
+                <h2>Select Activity</h2>
                 <button class="btn-close">×</button>
             </div>
             
+            <!-- Tabs -->
+            <div style="display: flex; gap: 10px; padding: 0 15px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;">
+                <div id="tab-items" style="${activeTab === "ITEMS" ? activeTabStyle : tabStyle}">Items</div>
+                <div id="tab-exploration" style="${activeTab === "EXPLORATION" ? activeTabStyle : tabStyle}">Exploration</div>
+            </div>
+
             <div class="quantity-selector-container">
                 <label for="goal-quantity-input" class="quantity-label">Target Quantity:</label>
                 <!-- Presets First -->
@@ -302,7 +368,7 @@ export class UIManager {
                 </div>
                 
                 <!-- Search Bar Inline (Far Right) -->
-                <input type="text" class="search-bar" placeholder="Search items..." id="item-search-input">
+                <input type="text" class="search-bar" placeholder="Search..." id="item-search-input">
             </div>
 
              <div class="goals-grid" id="goals-grid-container">
@@ -320,6 +386,23 @@ export class UIManager {
         grid.innerHTML = render();
         bindGridEvents();
       }
+
+      // Update Tab Styles
+      const tabItems = modal.querySelector("#tab-items");
+      const tabExpl = modal.querySelector("#tab-exploration");
+      if (tabItems)
+        tabItems.style.cssText =
+          activeTab === "ITEMS" ? activeTabStyle : tabStyle;
+      if (tabExpl)
+        tabExpl.style.cssText =
+          activeTab === "EXPLORATION" ? activeTabStyle : tabStyle;
+
+      // Toggle Quantity Selector
+      const qtyContainer = modal.querySelector(".quantity-selector-container");
+      if (qtyContainer) {
+        qtyContainer.style.display =
+          activeTab === "EXPLORATION" ? "none" : "flex";
+      }
     };
 
     // Events
@@ -331,6 +414,16 @@ export class UIManager {
     modal.querySelector(".btn-close").addEventListener("click", close);
     modal.addEventListener("click", (e) => {
       if (e.target === modal) close();
+    });
+
+    // Tabs
+    modal.querySelector("#tab-items").addEventListener("click", () => {
+      activeTab = "ITEMS";
+      updateGrid();
+    });
+    modal.querySelector("#tab-exploration").addEventListener("click", () => {
+      activeTab = "EXPLORATION";
+      updateGrid();
     });
 
     const qtyInput = modal.querySelector("#goal-quantity-input");
@@ -401,11 +494,22 @@ export class UIManager {
       modal.querySelectorAll(".goal-item-card").forEach((el) => {
         el.addEventListener("click", () => {
           const id = el.dataset.id;
-          // Use currentQty state or input value
-          // If input is showing, use input value. If X is showing with number, use currentQty.
-          // Actually input value should be in sync if we managing it correctly.
           const qty = parseInt(qtyInput.value, 10) || currentQty || 1;
-          onSelect(id, qty);
+
+          // If Exploration, we are selecting a skill option directly.
+          if (activeTab === "EXPLORATION") {
+            // The id is the option key (e.g., 'find_forest')
+            // We need to trigger the Exploring skill with this target
+            this.handleStartActivity("EXPLORING", id, 0);
+          } else {
+            // Standard Item Selection - let the system decide skill?
+            // Existing UIManager passes id to onSelect... wait.
+            // The original logic called onSelect(id, qty).
+            // onSelect was passed from CharacterDetail.
+            // Let's see how onSelect handles it.
+            onSelect(id, qty);
+          }
+
           close();
         });
       });
@@ -418,12 +522,26 @@ export class UIManager {
     searchInput.focus();
   }
 
-  handleStartActivity(skillId, targetId, quantity = 1) {
+  handleStartActivity(skill, target, quantity) {
     const char = gameState.characters[this.selectedCharIndex];
     if (!char) return;
 
-    char.startActivity(skillId, targetId, quantity);
-    gameState.notifyListeners(); // Will trigger update()
+    // For Exploring: JUST start the activity.
+    // We don't create a 'Goal' because goals imply Item + Quantity.
+    if (skill === "EXPLORING") {
+      // Clear active goal so the UI switches to "Activity Mode"
+      if (char.activeGoal) {
+        goalManager.clearGoal(gameState, char);
+      }
+
+      char.startActivity(skill, target, 0); // 0 = Infinite
+      this.renderMainWindow();
+      return;
+    }
+
+    // Default Fallback
+    char.startActivity(skill, target, quantity);
+    this.renderMainWindow();
   }
 
   update() {

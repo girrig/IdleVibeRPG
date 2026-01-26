@@ -47,6 +47,8 @@ export const TERRAIN_TYPES = {
   },
 
   // SPECIAL
+  // SPECIAL
+  HOME: { id: "HOME", color: "#FFD700", symbol: "🏠" },
   SWAMP: { id: "SWAMP", color: "#2f4f4f", symbol: "🐊" },
 };
 
@@ -130,6 +132,60 @@ export class MapManager {
 
     // Post-processing: Remove small biomes
     this.cleanupBiomes(options.minBiomeSize || 50, [TERRAIN_TYPES.BEACH.id]);
+
+    // Check for Safe Start (Center)
+    const centerX = Math.floor(this.width / 2);
+    const centerY = Math.floor(this.height / 2);
+
+    // Safety check for infinite recursion
+    if (!options.retryCount) options.retryCount = 0;
+
+    if (this.tiles[centerY] && this.tiles[centerY][centerX]) {
+      const centerType = this.tiles[centerY][centerX].type;
+      const waterTypes = [
+        TERRAIN_TYPES.OCEAN.id,
+        TERRAIN_TYPES.SHALLOW_OCEAN.id,
+      ];
+
+      if (waterTypes.includes(centerType)) {
+        if (options.retryCount < 50) {
+          console.log("Starting in water, regenerating map...");
+          this.generateMap({
+            ...options,
+            newSeed: true,
+            retryCount: options.retryCount + 1,
+          });
+          return;
+        } else {
+          console.warn(
+            "Could not find safe start after 50 attempts. Forcing land.",
+          );
+          this.tiles[centerY][centerX].type = TERRAIN_TYPES.BEACH.id; // Emergency land
+        }
+      }
+
+      // Mark Home as Explored and set Type
+      this.tiles[centerY][centerX].explored = true;
+      this.tiles[centerY][centerX].type = TERRAIN_TYPES.HOME.id;
+
+      // Mark neighbors explored
+      const neighbors = [
+        { x: centerX + 1, y: centerY },
+        { x: centerX - 1, y: centerY },
+        { x: centerX, y: centerY + 1 },
+        { x: centerX, y: centerY - 1 },
+        { x: centerX + 1, y: centerY + 1 },
+        { x: centerX - 1, y: centerY - 1 },
+        { x: centerX + 1, y: centerY - 1 },
+        { x: centerX - 1, y: centerY + 1 },
+      ];
+
+      neighbors.forEach((n) => {
+        if (this.tiles[n.y] && this.tiles[n.y][n.x]) {
+          this.tiles[n.y][n.x].explored = true;
+        }
+      });
+    }
   }
 
   // Identifies connected regions of same type.
@@ -254,20 +310,20 @@ export class MapManager {
 
     // --- WATER LEVEL ---
     if (elevation < seaLevel - 0.25) {
-      return { x, y, type: TERRAIN_TYPES.OCEAN.id, explored: true };
+      return { x, y, type: TERRAIN_TYPES.OCEAN.id, explored: false };
     }
     if (elevation < seaLevel) {
-      return { x, y, type: TERRAIN_TYPES.SHALLOW_OCEAN.id, explored: true };
+      return { x, y, type: TERRAIN_TYPES.SHALLOW_OCEAN.id, explored: false };
     }
     if (elevation < seaLevel + 0.05) {
-      return { x, y, type: TERRAIN_TYPES.BEACH.id, explored: true };
+      return { x, y, type: TERRAIN_TYPES.BEACH.id, explored: false };
     }
 
     // --- MOUNTAINS ---
     if (elevation > 0.8) {
       if (temperature < 0)
-        return { x, y, type: TERRAIN_TYPES.ICE_SHEET.id, explored: true }; // High peaks
-      return { x, y, type: TERRAIN_TYPES.ALPINE.id, explored: true };
+        return { x, y, type: TERRAIN_TYPES.ICE_SHEET.id, explored: false }; // High peaks
+      return { x, y, type: TERRAIN_TYPES.ALPINE.id, explored: false };
     }
 
     // --- LAND BIOMES (Whittaker Diagram) ---
@@ -284,10 +340,10 @@ export class MapManager {
     if (temperature < -0.3) {
       // COLD
       if (adjMoisture < -0.3)
-        return { x, y, type: TERRAIN_TYPES.POLAR_DESERT.id, explored: true };
+        return { x, y, type: TERRAIN_TYPES.POLAR_DESERT.id, explored: false };
       if (adjMoisture < 0.3)
-        return { x, y, type: TERRAIN_TYPES.TUNDRA.id, explored: true };
-      return { x, y, type: TERRAIN_TYPES.BOREAL_FOREST.id, explored: true };
+        return { x, y, type: TERRAIN_TYPES.TUNDRA.id, explored: false };
+      return { x, y, type: TERRAIN_TYPES.BOREAL_FOREST.id, explored: false };
     } else if (temperature < 0.3) {
       // TEMPERATE
       if (adjMoisture < -0.4)
@@ -295,27 +351,27 @@ export class MapManager {
           x,
           y,
           type: TERRAIN_TYPES.TEMPERATE_DESERT.id,
-          explored: true,
+          explored: false,
         };
       if (adjMoisture < 0.2)
         return {
           x,
           y,
           type: TERRAIN_TYPES.TEMPERATE_GRASSLAND.id,
-          explored: true,
+          explored: false,
         };
       if (adjMoisture < 0.6)
         return {
           x,
           y,
           type: TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id,
-          explored: true,
+          explored: false,
         };
       return {
         x,
         y,
         type: TERRAIN_TYPES.TEMPERATE_RAINFOREST.id,
-        explored: true,
+        explored: false,
       }; // Or Swamp?
     } else {
       // HOT
@@ -324,20 +380,20 @@ export class MapManager {
           x,
           y,
           type: TERRAIN_TYPES.SUBTROPICAL_DESERT.id,
-          explored: true,
+          explored: false,
         }; // Subtropical Desert
       if (adjMoisture < 0.2)
         return {
           x,
           y,
           type: TERRAIN_TYPES.TROPICAL_SAVANNA.id,
-          explored: true,
+          explored: false,
         };
       return {
         x,
         y,
         type: TERRAIN_TYPES.TROPICAL_RAINFOREST.id,
-        explored: true,
+        explored: false,
       };
     }
   }
@@ -354,6 +410,69 @@ export class MapManager {
       return this.tiles[y][x];
     }
     return null;
+  }
+
+  exploreTile(x, y) {
+    const tile = this.getTile(x, y);
+    if (tile && !tile.explored) {
+      tile.explored = true;
+      return true;
+    }
+    return false;
+  }
+
+  // Find nearest explored tile of a specific type (BFS)
+  findNearestExploredTile(typeId, startX, startY) {
+    const visited = new Set();
+    const queue = [{ x: startX, y: startY, dist: 0 }];
+    visited.add(`${startX},${startY}`);
+
+    // Map limits
+    const maxDist = 500; // Optimization: Don't search forever if it's too far
+
+    let head = 0;
+    while (head < queue.length) {
+      const current = queue[head++];
+
+      if (current.dist > maxDist) break;
+
+      const tile = this.getTile(current.x, current.y);
+      if (tile && tile.explored && tile.type === typeId) {
+        return { x: current.x, y: current.y, dist: current.dist };
+      }
+
+      // Add neighbors
+      const directions = [
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+      ];
+
+      for (const dir of directions) {
+        const nx = current.x + dir.x;
+        const ny = current.y + dir.y;
+        const key = `${nx},${ny}`;
+
+        if (
+          nx >= 0 &&
+          nx < this.width &&
+          ny >= 0 &&
+          ny < this.height &&
+          !visited.has(key)
+        ) {
+          visited.add(key);
+          queue.push({ x: nx, y: ny, dist: current.dist + 1 });
+        }
+      }
+    }
+
+    return null; // Not found
+  }
+
+  isExplored(x, y) {
+    const tile = this.getTile(x, y);
+    return tile ? tile.explored : false;
   }
 }
 

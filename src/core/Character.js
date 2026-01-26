@@ -38,9 +38,11 @@ export class Character {
       woodcutting: { level: 1, xp: 0 },
       fishing: { level: 1, xp: 0 },
       smithing: { level: 1, xp: 0 },
+      exploring: { level: 1, xp: 0 },
     };
     this.talents = {}; // { talentId: true }
     this.talentPoints = 3; // Start with 3 for testing
+    this.position = { x: 250, y: 250 }; // Default starting position
     this.currentActivity = null; // e.g. { type: 'MINING', target: 'copper_ore', startTime: 12345, quantity: 10, progress: 0 }
     this.activityQueue = []; // Array of { type, target, quantity }
     this.activeGoalGroup = null; // Current GoalGroup being executed
@@ -59,7 +61,11 @@ export class Character {
       }
     }
     char.talents = { ...(data.talents || {}) };
+    char.talents = { ...(data.talents || {}) };
     if (data.talentPoints === undefined) char.talentPoints = 3; // Retroactive grant for old saves
+
+    // Position
+    char.position = data.position || { x: 250, y: 250 };
 
     // Resume queue
     char.activityQueue = data.activityQueue || [];

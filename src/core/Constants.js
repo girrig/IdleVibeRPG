@@ -4,6 +4,7 @@ export const SKILL_COLORS = {
   FISHING: "#3498db", // Blue
   FIGHTING: "#e74c3c", // Red
   SMITHING: "#a9a9a9", // Grey
+  EXPLORING: "#8e44ad", // Purple
   DEFAULT: "#ccc",
 };
 
@@ -35,4 +36,5 @@ export const GAME_CONFIG = {
     AUTOSAVE: true,
     ITEM: true,
   },
+  STARTING_POSITION: { x: 250, y: 250 },
 };
