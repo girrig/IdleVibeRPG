@@ -1,9 +1,23 @@
+import { createNoise2D } from "simplex-noise";
+
 export const TERRAIN_TYPES = {
   PLAINS: { id: "PLAINS", color: "#90EE90", symbol: "🌱" },
   FOREST: { id: "FOREST", color: "#228B22", symbol: "🌲" },
   MOUNTAIN: { id: "MOUNTAIN", color: "#808080", symbol: "⛰️" },
   WATER: { id: "WATER", color: "#4169E1", symbol: "💧" },
+  DESERT: { id: "DESERT", color: "#F4A460", symbol: "🌵" },
+  SNOW: { id: "SNOW", color: "#FFFAFA", symbol: "❄️" },
 };
+
+// Simple seeded random number generator (Mulberry32)
+function mulberry32(a) {
+  return function () {
+    var t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 export class MapManager {
   constructor() {
@@ -17,14 +31,12 @@ export class MapManager {
     if (savedData && savedData.tiles && savedData.tiles.length > 0) {
       this.tiles = savedData.tiles;
       this.seed = savedData.seed || this.seed;
-      // Dimensions might have changed if we loaded an old save (20x20) but expect (60x40).
-      // If dimensions mismatch, we should probably regenerate or accept the old map.
-      // For now, let's regenerate to enforce the new size if it's too small.
+      // Check for dimension mismatch
       if (
         this.tiles.length !== this.height ||
         this.tiles[0].length !== this.width
       ) {
-        console.log("Map dimensions mismatch (Old save?), regenerating...");
+        console.log("Map dimensions mismatch, regenerating...");
         this.generateMap();
       }
     } else {
@@ -32,28 +44,79 @@ export class MapManager {
     }
   }
 
-  generateMap() {
+  generateMap(options = {}) {
+    const { scale = 0.02, seaLevel = -0.2, moistureOffset = 0 } = options;
+
     this.tiles = [];
+
+    // Create seeded noise instances
+    // We use the seed for elevation, and seed+1 for moisture/other maps
+    // to ensure they satisfy the same determinism but look different.
+    const rngElevation = mulberry32(this.seed);
+    const rngMoisture = mulberry32(this.seed + 1);
+
+    const noise2D_elevation = createNoise2D(rngElevation);
+    const noise2D_moisture = createNoise2D(rngMoisture);
+
     for (let y = 0; y < this.height; y++) {
       const row = [];
       for (let x = 0; x < this.width; x++) {
-        row.push(this.generateTile(x, y));
+        // noise2D returns values between -1 and 1
+        const elevation = noise2D_elevation(x * scale, y * scale);
+        const moisture = noise2D_moisture(x * scale, y * scale);
+
+        row.push(
+          this.generateTile(
+            x,
+            y,
+            elevation,
+            moisture,
+            seaLevel,
+            moistureOffset,
+          ),
+        );
       }
       this.tiles.push(row);
     }
-
-    // Simple smoothing pass
-    this.smoothMap();
   }
 
-  generateTile(x, y) {
-    // Simple weighted random for now
-    const rand = Math.random();
+  generateTile(x, y, elevation, moisture, seaLevel, moistureOffset) {
+    // Elevation: -1 to 1
+    // Moisture: -1 to 1
+
+    // Adjust moisture by offset
+    const adjMoisture = moisture + moistureOffset;
+
     let type = TERRAIN_TYPES.PLAINS;
 
-    if (rand < 0.1) type = TERRAIN_TYPES.WATER;
-    else if (rand < 0.3) type = TERRAIN_TYPES.MOUNTAIN;
-    else if (rand < 0.6) type = TERRAIN_TYPES.FOREST;
+    // Water level
+    if (elevation < seaLevel) {
+      type = TERRAIN_TYPES.WATER;
+    }
+    // High mountains
+    else if (elevation > 0.6) {
+      if (adjMoisture > 0) {
+        type = TERRAIN_TYPES.MOUNTAIN; // Normal mountain
+      } else {
+        type = TERRAIN_TYPES.MOUNTAIN; // Could be dry peak
+      }
+
+      // Extremely high peaks could be snow
+      if (elevation > 0.8) {
+        type = TERRAIN_TYPES.SNOW;
+      }
+    }
+    // Land (Plains/Forest/Desert)
+    else {
+      // It's land. Check moisture.
+      if (adjMoisture > 0.3) {
+        type = TERRAIN_TYPES.FOREST;
+      } else if (adjMoisture < -0.4) {
+        type = TERRAIN_TYPES.DESERT;
+      } else {
+        type = TERRAIN_TYPES.PLAINS;
+      }
+    }
 
     return {
       x,
@@ -61,43 +124,6 @@ export class MapManager {
       type: type.id,
       explored: true, // Auto-explore for now
     };
-  }
-
-  smoothMap() {
-    // Basic cellular automata rule: become like neighbors
-    const newTiles = JSON.parse(JSON.stringify(this.tiles));
-
-    for (let y = 1; y < this.height - 1; y++) {
-      for (let x = 1; x < this.width - 1; x++) {
-        const neighborTypes = {};
-
-        // Count neighbors
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const type = this.tiles[y + dy][x + dx].type;
-            neighborTypes[type] = (neighborTypes[type] || 0) + 1;
-          }
-        }
-
-        // If surrounded by a different type, change?
-        // Let's just do a simple majority
-        let maxCount = 0;
-        let dominantType = null;
-        for (const [type, count] of Object.entries(neighborTypes)) {
-          if (count > maxCount) {
-            maxCount = count;
-            dominantType = type;
-          }
-        }
-
-        if (maxCount >= 5) {
-          newTiles[y][x].type = dominantType;
-        }
-      }
-    }
-
-    this.tiles = newTiles;
   }
 
   getMapData() {

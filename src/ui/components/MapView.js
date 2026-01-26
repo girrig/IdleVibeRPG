@@ -297,7 +297,31 @@ export class MapView {
     header.style.marginBottom = "10px";
     header.style.fontSize = "16px";
     header.style.textAlign = "center";
+    header.style.textAlign = "center";
     this.sidebar.appendChild(header);
+
+    // Regenerate Button
+    const regenBtn = document.createElement("button");
+    regenBtn.innerText = "Regenerate World";
+    regenBtn.style.width = "100%";
+    regenBtn.style.padding = "8px";
+    regenBtn.style.marginTop = "10px";
+    regenBtn.style.marginBottom = "15px";
+    regenBtn.style.cursor = "pointer";
+    regenBtn.style.backgroundColor = "#444";
+    regenBtn.style.color = "#fff";
+    regenBtn.style.border = "1px solid #666";
+    regenBtn.style.borderRadius = "4px";
+    regenBtn.onclick = () => {
+      if (confirm("Are you sure? This will replace the current world map.")) {
+        mapManager.generateMap();
+        if (window.gameState) {
+          window.gameState.saveGame();
+        }
+        this.update();
+      }
+    };
+    this.sidebar.appendChild(regenBtn);
 
     Object.values(TERRAIN_TYPES).forEach((type) => {
       const item = document.createElement("div");

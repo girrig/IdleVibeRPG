@@ -67,4 +67,36 @@ describe("MapManager", () => {
     expect(mapManager.getTile(999, 0)).toBeNull();
     expect(mapManager.getTile(0, 999)).toBeNull();
   });
+
+  it("should generate deterministic maps with the same seed", () => {
+    const seed = 12345;
+
+    const map1 = new MapManager();
+    map1.seed = seed;
+    map1.initialize();
+
+    const map2 = new MapManager();
+    map2.seed = seed;
+    map2.initialize();
+
+    // Check a few tiles to ensure they are identical
+    expect(map1.tiles[0][0].type).toBe(map2.tiles[0][0].type);
+    expect(map1.tiles[10][10].type).toBe(map2.tiles[10][10].type);
+    expect(map1.tiles[50][50].type).toBe(map2.tiles[50][50].type);
+  });
+
+  it("should generate diverse terrain types", () => {
+    mapManager.initialize();
+    const types = new Set();
+
+    // Scan the map and collect types
+    for (let y = 0; y < mapManager.height; y++) {
+      for (let x = 0; x < mapManager.width; x++) {
+        types.add(mapManager.tiles[y][x].type);
+      }
+    }
+
+    // We expect at least 3 types (e.g. PLAINS, WATER, FOREST) in a reasonably large map
+    expect(types.size).toBeGreaterThanOrEqual(3);
+  });
 });
