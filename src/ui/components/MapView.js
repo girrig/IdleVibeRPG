@@ -246,6 +246,14 @@ export class MapView {
     // Resize Main Canvas
     this.canvas.width = width * this.zoomLevel;
     this.canvas.height = height * this.zoomLevel;
+    this.canvas.style.width = width * this.zoomLevel + "px";
+    this.canvas.style.height = height * this.zoomLevel + "px";
+    // Crucial: Override any global CSS that might squash the canvas
+    this.canvas.style.maxWidth = "none";
+    this.canvas.style.maxHeight = "none";
+    this.canvas.style.minWidth = "0";
+    this.canvas.style.minHeight = "0";
+    this.canvas.style.flexShrink = "0";
 
     // Resize Offscreen Canvas if needed (dimensions only map dimensions)
     if (
