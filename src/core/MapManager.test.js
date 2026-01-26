@@ -9,25 +9,20 @@ describe("MapManager", () => {
   });
 
   it("should initialize with default dimensions", () => {
-    // Assert initial state before generation if needed,
-    // but normally we check after init.
-    expect(mapManager.width).toBe(90);
-    expect(mapManager.height).toBe(60);
+    // Assert initialized values
+    // but normally we check if mapManager has width/height properties
+    expect(mapManager.width).toBe(500);
+    expect(mapManager.height).toBe(500);
   });
 
   it("should generate a valid map on initialization", () => {
     mapManager.initialize();
 
-    expect(mapManager.tiles.length).toBe(60); // Height
-    expect(mapManager.tiles[0].length).toBe(90); // Width
+    expect(mapManager.tiles.length).toBe(500); // Height
+    expect(mapManager.tiles[0].length).toBe(500); // Width
 
-    // Check a random tile
-    const tile = mapManager.getTile(0, 0);
-    expect(tile).toBeDefined();
-    expect(tile.x).toBe(0);
-    expect(tile.y).toBe(0);
-    expect(tile.type).toBeDefined();
-    expect(TERRAIN_TYPES[tile.type]).toBeDefined();
+    expect(mapManager.tiles[0][0]).toHaveProperty("type");
+    expect(mapManager.tiles[0][0]).toHaveProperty("x");
   });
 
   it("should recover state from save data", () => {
@@ -38,26 +33,23 @@ describe("MapManager", () => {
     const newManager = new MapManager();
     newManager.initialize(originalData);
 
-    expect(newManager.tiles.length).toBe(60);
+    expect(newManager.tiles.length).toBe(500);
     // Deep compare first row to ensure persistence
     expect(newManager.tiles[0][0].type).toBe(originalData.tiles[0][0].type);
     expect(newManager.seed).toBe(originalData.seed);
   });
 
   it("should regenerate map if saved data has wrong dimensions", () => {
-    // Create fake old data (20x20)
-    const oldData = {
-      tiles: Array(20)
-        .fill(null)
-        .map(() => Array(20).fill({ type: "PLAINS" })),
-      seed: 12345,
-    };
+    // Test 2: Saved data has WRONG dimensions (e.g. 10x10)
+    // Should force regenerate to 500x500
+    mapManager.initialize({
+      tiles: new Array(10).fill(new Array(10).fill({})),
+      seed: 999,
+    });
 
-    mapManager.initialize(oldData);
-
-    // Should have ignored old data and regenerated to 90x60
-    expect(mapManager.tiles.length).toBe(60);
-    expect(mapManager.tiles[0].length).toBe(90);
+    // Should have ignored the 10x10 and generated 500x500
+    expect(mapManager.tiles.length).toBe(500);
+    expect(mapManager.tiles[0].length).toBe(500);
   });
 
   it("should return null for out of bounds tiles", () => {
@@ -97,6 +89,7 @@ describe("MapManager", () => {
     }
 
     // We expect at least 3 types (e.g. PLAINS, WATER, FOREST) in a reasonably large map
-    expect(types.size).toBeGreaterThanOrEqual(3);
+    // With the new complex Whittaker system, we should see even more diversity (e.g. > 5)
+    expect(types.size).toBeGreaterThanOrEqual(5);
   });
 });

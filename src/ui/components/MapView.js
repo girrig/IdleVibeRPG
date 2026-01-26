@@ -7,29 +7,26 @@ export class MapView {
     this.element.style.width = "100%";
     this.element.style.height = "100%";
     this.element.style.display = "flex";
-    this.element.style.flexDirection = "row"; // Changed to row for sidebar
-    this.element.style.alignItems = "stretch"; // Stretch to fill height
-    this.element.style.overflow = "hidden"; // Main container shouldn't scroll
-    this.element.style.boxSizing = "border-box";
     this.element.style.position = "relative";
+    this.element.style.overflow = "hidden";
 
     // Filter State
     this.hiddenTerrainTypes = new Set();
 
-    // Map Container (holds the scrolling map)
+    // Map Container
     this.mapContainer = document.createElement("div");
     this.mapContainer.style.flex = "1";
     this.mapContainer.style.position = "relative";
-    this.mapContainer.style.overflow = "auto"; // Scrollbars here
-    this.mapContainer.style.cursor = "grab";
-    this.mapContainer.style.userSelect = "none";
-    this.mapContainer.style.display = "flex"; // To center grid if small? or just block.
-    this.mapContainer.style.flexDirection = "column";
-    this.mapContainer.style.backgroundColor = "#000"; // Ensure background is black everywhere
-    // Prevent rubber-banding/bouncing which reveals background
-    this.mapContainer.style.overscrollBehavior = "none";
+    this.mapContainer.style.overflow = "auto";
+    this.mapContainer.style.cursor = "crosshair";
+    this.mapContainer.style.backgroundColor = "#000";
 
-    // Sidebar Container
+    // Canvas Element
+    this.canvas = document.createElement("canvas");
+    this.ctx = this.canvas.getContext("2d", { alpha: false }); // Optimize for no transparency
+    this.mapContainer.appendChild(this.canvas);
+
+    // Sidebar
     this.sidebar = document.createElement("div");
     this.sidebar.style.width = "200px";
     this.sidebar.style.minWidth = "200px";
@@ -38,79 +35,102 @@ export class MapView {
     this.sidebar.style.padding = "20px";
     this.sidebar.style.display = "flex";
     this.sidebar.style.flexDirection = "column";
-    this.sidebar.style.gap = "10px";
     this.sidebar.style.overflowY = "auto";
 
     this.element.appendChild(this.mapContainer);
     this.element.appendChild(this.sidebar);
 
-    // Bind Drag Events to mapContainer instead of element
-    this.bindDragEvents();
+    // State
+    this.zoomLevel = 12; // Start smaller for big map
+    this.hoverTile = null;
 
-    // Map State
-    this.zoomLevel = 24; // Default tile size
-    this.minZoom = 12; // Will be updated dynamically
-    this.maxZoom = 64;
+    // Tooltip for hover info
+    this.tooltip = document.createElement("div");
+    this.tooltip.style.position = "absolute";
+    this.tooltip.style.padding = "5px 10px";
+    this.tooltip.style.backgroundColor = "rgba(0,0,0,0.8)";
+    this.tooltip.style.color = "#fff";
+    this.tooltip.style.borderRadius = "4px";
+    this.tooltip.style.pointerEvents = "none";
+    this.tooltip.style.display = "none";
+    this.tooltip.style.zIndex = "100";
+    this.mapContainer.appendChild(this.tooltip);
 
-    // Monitor container size to update minZoom
-    this.resizeObserver = new ResizeObserver(() => {
-      this.updateMinZoom();
+    // Events
+    this.bindEvents();
+
+    // Checkboard pattern for missing data
+    this.checkboardPattern = null;
+  }
+
+  bindEvents() {
+    // Mouse Move (Hover)
+    this.canvas.addEventListener("mousemove", (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const tileX = Math.floor(x / this.zoomLevel);
+      const tileY = Math.floor(y / this.zoomLevel);
+
+      const tile = mapManager.getTile(tileX, tileY);
+
+      if (tile) {
+        this.hoverTile = tile;
+        this.updateTooltip(e.clientX, e.clientY, tile);
+      } else {
+        this.hoverTile = null;
+        this.tooltip.style.display = "none";
+      }
     });
-    this.resizeObserver.observe(this.mapContainer);
 
-    // Drag State
-    this.isDragging = false;
+    this.canvas.addEventListener("mouseleave", () => {
+      this.hoverTile = null;
+      this.tooltip.style.display = "none";
+    });
+
+    // Wheel Zoom
+    this.mapContainer.addEventListener("wheel", (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = Math.sign(e.deltaY);
+        const step = 2; // Smaller step
+        if (delta < 0) {
+          this.zoomLevel = Math.min(this.zoomLevel + step, 64);
+        } else {
+          this.zoomLevel = Math.max(this.zoomLevel - step, 2); // Allow zoom out more
+        }
+        this.update();
+      }
+    });
+
+    // Handle "click" to log or interact
+    // We need to distinguish click from drag
+    this.canvas.addEventListener("click", (e) => {
+      if (!this.isDragging && this.hoverTile) {
+        console.log("Clicked Tile:", this.hoverTile);
+      }
+    });
+
+    // Drag to Scroll Logic
+    this.isMouseDown = false;
     this.startX = 0;
     this.startY = 0;
     this.scrollLeft = 0;
     this.scrollTop = 0;
 
-    // Wheel Zoom on mapContainer
-    this.mapContainer.addEventListener(
-      "wheel",
-      (e) => {
-        e.preventDefault();
-        const delta = Math.sign(e.deltaY);
-        const step = 4;
-        if (delta < 0) {
-          this.zoomLevel = Math.min(this.zoomLevel + step, this.maxZoom);
-        } else {
-          this.zoomLevel = Math.max(this.zoomLevel - step, this.minZoom);
-        }
-        this.update();
-      },
-      { passive: false },
-    );
-  }
-
-  updateMinZoom() {
-    // Calculate min zoom required to cover the container
-    const containerWidth = this.mapContainer.clientWidth;
-    const containerHeight = this.mapContainer.clientHeight;
-
-    // Need mapManager dimensions
-    // If not rendered yet, can't calc accurately or need direct access
-    // But mapManager is imported.
-    const tilesX = mapManager.width;
-    const tilesY = mapManager.height;
-
-    if (tilesX === 0 || tilesY === 0) return;
-
-    const minZoomX = Math.ceil(containerWidth / tilesX);
-    const minZoomY = Math.ceil(containerHeight / tilesY);
-
-    this.minZoom = Math.max(12, Math.max(minZoomX, minZoomY));
-
-    // Enforce current zoom
-    if (this.zoomLevel < this.minZoom) {
-      this.zoomLevel = this.minZoom;
-      this.update();
-    }
-  }
-
-  bindDragEvents() {
     this.mapContainer.addEventListener("mousedown", (e) => {
-      this.isDragging = true;
+      // Prevent native "Auto-scroll" on middle click
+      if (e.button === 1) {
+        e.preventDefault();
+        return;
+      }
+
+      // Only drag on Left Click (button 0)
+      if (e.button !== 0) return;
+
+      this.isMouseDown = true;
+      this.isDragging = false; // Start as false, become true if moved
       this.mapContainer.style.cursor = "grabbing";
       this.startX = e.pageX - this.mapContainer.offsetLeft;
       this.startY = e.pageY - this.mapContainer.offsetTop;
@@ -119,25 +139,58 @@ export class MapView {
     });
 
     this.mapContainer.addEventListener("mouseleave", () => {
-      this.isDragging = false;
-      this.mapContainer.style.cursor = "grab";
+      this.isMouseDown = false;
+      this.mapContainer.style.cursor = "crosshair";
     });
 
     this.mapContainer.addEventListener("mouseup", () => {
-      this.isDragging = false;
-      this.mapContainer.style.cursor = "grab";
+      this.isMouseDown = false;
+      this.mapContainer.style.cursor = "crosshair";
+      // This resets dragging flag so click handler can fire if it wasn't a drag
+      setTimeout(() => {
+        this.isDragging = false;
+      }, 0);
     });
 
     this.mapContainer.addEventListener("mousemove", (e) => {
-      if (!this.isDragging) return;
+      if (!this.isMouseDown) return;
       e.preventDefault();
+
       const x = e.pageX - this.mapContainer.offsetLeft;
       const y = e.pageY - this.mapContainer.offsetTop;
-      const walkX = (x - this.startX) * 1.5;
-      const walkY = (y - this.startY) * 1.5;
+
+      const walkX = (x - this.startX) * 1; // 1:1 movement
+      const walkY = (y - this.startY) * 1;
+
+      // If moved significantly, mark as dragging
+      if (Math.abs(walkX) > 2 || Math.abs(walkY) > 2) {
+        this.isDragging = true;
+      }
+
       this.mapContainer.scrollLeft = this.scrollLeft - walkX;
       this.mapContainer.scrollTop = this.scrollTop - walkY;
     });
+  }
+
+  updateTooltip(x, y, tile) {
+    const typeInfo = Object.values(TERRAIN_TYPES).find(
+      (t) => t.id === tile.type,
+    );
+    const name = typeInfo ? typeInfo.id : tile.type;
+    const symbol = typeInfo ? typeInfo.symbol : "?";
+
+    // Calculate position relative to the mapContainer including scroll
+    // mapContainer is "relative", so absolute children are positioned relative to its padding box.
+    // If we want it at the mouse position (x,y from viewport), we need to adjust for container position and scroll.
+    const containerRect = this.mapContainer.getBoundingClientRect();
+
+    const relativeX = x - containerRect.left + this.mapContainer.scrollLeft;
+    const relativeY = y - containerRect.top + this.mapContainer.scrollTop;
+
+    this.tooltip.style.left = relativeX + 15 + "px";
+    this.tooltip.style.top = relativeY + 15 + "px";
+    this.tooltip.innerText = `${symbol} ${name} (${tile.x}, ${tile.y})`;
+    this.tooltip.style.display = "block";
   }
 
   render(container) {
@@ -147,168 +200,142 @@ export class MapView {
   }
 
   update() {
-    this.mapContainer.innerHTML = "";
-    this.sidebar.innerHTML = "";
+    this.renderSidebar();
 
     const mapData = mapManager.getMapData();
     const tiles = mapData.tiles;
 
-    console.log(
-      "Render Map:",
-      mapManager.width,
-      mapManager.height,
-      tiles ? tiles.length : "No Tiles",
-    );
-
     if (!tiles || tiles.length === 0) {
-      this.mapContainer.innerHTML += `<div style="color: red; padding: 20px;">Map Data Missing. <button id="regen-map-btn">Regenerate</button></div>`;
-      setTimeout(() => {
-        const btn = this.mapContainer.querySelector("#regen-map-btn");
-        if (btn)
-          btn.onclick = () => {
-            mapManager.generateMap();
-            this.update();
-          };
-      }, 0);
+      // Show regen button
       return;
     }
 
     const width = mapManager.width;
     const height = mapManager.height;
 
-    // Render Sidebar
-    this.renderSidebar();
+    // Resize Canvas
+    this.canvas.width = width * this.zoomLevel;
+    this.canvas.height = height * this.zoomLevel;
 
-    const grid = document.createElement("div");
-    // grid.style.flex = "1"; // Remove flex, let it size by content
-    grid.style.width = "fit-content"; // Ensure it expands to hold all columns
-    grid.style.minWidth = "100%"; // At least full width
-    grid.style.minHeight = "100%"; // At least full height
-    grid.style.display = "grid";
-    grid.style.gridTemplateColumns = `repeat(${width}, ${this.zoomLevel}px)`;
-    grid.style.gridTemplateRows = `repeat(${height}, ${this.zoomLevel}px)`;
-    grid.style.gap = "0";
-    grid.style.backgroundColor = "#000";
-    grid.style.border = "none";
-    grid.style.transformOrigin = "top left";
+    // clear
+    this.ctx.fillStyle = "#000";
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Draw Tiles
+    // Optimization: Loop creates many calls.
+    // FillRect might be slow for 250k.
+    // But Canvas is usually fast enough for a single frame paint.
+
+    // Pre-calculate fonts
+    const fontSize = Math.floor(this.zoomLevel * 0.7);
+    this.ctx.font = `${fontSize}px sans-serif`;
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const tile = tiles[y][x];
-        const tileEl = document.createElement("div");
-        tileEl.style.width = "100%";
-        tileEl.style.height = "100%";
-        tileEl.style.fontSize = `${Math.max(10, this.zoomLevel * 0.6)}px`;
-        tileEl.style.lineHeight = `${this.zoomLevel}px`;
+
+        // Skip hidden types
+        if (this.hiddenTerrainTypes.has(tile.type)) {
+          this.ctx.fillStyle = "#111"; // Dimmed
+          this.ctx.fillRect(
+            x * this.zoomLevel,
+            y * this.zoomLevel,
+            this.zoomLevel,
+            this.zoomLevel,
+          );
+          continue;
+        }
 
         const typeInfo = Object.values(TERRAIN_TYPES).find(
           (t) => t.id === tile.type,
         );
-        tileEl.style.backgroundColor = typeInfo ? typeInfo.color : "#000";
-        tileEl.style.display = "flex";
-        tileEl.style.alignItems = "center";
-        tileEl.style.justifyContent = "center";
-        tileEl.style.cursor = "pointer";
-        tileEl.title = `${typeInfo ? typeInfo.id : "UNKNOWN"} (${x}, ${y})`;
-        tileEl.innerText = typeInfo ? typeInfo.symbol : "?";
+        const color = typeInfo ? typeInfo.color : "#ff00ff";
 
-        // Filter Logic
-        if (this.hiddenTerrainTypes.has(tile.type)) {
-          tileEl.style.filter = "grayscale(100%) opacity(0.3)";
+        // Draw Background
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(
+          x * this.zoomLevel,
+          y * this.zoomLevel,
+          this.zoomLevel,
+          this.zoomLevel,
+        );
+
+        // Draw Symbol (only if zoom is big enough)
+        if (this.zoomLevel > 10) {
+          const symbol = typeInfo ? typeInfo.symbol : "?";
+          this.ctx.fillStyle = "rgba(0,0,0,0.5)"; // Shadow/contrast?
+          // Actually, emoji colors can't be set by fillStyle easily, they are distinct.
+          this.ctx.fillText(
+            symbol,
+            x * this.zoomLevel + this.zoomLevel / 2,
+            y * this.zoomLevel + this.zoomLevel / 2,
+          );
         }
-
-        // Hover effect
-        tileEl.onmouseenter = () => {
-          if (!this.hiddenTerrainTypes.has(tile.type)) {
-            tileEl.style.opacity = "0.8";
-          }
-        };
-        tileEl.onmouseleave = () => {
-          if (!this.hiddenTerrainTypes.has(tile.type)) {
-            tileEl.style.opacity = "1";
-          }
-        };
-
-        grid.appendChild(tileEl);
       }
     }
-
-    this.mapContainer.appendChild(grid);
   }
 
   renderSidebar() {
+    this.sidebar.innerHTML = "";
     const header = document.createElement("h3");
-    header.innerText = "Filter Terrain";
+    header.innerText = "Terrain";
     header.style.color = "#fff";
-    header.style.marginTop = "0";
-    header.style.marginBottom = "10px";
-    header.style.fontSize = "16px";
-    header.style.textAlign = "center";
     header.style.textAlign = "center";
     this.sidebar.appendChild(header);
 
-    // Regenerate Button
+    // Regen Button
     const regenBtn = document.createElement("button");
     regenBtn.innerText = "Regenerate World";
     regenBtn.style.width = "100%";
     regenBtn.style.padding = "8px";
-    regenBtn.style.marginTop = "10px";
     regenBtn.style.marginBottom = "15px";
     regenBtn.style.cursor = "pointer";
     regenBtn.style.backgroundColor = "#444";
     regenBtn.style.color = "#fff";
     regenBtn.style.border = "1px solid #666";
-    regenBtn.style.borderRadius = "4px";
     regenBtn.onclick = () => {
-      if (confirm("Are you sure? This will replace the current world map.")) {
+      if (confirm("Regenerate world?")) {
         mapManager.generateMap({ newSeed: true });
-        if (window.gameState) {
-          window.gameState.saveGame();
-        }
+        if (window.gameState) window.gameState.saveGame();
         this.update();
       }
     };
     this.sidebar.appendChild(regenBtn);
 
+    // Filters
     Object.values(TERRAIN_TYPES).forEach((type) => {
       const item = document.createElement("div");
       item.style.display = "flex";
       item.style.alignItems = "center";
-      item.style.padding = "8px";
-      item.style.borderRadius = "4px";
+      item.style.padding = "4px";
       item.style.cursor = "pointer";
-      item.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
-      item.style.transition = "all 0.2s";
+      item.style.color = "#fff";
 
       const isHidden = this.hiddenTerrainTypes.has(type.id);
-      if (isHidden) {
-        item.style.opacity = "0.5";
-        item.style.filter = "grayscale(100%)";
-      } else {
-        item.style.border = `1px solid ${type.color}`;
-      }
+      item.style.opacity = isHidden ? "0.5" : "1";
 
       item.onclick = () => {
-        if (this.hiddenTerrainTypes.has(type.id)) {
-          this.hiddenTerrainTypes.delete(type.id);
-        } else {
-          this.hiddenTerrainTypes.add(type.id);
-        }
+        if (isHidden) this.hiddenTerrainTypes.delete(type.id);
+        else this.hiddenTerrainTypes.add(type.id);
         this.update();
       };
 
-      const icon = document.createElement("span");
-      icon.innerText = type.symbol;
-      icon.style.marginRight = "10px";
-      icon.style.fontSize = "20px";
+      const box = document.createElement("div");
+      box.style.width = "16px";
+      box.style.height = "16px";
+      box.style.minWidth = "16px"; // Extra safety
+      box.style.flexShrink = "0"; // Prevent shrinking
+      box.style.backgroundColor = type.color;
+      box.style.marginRight = "8px";
 
-      const name = document.createElement("span");
-      name.innerText = type.id;
-      name.style.color = "#fff";
-      name.style.fontSize = "14px";
+      const text = document.createElement("span");
+      text.innerText = type.id;
+      text.style.fontSize = "12px";
 
-      item.appendChild(icon);
-      item.appendChild(name);
+      item.appendChild(box);
+      item.appendChild(text);
       this.sidebar.appendChild(item);
     });
   }
