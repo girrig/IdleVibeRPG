@@ -7,13 +7,42 @@ export class MapView {
     this.element.style.width = "100%";
     this.element.style.height = "100%";
     this.element.style.display = "flex";
-    this.element.style.flexDirection = "column";
-    this.element.style.alignItems = "center";
-    this.element.style.overflow = "auto"; // Restore scrollbars
+    this.element.style.flexDirection = "row"; // Changed to row for sidebar
+    this.element.style.alignItems = "stretch"; // Stretch to fill height
+    this.element.style.overflow = "hidden"; // Main container shouldn't scroll
     this.element.style.boxSizing = "border-box";
-    this.element.style.cursor = "grab";
-    this.element.style.userSelect = "none"; // Prevent text selection
-    this.element.style.position = "relative"; // For absolute positioning of controls
+    this.element.style.position = "relative";
+
+    // Filter State
+    this.hiddenTerrainTypes = new Set();
+
+    // Map Container (holds the scrolling map)
+    this.mapContainer = document.createElement("div");
+    this.mapContainer.style.flex = "1";
+    this.mapContainer.style.position = "relative";
+    this.mapContainer.style.overflow = "auto"; // Scrollbars here
+    this.mapContainer.style.cursor = "grab";
+    this.mapContainer.style.userSelect = "none";
+    this.mapContainer.style.display = "flex"; // To center grid if small? or just block.
+    this.mapContainer.style.flexDirection = "column";
+
+    // Sidebar Container
+    this.sidebar = document.createElement("div");
+    this.sidebar.style.width = "200px";
+    this.sidebar.style.minWidth = "200px";
+    this.sidebar.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
+    this.sidebar.style.borderLeft = "1px solid rgba(255, 255, 255, 0.1)";
+    this.sidebar.style.padding = "20px";
+    this.sidebar.style.display = "flex";
+    this.sidebar.style.flexDirection = "column";
+    this.sidebar.style.gap = "10px";
+    this.sidebar.style.overflowY = "auto";
+
+    this.element.appendChild(this.mapContainer);
+    this.element.appendChild(this.sidebar);
+
+    // Bind Drag Events to mapContainer instead of element
+    this.bindDragEvents();
 
     // Map State
     this.zoomLevel = 24; // Default tile size
@@ -27,56 +56,54 @@ export class MapView {
     this.scrollLeft = 0;
     this.scrollTop = 0;
 
-    // Bind Events
-    this.element.addEventListener("mousedown", (e) => {
-      this.isDragging = true;
-      this.element.style.cursor = "grabbing";
-      this.startX = e.pageX - this.element.offsetLeft;
-      this.startY = e.pageY - this.element.offsetTop;
-      this.scrollLeft = this.element.scrollLeft;
-      this.scrollTop = this.element.scrollTop;
-    });
-
-    this.element.addEventListener("mouseleave", () => {
-      this.isDragging = false;
-      this.element.style.cursor = "grab";
-    });
-
-    this.element.addEventListener("mouseup", () => {
-      this.isDragging = false;
-      this.element.style.cursor = "grab";
-    });
-
-    this.element.addEventListener("mousemove", (e) => {
-      if (!this.isDragging) return;
-      e.preventDefault();
-      const x = e.pageX - this.element.offsetLeft;
-      const y = e.pageY - this.element.offsetTop;
-      const walkX = (x - this.startX) * 1.5; // Scroll-fast
-      const walkY = (y - this.startY) * 1.5;
-      this.element.scrollLeft = this.scrollLeft - walkX;
-      this.element.scrollTop = this.scrollTop - walkY;
-    });
-
-    // Wheel Zoom
-    this.element.addEventListener(
+    // Wheel Zoom on mapContainer
+    this.mapContainer.addEventListener(
       "wheel",
       (e) => {
         e.preventDefault();
         const delta = Math.sign(e.deltaY);
-        // Zoom step
-        const step = 4; // Zoom speed
+        const step = 4;
         if (delta < 0) {
-          // Zoom In
           this.zoomLevel = Math.min(this.zoomLevel + step, this.maxZoom);
         } else {
-          // Zoom Out
           this.zoomLevel = Math.max(this.zoomLevel - step, this.minZoom);
         }
         this.update();
       },
       { passive: false },
     );
+  }
+
+  bindDragEvents() {
+    this.mapContainer.addEventListener("mousedown", (e) => {
+      this.isDragging = true;
+      this.mapContainer.style.cursor = "grabbing";
+      this.startX = e.pageX - this.mapContainer.offsetLeft;
+      this.startY = e.pageY - this.mapContainer.offsetTop;
+      this.scrollLeft = this.mapContainer.scrollLeft;
+      this.scrollTop = this.mapContainer.scrollTop;
+    });
+
+    this.mapContainer.addEventListener("mouseleave", () => {
+      this.isDragging = false;
+      this.mapContainer.style.cursor = "grab";
+    });
+
+    this.mapContainer.addEventListener("mouseup", () => {
+      this.isDragging = false;
+      this.mapContainer.style.cursor = "grab";
+    });
+
+    this.mapContainer.addEventListener("mousemove", (e) => {
+      if (!this.isDragging) return;
+      e.preventDefault();
+      const x = e.pageX - this.mapContainer.offsetLeft;
+      const y = e.pageY - this.mapContainer.offsetTop;
+      const walkX = (x - this.startX) * 1.5;
+      const walkY = (y - this.startY) * 1.5;
+      this.mapContainer.scrollLeft = this.scrollLeft - walkX;
+      this.mapContainer.scrollTop = this.scrollTop - walkY;
+    });
   }
 
   render(container) {
@@ -86,7 +113,8 @@ export class MapView {
   }
 
   update() {
-    this.element.innerHTML = ""; // Clear previous content
+    this.mapContainer.innerHTML = "";
+    this.sidebar.innerHTML = "";
 
     const mapData = mapManager.getMapData();
     const tiles = mapData.tiles;
@@ -99,9 +127,9 @@ export class MapView {
     );
 
     if (!tiles || tiles.length === 0) {
-      this.element.innerHTML += `<div style="color: red;">Map Data Missing. <button id="regen-map-btn">Regenerate</button></div>`;
+      this.mapContainer.innerHTML += `<div style="color: red; padding: 20px;">Map Data Missing. <button id="regen-map-btn">Regenerate</button></div>`;
       setTimeout(() => {
-        const btn = this.element.querySelector("#regen-map-btn");
+        const btn = this.mapContainer.querySelector("#regen-map-btn");
         if (btn)
           btn.onclick = () => {
             mapManager.generateMap();
@@ -114,70 +142,15 @@ export class MapView {
     const width = mapManager.width;
     const height = mapManager.height;
 
-    // Zoom Controls
-    const controls = document.createElement("div");
-    controls.style.position = "sticky";
-    controls.style.bottom = "20px";
-    controls.style.right = "20px";
-    controls.style.alignSelf = "flex-end";
-    controls.style.marginRight = "20px";
-    controls.style.marginBottom = "20px";
-    controls.style.display = "flex";
-    controls.style.gap = "0px"; // Changed to 0 gap for connected buttons look potentially, but gap 10 is fine.
-    controls.style.zIndex = "100";
-    controls.style.pointerEvents = "auto"; // Ensure clicks pass
+    // Render Sidebar
+    this.renderSidebar();
 
-    // Actually sticky might be tricky if parent scrolls.
-    // Let's use fixed relative to the container if possible, but container has overflow:auto.
-    // Fixed is relative to viewport. Absolute is relative to nearest positioned ancestor.
-    // Position: absolute works if we update it on scroll, or just let it float over content?
-    // If we want it "floating" on the screen regardless of scroll, we need a wrapper.
-    // BUT we are modifying MapView which is the scroll container itself.
-    // To have fixed controls, we should probably have a wrapper for the map.
-    // For now, let's just prepend controls and make them fixed.
-
-    // Easier approach: Render controls outside the scrolling grid.
-    // But `this.element` IS the scrolling container.
-    // Let's create a controls overlay.
-    const zoomInBtn = document.createElement("button");
-    zoomInBtn.innerText = "+";
-    zoomInBtn.style.width = "40px";
-    zoomInBtn.style.height = "40px";
-    zoomInBtn.style.fontSize = "24px";
-    zoomInBtn.style.cursor = "pointer";
-    zoomInBtn.onclick = (e) => {
-      e.stopPropagation();
-      this.zoomLevel = Math.min(this.zoomLevel + 4, this.maxZoom);
-      this.update();
-    };
-
-    const zoomOutBtn = document.createElement("button");
-    zoomOutBtn.innerText = "-";
-    zoomOutBtn.style.width = "40px";
-    zoomOutBtn.style.height = "40px";
-    zoomOutBtn.style.fontSize = "24px";
-    zoomOutBtn.style.cursor = "pointer";
-    zoomOutBtn.onclick = (e) => {
-      e.stopPropagation();
-      this.zoomLevel = Math.max(this.zoomLevel - 4, this.minZoom);
-      this.update();
-    };
-
-    // We'll wrap controls in a container that stays fixed relative to the view
-    // Since we handle render() by clearing this.element, we can append controls there.
-    // But this.element has overflow:auto.
-    // Sticky positioning should work inside scrolling container!
-    controls.style.position = "sticky"; // Sticky needs a top/bottom/etc
-    controls.style.bottom = "20px";
-    controls.style.left = "calc(100% - 100px)"; // Hacky positioning
-
-    // Re-thinking: sticky within overflow container works if content is larger.
-    controls.appendChild(zoomInBtn);
-    controls.appendChild(zoomOutBtn);
+    // Zoom Controls (Moved to mapContainer)
+    this.renderControls();
 
     const grid = document.createElement("div");
     grid.style.flex = "1";
-    grid.style.width = "100%";
+    // grid.style.width = "100%"; // Flex should handle it
     grid.style.display = "grid";
     grid.style.gridTemplateColumns = `repeat(${width}, ${this.zoomLevel}px)`;
     grid.style.gridTemplateRows = `repeat(${height}, ${this.zoomLevel}px)`;
@@ -192,7 +165,6 @@ export class MapView {
         const tileEl = document.createElement("div");
         tileEl.style.width = "100%";
         tileEl.style.height = "100%";
-        // Font size scales with zoom?
         tileEl.style.fontSize = `${Math.max(10, this.zoomLevel * 0.6)}px`;
         tileEl.style.lineHeight = `${this.zoomLevel}px`;
 
@@ -205,22 +177,132 @@ export class MapView {
         tileEl.style.justifyContent = "center";
         tileEl.style.cursor = "pointer";
         tileEl.title = `${typeInfo ? typeInfo.id : "UNKNOWN"} (${x}, ${y})`;
-
         tileEl.innerText = typeInfo ? typeInfo.symbol : "?";
+
+        // Filter Logic
+        if (this.hiddenTerrainTypes.has(tile.type)) {
+          tileEl.style.filter = "grayscale(100%) opacity(0.3)";
+        }
 
         // Hover effect
         tileEl.onmouseenter = () => {
-          tileEl.style.opacity = "0.8";
+          if (!this.hiddenTerrainTypes.has(tile.type)) {
+            tileEl.style.opacity = "0.8";
+          }
         };
         tileEl.onmouseleave = () => {
-          tileEl.style.opacity = "1";
+          if (!this.hiddenTerrainTypes.has(tile.type)) {
+            tileEl.style.opacity = "1";
+          }
         };
 
         grid.appendChild(tileEl);
       }
     }
 
-    this.element.appendChild(grid);
-    this.element.appendChild(controls);
+    this.mapContainer.appendChild(grid);
+  }
+
+  renderControls() {
+    const controls = document.createElement("div");
+    controls.style.position = "sticky";
+    controls.style.bottom = "20px";
+    controls.style.right = "20px";
+    controls.style.alignSelf = "flex-end";
+    controls.style.marginRight = "20px";
+    controls.style.marginBottom = "20px";
+    controls.style.marginLeft = "auto"; // Push to right
+    controls.style.display = "flex";
+    controls.style.zIndex = "100";
+
+    // Position relative to mapContainer
+    // Since mapContainer has overflow:auto and relative, sticky works.
+    // Actually, sticky needs to be inside the flow.
+    // If we append it after grid, it might be at bottom.
+    // Let's use absolute positioning relative to mapContainer which is relative.
+    controls.style.position = "absolute";
+    controls.style.bottom = "20px";
+    controls.style.right = "20px";
+
+    const zoomInBtn = this.createZoomButton("+", () => {
+      this.zoomLevel = Math.min(this.zoomLevel + 4, this.maxZoom);
+      this.update();
+    });
+
+    const zoomOutBtn = this.createZoomButton("-", () => {
+      this.zoomLevel = Math.max(this.zoomLevel - 4, this.minZoom);
+      this.update();
+    });
+
+    controls.appendChild(zoomInBtn);
+    controls.appendChild(zoomOutBtn);
+    this.mapContainer.appendChild(controls);
+  }
+
+  createZoomButton(label, onClick) {
+    const btn = document.createElement("button");
+    btn.innerText = label;
+    btn.style.width = "40px";
+    btn.style.height = "40px";
+    btn.style.fontSize = "24px";
+    btn.style.cursor = "pointer";
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      onClick();
+    };
+    return btn;
+  }
+
+  renderSidebar() {
+    const header = document.createElement("h3");
+    header.innerText = "Filter Terrain";
+    header.style.color = "#fff";
+    header.style.marginTop = "0";
+    header.style.marginBottom = "10px";
+    header.style.fontSize = "16px";
+    header.style.textAlign = "center";
+    this.sidebar.appendChild(header);
+
+    Object.values(TERRAIN_TYPES).forEach((type) => {
+      const item = document.createElement("div");
+      item.style.display = "flex";
+      item.style.alignItems = "center";
+      item.style.padding = "8px";
+      item.style.borderRadius = "4px";
+      item.style.cursor = "pointer";
+      item.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
+      item.style.transition = "all 0.2s";
+
+      const isHidden = this.hiddenTerrainTypes.has(type.id);
+      if (isHidden) {
+        item.style.opacity = "0.5";
+        item.style.filter = "grayscale(100%)";
+      } else {
+        item.style.border = `1px solid ${type.color}`;
+      }
+
+      item.onclick = () => {
+        if (this.hiddenTerrainTypes.has(type.id)) {
+          this.hiddenTerrainTypes.delete(type.id);
+        } else {
+          this.hiddenTerrainTypes.add(type.id);
+        }
+        this.update();
+      };
+
+      const icon = document.createElement("span");
+      icon.innerText = type.symbol;
+      icon.style.marginRight = "10px";
+      icon.style.fontSize = "20px";
+
+      const name = document.createElement("span");
+      name.innerText = type.id;
+      name.style.color = "#fff";
+      name.style.fontSize = "14px";
+
+      item.appendChild(icon);
+      item.appendChild(name);
+      this.sidebar.appendChild(item);
+    });
   }
 }
