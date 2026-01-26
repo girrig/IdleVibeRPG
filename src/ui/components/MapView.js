@@ -25,6 +25,7 @@ export class MapView {
     this.mapContainer.style.userSelect = "none";
     this.mapContainer.style.display = "flex"; // To center grid if small? or just block.
     this.mapContainer.style.flexDirection = "column";
+    this.mapContainer.style.backgroundColor = "#000"; // Ensure background is black everywhere
     // Prevent rubber-banding/bouncing which reveals background
     this.mapContainer.style.overscrollBehavior = "none";
 
@@ -182,8 +183,10 @@ export class MapView {
     this.renderControls();
 
     const grid = document.createElement("div");
-    grid.style.flex = "1";
-    // grid.style.width = "100%"; // Flex should handle it
+    // grid.style.flex = "1"; // Remove flex, let it size by content
+    grid.style.width = "fit-content"; // Ensure it expands to hold all columns
+    grid.style.minWidth = "100%"; // At least full width
+    grid.style.minHeight = "100%"; // At least full height
     grid.style.display = "grid";
     grid.style.gridTemplateColumns = `repeat(${width}, ${this.zoomLevel}px)`;
     grid.style.gridTemplateRows = `repeat(${height}, ${this.zoomLevel}px)`;
