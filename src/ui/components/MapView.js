@@ -459,6 +459,72 @@ export class MapView {
       viewportHeight, // Dest (Screen pixels)
     );
 
+    // --- 2. Draw Characters ---
+    // --- 2. Draw Characters ---
+    // Font size relative to Tile Size (same as symbols)
+    const charFontSize = Math.floor(this.zoomLevel * 0.7);
+    this.ctx.font = `${charFontSize}px sans-serif`;
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+
+    window.gameState.characters.forEach((char) => {
+      const { x, y } = char.position;
+
+      // Don't show character if at home (Town covers it)
+      if (x === 250 && y === 250) return;
+
+      // Transform World (Tile) Coords -> Screen Coords
+      // screenX = (worldX * zoom) - scrollLeft
+      // Wait, drawImage maps source area to FULL canvas 0,0.
+      // So if char is at x,y (world).
+      // Relative to SourceX, SourceY:
+      // relX = x - sourceX
+      // screenX = relX * zoom
+      // OFFSET to Center of Tile: + zoomLevel/2
+
+      const charScreenX = (x - sourceX) * this.zoomLevel;
+      const charScreenY = (y - sourceY) * this.zoomLevel;
+
+      // Only draw if within bounds
+      if (
+        charScreenX >= -this.zoomLevel * 10 &&
+        charScreenX <= viewportWidth &&
+        charScreenY >= -this.zoomLevel * 10 &&
+        charScreenY <= viewportHeight
+      ) {
+        // --- Draw Sight Radius Highlight (Circular) ---
+        const radius = 5; // Radius 5 = 11x11 grid approx
+        this.ctx.fillStyle = "rgba(255, 255, 0, 0.4)"; // Bright Yellow
+
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            // Check circular distance (Euclidean or rounded)
+            if (dx * dx + dy * dy <= radius * radius + 0.5) {
+              const tileX = charScreenX + dx * this.zoomLevel;
+              const tileY = charScreenY + dy * this.zoomLevel;
+              this.ctx.fillRect(tileX, tileY, this.zoomLevel, this.zoomLevel);
+            }
+          }
+        }
+
+        // Center of Tile
+        const centerX = charScreenX + this.zoomLevel / 2;
+        const centerY = charScreenY + this.zoomLevel / 2;
+
+        // Draw Shadow/Backing
+        this.ctx.fillStyle = "rgba(0,0,0,0.3)";
+        this.ctx.beginPath();
+        // Circle radius slightly larger than text to back it up
+        this.ctx.arc(centerX, centerY, this.zoomLevel * 0.4, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Draw Emoji (Tweaked Y explicitly)
+        this.ctx.fillStyle = "#fff";
+        // "middle" baseline is sometimes slightly high for emojis. adding slight offset.
+        this.ctx.fillText("🧙‍♂️", centerX, centerY + this.zoomLevel * 0.05);
+      }
+    });
+
     // --- 2. Draw Symbols (Viewport Culling) ---
     if (this.zoomLevel <= 10) return;
 

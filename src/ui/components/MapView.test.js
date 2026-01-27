@@ -55,6 +55,9 @@ describe("MapView Zoom Logic", () => {
       textAlign: "",
       textBaseline: "",
       imageSmoothingEnabled: true,
+      beginPath: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
     };
 
     // Override HTMLCanvasElement.prototype.getContext to return our mock
@@ -76,6 +79,11 @@ describe("MapView Zoom Logic", () => {
     // Set properties that might be read
     mapView.canvas.width = 0; // Force update to trigger resize
     mapView.canvas.height = 0;
+
+    // Mock GameState for Character Rendering
+    window.gameState = {
+      characters: [],
+    };
   });
 
   it("should maintain spacer at full map size and canvas at viewport size", () => {
@@ -160,6 +168,28 @@ describe("MapView Zoom Logic", () => {
 
       // So fillText should be called exactly 2 times (Index 1 and Index 2).
       expect(mapView.ctx.fillText).toHaveBeenCalledTimes(2);
+    });
+
+    it("should draw characters on the map", () => {
+      window.gameState.characters = [
+        { name: "P1", position: { x: 10, y: 10 } },
+        { name: "P2", position: { x: 12, y: 12 } },
+      ];
+
+      // Setup view
+      mapView.zoomLevel = 10;
+      mapView.canvas.width = 800;
+      mapView.canvas.height = 600;
+
+      // We don't care about map data for this test, characters are independent layer
+      mapView.renderMainCanvas();
+
+      // Check fillText calls
+      // 2 characters = 2 calls. (Assuming no symbols drawn due to zoom/mock tiles)
+      const calls = mapView.ctx.fillText.mock.calls;
+      const charCalls = calls.filter((call) => call[0] === "🧙‍♂️");
+
+      expect(charCalls.length).toBe(2);
     });
   });
 

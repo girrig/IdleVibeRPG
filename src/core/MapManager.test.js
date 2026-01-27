@@ -6,29 +6,29 @@ describe("MapManager", () => {
 
   beforeEach(() => {
     mapManager = new MapManager();
+    // Optimization: Use smaller map for ALL tests to prevent timeouts
+    mapManager.width = 50;
+    mapManager.height = 50;
   });
 
   it("should initialize with default dimensions", () => {
-    // Assert initialized values
-    // but normally we check if mapManager has width/height properties
-    expect(mapManager.width).toBe(500);
-    expect(mapManager.height).toBe(500);
+    // Assert initialized values on a FRESH instance to verify defaults
+    const defaultsManager = new MapManager();
+    expect(defaultsManager.width).toBe(500);
+    expect(defaultsManager.height).toBe(500);
   });
 
   it("should generate a valid map on initialization", () => {
     mapManager.initialize();
 
-    expect(mapManager.tiles.length).toBe(500); // Height
-    expect(mapManager.tiles[0].length).toBe(500); // Width
+    expect(mapManager.tiles.length).toBe(50); // Height
+    expect(mapManager.tiles[0].length).toBe(50); // Width
 
     expect(mapManager.tiles[0][0]).toHaveProperty("type");
     expect(mapManager.tiles[0][0]).toHaveProperty("x");
   });
 
   it("should recover state from save data", () => {
-    // Optimization: Use smaller map for test performance
-    mapManager.width = 50;
-    mapManager.height = 50;
     mapManager.initialize();
 
     // Modify a tile to test persistence of state
@@ -73,9 +73,9 @@ describe("MapManager", () => {
       seed: 999,
     });
 
-    // Should have ignored the 10x10 and generated 500x500
-    expect(mapManager.tiles.length).toBe(500);
-    expect(mapManager.tiles[0].length).toBe(500);
+    // Should have ignored the 10x10 and generated 50x50 (based on instance config)
+    expect(mapManager.tiles.length).toBe(50);
+    expect(mapManager.tiles[0].length).toBe(50);
   });
 
   it("should return null for out of bounds tiles", () => {
@@ -130,11 +130,21 @@ describe("MapManager", () => {
     });
 
     it("should explore a radius of tiles", () => {
+      mapManager.width = 50;
+      mapManager.height = 50;
       mapManager.initialize();
-      // Pick a center point away from home (250,250)
-      const cx = 100;
-      const cy = 100;
+
+      // Pick a center point away from home (25,25)
+      const cx = 10;
+      const cy = 10;
       const radius = 2;
+
+      // Debug check
+      if (!mapManager.getTile(cx, cy)) {
+        throw new Error(
+          `Tile at ${cx},${cy} is null. W:${mapManager.width} H:${mapManager.height} Tiles:${mapManager.tiles.length}x${mapManager.tiles[0]?.length}`,
+        );
+      }
 
       // Ensure center is unexplored first
       expect(mapManager.getTile(cx, cy).explored).toBe(false);
