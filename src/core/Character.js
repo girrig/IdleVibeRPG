@@ -244,6 +244,25 @@ export class Character {
   }
 
   stopActivity() {
+    // If Exploring and NOT Returning and NOT at home, trigger Return Trip first
+    if (
+      this.currentActivity &&
+      this.currentActivity.type === "EXPLORING" &&
+      this.currentActivity.phase !== "RETURNING"
+    ) {
+      const homeX = 250;
+      const homeY = 250;
+      if (this.position.x !== homeX || this.position.y !== homeY) {
+        this.currentActivity.phase = "RETURNING";
+        if (window.gameState)
+          window.gameState.triggerNotification(
+            `${this.name}: "Heading back to town..."`,
+            "activity",
+          );
+        return; // Cancel the immediate stop
+      }
+    }
+
     this.currentActivity = null;
     this.activityQueue = []; // Clear queue on manual stop
     if (window.gameState)

@@ -280,8 +280,13 @@ export const SKILL_DEFINITIONS = {
 
       // Initialize Phase if missing
       if (!char.currentActivity.phase) {
+        // "Start from the town": Reset position to Home
+        char.position = { x: 250, y: 250 };
+
         char.currentActivity.phase = "SEARCHING"; // Default
         if (targetId === "wander") char.currentActivity.phase = "WANDERING";
+
+        gameState.triggerNotification("Departing from home...", "activity");
       }
 
       const phase = char.currentActivity.phase;

@@ -326,6 +326,18 @@ export class MapView {
     }
   }
 
+  // Force a redraw of the map data (for game ticks)
+  refreshMap() {
+    this.mapDataDirty = true;
+    this.update();
+  }
+
+  // Force a redraw of the map data (for game ticks)
+  refreshMap() {
+    this.mapDataDirty = true;
+    this.update();
+  }
+
   centerOnHome() {
     const viewportWidth = this.mapContainer.clientWidth;
     const viewportHeight = this.mapContainer.clientHeight;

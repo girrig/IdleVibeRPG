@@ -26,6 +26,9 @@ describe("MapManager", () => {
   });
 
   it("should recover state from save data", () => {
+    // Optimization: Use smaller map for test performance
+    mapManager.width = 50;
+    mapManager.height = 50;
     mapManager.initialize();
 
     // Modify a tile to test persistence of state
@@ -40,11 +43,16 @@ describe("MapManager", () => {
     expect(savedData.exploredIndices.length).toBeGreaterThan(0);
 
     // create new instance
+    // create new instance
     const newManager = new MapManager();
+    // Inherit dimensions (or set them manually, as save data doesn't store dimensions currently?)
+    // Actually MapManager defaults to 500. We should force it for test.
+    newManager.width = 50;
+    newManager.height = 50;
     newManager.initialize(savedData);
 
     // Assert regeneration
-    expect(newManager.tiles.length).toBe(500);
+    expect(newManager.tiles.length).toBe(50);
     expect(newManager.seed).toBe(savedData.seed);
 
     // Assert State Restoration

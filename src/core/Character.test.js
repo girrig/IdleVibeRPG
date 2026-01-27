@@ -123,4 +123,22 @@ describe("Character Core Logic", () => {
       expect(char.activityQueue).toHaveLength(0);
     });
   });
+
+  it("should trigger return trip on stopActivity if exploring", () => {
+    char.position = { x: 100, y: 100 }; // Far form home
+    char.startActivity("EXPLORING", "wander", 0);
+
+    // startActivity resets to 250,250. So let's move them AWAY manually to simulate time passed.
+    char.position = { x: 100, y: 100 };
+
+    // First Stop
+    char.stopActivity();
+
+    expect(char.currentActivity).not.toBeNull();
+    expect(char.currentActivity.phase).toBe("RETURNING");
+
+    // Second Stop (Force Quit)
+    char.stopActivity();
+    expect(char.currentActivity).toBeNull();
+  });
 });

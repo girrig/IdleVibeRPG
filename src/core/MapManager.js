@@ -748,12 +748,12 @@ export class MapManager {
           const key = `${n.x},${n.y}`;
           if (!visited.has(key)) {
             // Only traverse explored tiles to reach the frontier edge
-            // Or allow traversing unexplored? No, character can only plan path through known space?
-            // Actually, if we are lost, we might need to traverse the unknown.
-            // But 'Frontier' implies known edge.
-            // We search outward from current pos.
-            visited.add(key);
-            queue.push({ x: n.x, y: n.y, dist: curr.dist + 1 });
+            // We must stay within the "Known World"
+            const neighborTile = this.getTile(n.x, n.y);
+            if (neighborTile && neighborTile.explored) {
+              visited.add(key);
+              queue.push({ x: n.x, y: n.y, dist: curr.dist + 1 });
+            }
           }
         }
       }

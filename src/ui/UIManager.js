@@ -574,6 +574,10 @@ export class UIManager {
       if (invGrid) {
         invGrid.innerHTML = InventoryView.getInventoryHTML();
       }
+    } else if (this.currentView === "MAP") {
+      if (this.mapView) {
+        this.mapView.refreshMap();
+      }
     }
   }
 }

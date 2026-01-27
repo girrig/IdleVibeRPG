@@ -48,18 +48,14 @@ describe("Exploring Skill", () => {
 
   it("should move character and reveal tiles on wander", () => {
     // Start at a random unexplored location (e.g. 100, 100)
-    char.position = { x: 100, y: 100 };
-    // Ensure neighbors are valid and unexplored (should be by default unless 100,100 is weirdly close to center or edge)
-    // 100,100 is far from 250,250.
-
-    const startPos = { ...char.position };
-    const action = SKILL_DEFINITIONS.EXPLORING.action;
-
-    // Ensure there are valid neighbors (250, 250 should be fine)
-
     // Execute action
     // Fix: initialize activity state first so currentActivity is set
+    // NOTE: startActivity now resets position to HOME (250, 250).
+    // We must overload this for the test to verify "New Area" logic at 100,100.
     char.startActivity("EXPLORING", "wander", 0);
+    const action = SKILL_DEFINITIONS.EXPLORING.action;
+    char.position = { x: 100, y: 100 };
+    const startPos = { ...char.position };
     action(gameState, char);
 
     const newPos = char.position;

@@ -89,7 +89,12 @@ describe("Exploring Skill - Targeting", () => {
     const action = SKILL_DEFINITIONS.EXPLORING.action;
 
     // Set activity to find_forest
-    char.currentActivity = { skill: "EXPLORING", target: "find_forest" };
+    // Set activity to find_forest (SEARCHING phase to avoid auto-reset to home)
+    char.currentActivity = {
+      skill: "EXPLORING",
+      target: "find_forest",
+      phase: "SEARCHING",
+    };
 
     // Act
     action(gameState, char);
@@ -105,7 +110,12 @@ describe("Exploring Skill - Targeting", () => {
     tile.type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
     tile.explored = true; // Already known
 
-    char.currentActivity = { skill: "EXPLORING", target: "find_forest" };
+    // Set phase to EXPLORING since we are already there
+    char.currentActivity = {
+      skill: "EXPLORING",
+      target: "find_forest",
+      phase: "EXPLORING",
+    };
 
     // Execute action (will move to adjacent)
     // Force adjacent to also be forest
@@ -132,7 +142,11 @@ describe("Exploring Skill - Targeting", () => {
   it("should random wander if target biome is unknown", () => {
     // Setup: Character at (5,5). NO Forest known.
     const action = SKILL_DEFINITIONS.EXPLORING.action;
-    char.currentActivity = { skill: "EXPLORING", target: "find_forest" };
+    char.currentActivity = {
+      skill: "EXPLORING",
+      target: "find_forest",
+      phase: "SEARCHING",
+    };
 
     const startPos = { ...char.position };
     action(gameState, char);
