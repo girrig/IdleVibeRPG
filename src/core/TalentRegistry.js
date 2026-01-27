@@ -256,6 +256,28 @@ export const TALENT_DEFINITIONS = {
     position: { row: 1, col: 8 },
     effect: (char) => {}, // Handled in Smithing Action
   },
+
+  // Exploring Path
+  exploring_1: {
+    id: "exploring_1",
+    name: "Surveyor",
+    description: "Increases Exploring XP by 10%",
+    icon: "🧭",
+    cost: 1,
+    prerequisites: [],
+    position: { row: 0, col: 9 },
+    effect: (char) => {}, // Handled in gainXp
+  },
+  exploring_2: {
+    id: "exploring_2",
+    name: "Pathfinder",
+    description: "10% chance for double XP gain",
+    icon: "🗺️",
+    cost: 1,
+    prerequisites: ["exploring_1"],
+    position: { row: 1, col: 9 },
+    effect: (char) => {}, // Handled in Exploring Action
+  },
 };
 
 export const getTalentDefinition = (id) => TALENT_DEFINITIONS[id];

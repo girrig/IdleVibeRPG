@@ -81,6 +81,31 @@ export class MapManager {
       ) {
         console.log("Map dimensions mismatch, regenerating...");
         this.generateMap();
+      } else {
+        // Patch Old Saves: Ensure 'explored' exists
+        // And ensure Home is explored (Radius 5)
+        let needsHomeReveal = false;
+
+        for (let y = 0; y < this.height; y++) {
+          for (let x = 0; x < this.width; x++) {
+            if (this.tiles[y][x].explored === undefined) {
+              this.tiles[y][x].explored = false;
+              needsHomeReveal = true;
+            }
+            // Mark HOME tile as explored if found (legacy saves might have HOME type but not explored)
+            if (this.tiles[y][x].type === TERRAIN_TYPES.HOME.id) {
+              this.tiles[y][x].explored = true;
+            }
+          }
+        }
+
+        if (needsHomeReveal) {
+          // Find home and reveal radius
+          // Center is usually 250, 250
+          const cx = Math.floor(this.width / 2);
+          const cy = Math.floor(this.height / 2);
+          this.exploreRadius(cx, cy, 5);
+        }
       }
     } else {
       this.generateMap();
@@ -168,23 +193,8 @@ export class MapManager {
       this.tiles[centerY][centerX].explored = true;
       this.tiles[centerY][centerX].type = TERRAIN_TYPES.HOME.id;
 
-      // Mark neighbors explored
-      const neighbors = [
-        { x: centerX + 1, y: centerY },
-        { x: centerX - 1, y: centerY },
-        { x: centerX, y: centerY + 1 },
-        { x: centerX, y: centerY - 1 },
-        { x: centerX + 1, y: centerY + 1 },
-        { x: centerX - 1, y: centerY - 1 },
-        { x: centerX + 1, y: centerY - 1 },
-        { x: centerX - 1, y: centerY + 1 },
-      ];
-
-      neighbors.forEach((n) => {
-        if (this.tiles[n.y] && this.tiles[n.y][n.x]) {
-          this.tiles[n.y][n.x].explored = true;
-        }
-      });
+      // Mark neighbors explored (Radius 5)
+      this.exploreRadius(centerX, centerY, 5);
     }
   }
 
@@ -421,6 +431,26 @@ export class MapManager {
     return false;
   }
 
+  exploreRadius(centerX, centerY, radius) {
+    let anyNew = false;
+    const r = Math.floor(radius);
+
+    for (let y = centerY - r; y <= centerY + r; y++) {
+      for (let x = centerX - r; x <= centerX + r; x++) {
+        // Circular check
+        if (
+          Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2) <=
+          Math.pow(r, 2)
+        ) {
+          if (this.exploreTile(x, y)) {
+            anyNew = true;
+          }
+        }
+      }
+    }
+    return anyNew;
+  }
+
   // Find nearest explored tile of a specific type (BFS)
   findNearestExploredTile(typeId, startX, startY) {
     const visited = new Set();
@@ -473,6 +503,99 @@ export class MapManager {
   isExplored(x, y) {
     const tile = this.getTile(x, y);
     return tile ? tile.explored : false;
+  }
+
+  // Get all connected tiles of the same type starting from (x,y)
+  getContiguousRegion(startX, startY) {
+    const startTile = this.getTile(startX, startY);
+    if (!startTile) return new Set();
+
+    const type = startTile.type;
+    const region = new Set();
+    const queue = [{ x: startX, y: startY }];
+    const visited = new Set();
+
+    // Initial key
+    const startKey = `${startX},${startY}`;
+    visited.add(startKey);
+    region.add(startKey);
+
+    let head = 0;
+    // Limit flood fill just in case, though maps are 500x500.
+    // A simplified flood fill.
+    while (head < queue.length) {
+      const curr = queue[head++];
+
+      const neighbors = [
+        { x: curr.x + 1, y: curr.y },
+        { x: curr.x - 1, y: curr.y },
+        { x: curr.x, y: curr.y + 1 },
+        { x: curr.x, y: curr.y - 1 },
+      ];
+
+      for (const n of neighbors) {
+        if (n.x >= 0 && n.x < this.width && n.y >= 0 && n.y < this.height) {
+          const key = `${n.x},${n.y}`;
+          if (!visited.has(key)) {
+            if (this.tiles[n.y][n.x].type === type) {
+              visited.add(key);
+              region.add(key);
+              queue.push(n);
+            }
+          }
+        }
+      }
+    }
+    return region;
+  }
+
+  // Find nearest unexplored tile within a set of keys "x,y"
+  findNearestUnexploredInRegion(regionSet, currentX, currentY) {
+    // We can iterate the set and calculate distance.
+    // Optimization: BFS from currentX,currentY restricted to keys in regionSet?
+    // Or just line-scan if set is small?
+    // BFS is better to find NEAREST.
+
+    const visited = new Set();
+    const queue = [{ x: currentX, y: currentY, dist: 0 }];
+    visited.add(`${currentX},${currentY}`);
+
+    let head = 0;
+    // Allow searching global or just robust BFS
+    // Actually, standard BFS on grid, but check if neighbor is in regionSet
+
+    while (head < queue.length) {
+      const curr = queue[head++];
+
+      // Check if this tile is unexplored
+      const tile = this.getTile(curr.x, curr.y);
+      if (tile && !tile.explored) {
+        return { x: curr.x, y: curr.y };
+      }
+
+      const neighbors = [
+        { x: curr.x + 1, y: curr.y },
+        { x: curr.x - 1, y: curr.y },
+        { x: curr.x, y: curr.y + 1 },
+        { x: curr.x, y: curr.y - 1 },
+      ];
+
+      for (const n of neighbors) {
+        const key = `${n.x},${n.y}`;
+        if (!visited.has(key)) {
+          // Must be part of the region to walk/search it?
+          // Logic: "Explore the entire thing".
+          // We should only target tiles IN the region.
+          if (regionSet.has(key)) {
+            visited.add(key);
+            queue.push({ x: n.x, y: n.y, dist: curr.dist + 1 });
+          }
+        }
+      }
+    }
+
+    // Fallback: If disconnected graph (rare in grid) or fully explored
+    return null;
   }
 }
 

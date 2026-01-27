@@ -16,7 +16,9 @@ export class Character {
 
       strength: 10,
       dexterity: 10,
+      dexterity: 10,
       intelligence: 10,
+      sightRange: 5, // Radius of fog clear
     };
     this.equipment = {
       head: null,
@@ -52,7 +54,10 @@ export class Character {
     const char = new Character(data.id, data.name, data.type);
     Object.assign(char, data);
     // Deep merge stats and skills to ensure defaults are preserved if missing in data
-    char.stats = { ...new Character(0, "").stats, ...(data.stats || {}) };
+    const defaultStats = new Character(0, "").stats;
+    char.stats = { ...defaultStats, ...(data.stats || {}) };
+    if (!char.stats.sightRange) char.stats.sightRange = defaultStats.sightRange;
+
     char.skills = { ...new Character(0, "").skills, ...(data.skills || {}) };
     // Ensure all skills have initialized talentPoints
     for (const key in char.skills) {
@@ -95,6 +100,8 @@ export class Character {
       else if (def.position.col === 5) skillIdForPoints = "fishing";
       else if (def.position.col === 6 || def.position.col === 7)
         skillIdForPoints = "fighting";
+      else if (def.position.col === 8) skillIdForPoints = "smithing";
+      else if (def.position.col === 9) skillIdForPoints = "exploring";
     }
 
     // Check Resources (Do not deduct yet)
@@ -165,6 +172,8 @@ export class Character {
       else if (def.position.col === 5) skillIdForPoints = "fishing";
       else if (def.position.col === 6 || def.position.col === 7)
         skillIdForPoints = "fighting";
+      else if (def.position.col === 8) skillIdForPoints = "smithing";
+      else if (def.position.col === 9) skillIdForPoints = "exploring";
 
       if (skillIdForPoints && this.skills[skillIdForPoints]) {
         this.skills[skillIdForPoints].talentPoints += def.cost;
@@ -257,6 +266,8 @@ export class Character {
       multiplier += 0.1;
     if (skillId === "fishing" && this.talents.fishing_1) multiplier += 0.1;
     if (skillId === "fighting" && this.talents.fighting_1) multiplier += 0.1;
+    if (skillId === "smithing" && this.talents.smithing_1) multiplier += 0.1;
+    if (skillId === "exploring" && this.talents.exploring_1) multiplier += 0.1;
 
     skill.xp += amount * multiplier;
 

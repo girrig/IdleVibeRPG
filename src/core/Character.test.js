@@ -29,6 +29,7 @@ describe("Character Core Logic", () => {
     it("should initialize with default stats", () => {
       expect(char.name).toBe("Hero");
       expect(char.stats.level).toBe(1);
+      expect(char.stats.sightRange).toBe(5); // Default
       expect(char.talentPoints).toBe(3);
     });
 
@@ -49,6 +50,7 @@ describe("Character Core Logic", () => {
       expect(loadedChar.stats.level).toBe(5);
       expect(loadedChar.stats.strength).toBe(20);
       expect(loadedChar.stats.dexterity).toBe(10); // Preserved default
+      expect(loadedChar.stats.sightRange).toBe(5); // Should default if missing or 5 if saved
       expect(loadedChar.skills.mining.level).toBe(5);
     });
 

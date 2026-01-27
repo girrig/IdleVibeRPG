@@ -113,4 +113,14 @@ describe("MapView Zoom Logic", () => {
       expect(mapView.canvas.style.height).toBe("600px");
     });
   });
+
+  describe("UI Elements", () => {
+    it("should have a hidden loading overlay initialized", () => {
+      expect(mapView.loadingOverlay).toBeDefined();
+      expect(mapView.loadingOverlay.style.display).toBe("none");
+      expect(mapView.loadingOverlay.innerHTML).toContain("Generating World");
+      // Check it is appended to viewWrapper
+      expect(mapView.loadingOverlay.parentNode).toBe(mapView.viewWrapper);
+    });
+  });
 });

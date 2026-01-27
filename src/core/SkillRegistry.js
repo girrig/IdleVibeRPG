@@ -228,6 +228,7 @@ export const SKILL_DEFINITIONS = {
     name: "Exploring",
     icon: "🧭",
     color: SKILL_COLORS.EXPLORING,
+    continuous: true,
     options: {
       wander: {
         name: "Wander",
@@ -277,45 +278,99 @@ export const SKILL_DEFINITIONS = {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.EXPLORING.options[targetId];
 
+      // Initialize Phase if missing
+      if (!char.currentActivity.phase) {
+        char.currentActivity.phase = "SEARCHING"; // Default
+        if (targetId === "wander") char.currentActivity.phase = "WANDERING";
+      }
+
+      const phase = char.currentActivity.phase;
+      const { x, y } = char.position;
       let nextPos = null;
-      let isSeeking = false;
 
-      // Logic: If target is specific biome, try to move towards it
-      if (option && option.biomeId) {
-        isSeeking = true;
-        const { x, y } = char.position;
-
-        // 1. Are we already there?
+      // --- PHASE 1: SEARCHING ---
+      if (phase === "SEARCHING") {
+        // If we are ALREADY in the target biome, switch to EXPLORING
         const currentTile = mapManager.getTile(x, y);
-        if (currentTile && currentTile.type === option.biomeId) {
-          // We found it! Just wander inside it or stop?
-          // Let's wander to find MORE of it (XP farming)
+        if (option.biomeId && currentTile.type === option.biomeId) {
+          char.currentActivity.phase = "EXPLORING";
+          // gameState.triggerNotification("Found " + option.name + "! Exploring...", "success"); // Spammy?
+          // Fallthrough to EXPLORING logic immediately
+        } else {
+          // Look for known tiles
+          const target = mapManager.findNearestExploredTile(
+            option.biomeId,
+            x,
+            y,
+          );
+          if (target) {
+            // Move towards it (Manhattan)
+            const dx = Math.sign(target.x - x);
+            const dy = Math.sign(target.y - y);
+            // Basic pathfinding
+            if (dx !== 0 && Math.random() < 0.5) nextPos = { x: x + dx, y: y };
+            else if (dy !== 0) nextPos = { x: x, y: y + dy };
+            else if (dx !== 0) nextPos = { x: x + dx, y: y };
+          }
+          // If no known tile, Random Wander (Fallback below)
         }
+      }
 
-        // 2. Scan for nearest KNOWN tile of this type
-        const target = mapManager.findNearestExploredTile(option.biomeId, x, y);
+      // --- PHASE 2: EXPLORING ---
+      if (char.currentActivity.phase === "EXPLORING") {
+        // We are inside the biome. We want to find UNEXPLORED tiles in this region.
+        // 1. Identify Region
+        // Optimization: We could cache the region Set in activity, but it might be large.
+        // MapManager handles it reasonably fast for small inputs, but 500x500 map...
+        // Let's re-calculate for now. Real-time pathfinding.
+
+        const region = mapManager.getContiguousRegion(x, y);
+
+        // 2. Find nearest unexplored
+        const target = mapManager.findNearestUnexploredInRegion(region, x, y);
 
         if (target) {
-          // Move towards target
-          // Simple step towards delta
+          // Move towards it
           const dx = Math.sign(target.x - x);
           const dy = Math.sign(target.y - y);
-
-          // Apply movement (Grid based, no diagonal for simplicity or mix?)
-          // Let's do Manhattan steps
-          if (dx !== 0 && Math.random() < 0.5) {
-            nextPos = { x: x + dx, y: y };
-          } else if (dy !== 0) {
-            nextPos = { x: x, y: y + dy };
-          } else if (dx !== 0) {
-            nextPos = { x: x + dx, y: y };
-          }
+          if (dx !== 0 && Math.random() < 0.5) nextPos = { x: x + dx, y: y };
+          else if (dy !== 0) nextPos = { x: x, y: y + dy };
+          else if (dx !== 0) nextPos = { x: x + dx, y: y };
+        } else {
+          // No unexplored tiles left in this region!
+          char.currentActivity.phase = "RETURNING";
+          gameState.triggerNotification(
+            `${option.name} fully explored! Returning home.`,
+            "success",
+          );
         }
+      }
+
+      // --- PHASE 3: RETURNING ---
+      if (char.currentActivity.phase === "RETURNING") {
+        const homeX = 250;
+        const homeY = 250;
+
+        if (x === homeX && y === homeY) {
+          char.stopActivity();
+          gameState.triggerNotification("Returned home safely.", "success");
+          return;
+        }
+
+        const dx = Math.sign(homeX - x);
+        const dy = Math.sign(homeY - y);
+        if (dx !== 0 && Math.random() < 0.5) nextPos = { x: x + dx, y: y };
+        else if (dy !== 0) nextPos = { x: x, y: y + dy };
+        else if (dx !== 0) nextPos = { x: x + dx, y: y };
+      }
+
+      // --- PHASE 0: WANDERING (Fallback) ---
+      if (char.currentActivity.phase === "WANDERING") {
+        // Just random
       }
 
       // Fallback: Random Wander (if not seeking or no target found)
       if (!nextPos) {
-        const { x, y } = char.position;
         const neighbors = [
           { x: x + 1, y: y },
           { x: x - 1, y: y },
@@ -323,12 +378,8 @@ export const SKILL_DEFINITIONS = {
           { x: x, y: y - 1 },
         ];
         const validNeighbors = neighbors.filter(
-          (n) =>
-            n.x >= 0 &&
-            n.x < mapManager.width &&
-            n.y >= 0 &&
-            n.y < mapManager.height,
-        );
+          (n) => n.x >= 0 && n.x < 500 && n.y >= 0 && n.y < 500,
+        ); // Hardcoded 500 for now or access mapManager.width
         if (validNeighbors.length > 0) {
           nextPos =
             validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
@@ -340,13 +391,15 @@ export const SKILL_DEFINITIONS = {
       // Move
       char.position = nextPos;
 
-      // Explore
-      const revealed = mapManager.exploreTile(nextPos.x, nextPos.y);
+      // Explore with Radius
+      const sightRadius = char.stats.sightRange || 3;
+      const revealed = mapManager.exploreRadius(
+        nextPos.x,
+        nextPos.y,
+        sightRadius,
+      );
 
       // XP Logic
-      // If we were seeking and found the biome (entered it), maybe bonus logic?
-      // For now, keep simple: Bonus for new tiles.
-
       const newTile = mapManager.getTile(nextPos.x, nextPos.y);
       let xpGain = Math.floor(option.xp * 0.1); // Default low XP (walking)
 
@@ -355,12 +408,19 @@ export const SKILL_DEFINITIONS = {
         gameState.triggerNotification("Discovered new area!", "success");
       }
 
-      // Bonus if we are standing on the target biome type (farming)
-      if (isSeeking && newTile.type === option.biomeId) {
-        xpGain = Math.max(xpGain, Math.floor(option.xp * 0.5)); // 50% XP for patrolling target biome
+      // Bonus if we are successfully patrolling target in EXPLORING phase
+      if (
+        char.currentActivity.phase === "EXPLORING" &&
+        newTile.type === option.biomeId
+      ) {
+        xpGain = Math.max(xpGain, Math.floor(option.xp * 0.5));
       }
 
       if (xpGain > 0) {
+        if (char.talents.exploring_2 && Math.random() < 0.1) {
+          xpGain *= 2;
+          // gameState.triggerNotification("Double Exploration XP!", "success");
+        }
         char.gainXp("exploring", xpGain);
       }
     },

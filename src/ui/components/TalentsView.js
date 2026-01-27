@@ -9,10 +9,11 @@ export class TalentsView {
     this.uiManager = uiManager;
     this.activeCategory = "Fighting";
     this.categories = [
+      { id: "Exploring", label: "Exploring", icon: "🧭", columns: [9] },
       { id: "Fighting", label: "Fighting", icon: "⚔️", columns: [6, 7] },
-      { id: "Smithing", label: "Smithing", icon: "🔨", columns: [8] },
       { id: "Fishing", label: "Fishing", icon: "🎣", columns: [5] },
       { id: "Mining", label: "Mining", icon: "⛏️", columns: [3] },
+      { id: "Smithing", label: "Smithing", icon: "🔨", columns: [8] },
       { id: "Woodcutting", label: "Woodcutting", icon: "🪓", columns: [4] },
     ];
   }
@@ -31,6 +32,7 @@ export class TalentsView {
       Woodcutting: "woodcutting",
       Fishing: "fishing",
       Fighting: "fighting",
+      Exploring: "exploring",
     };
 
     if (this.activeCategory !== "Attributes") {
@@ -137,6 +139,7 @@ export class TalentsView {
       "Offense",
       "Defense",
       "Smithing",
+      "Exploring",
     ];
 
     // Collect talents for active columns

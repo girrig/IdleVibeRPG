@@ -13,13 +13,22 @@ export class MapView {
     // Filter State
     this.hiddenTerrainTypes = new Set();
 
+    // View Wrapper (Holds Map + Overlay)
+    this.viewWrapper = document.createElement("div");
+    this.viewWrapper.style.flex = "1";
+    this.viewWrapper.style.position = "relative";
+    this.viewWrapper.style.overflow = "hidden"; // Clip overlay
+
     // Map Container
     this.mapContainer = document.createElement("div");
-    this.mapContainer.style.flex = "1";
+    this.mapContainer.style.width = "100%";
+    this.mapContainer.style.height = "100%";
     this.mapContainer.style.position = "relative";
     this.mapContainer.style.overflow = "auto";
     this.mapContainer.style.cursor = "crosshair";
     this.mapContainer.style.backgroundColor = "#000";
+
+    this.viewWrapper.appendChild(this.mapContainer);
 
     // Spacer for Virtual Scroll
     this.spacer = document.createElement("div");
@@ -43,6 +52,26 @@ export class MapView {
     this.offscreenCtx = this.offscreenCanvas.getContext("2d", { alpha: false });
     this.mapDataDirty = true; // Flag to redraw offscreen canvas
 
+    this.loadingOverlay = document.createElement("div");
+    this.loadingOverlay.style.position = "absolute";
+    this.loadingOverlay.style.top = "0";
+    this.loadingOverlay.style.left = "0";
+    this.loadingOverlay.style.width = "100%";
+    this.loadingOverlay.style.height = "100%";
+    this.loadingOverlay.style.backgroundColor = "rgba(0,0,0,0.7)";
+    this.loadingOverlay.style.color = "white";
+    this.loadingOverlay.style.display = "none"; // Hidden by default
+    this.loadingOverlay.style.alignItems = "center";
+    this.loadingOverlay.style.justifyContent = "center";
+    this.loadingOverlay.style.zIndex = "1000";
+    this.loadingOverlay.innerHTML = `
+        <div style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 10px;">Generating World...</div>
+            <div style="font-size: 14px; color: #aaa;">This may take a moment</div>
+        </div>
+    `;
+    this.viewWrapper.appendChild(this.loadingOverlay);
+
     // Sidebar
     this.sidebar = document.createElement("div");
     this.sidebar.style.width = "200px";
@@ -54,24 +83,12 @@ export class MapView {
     this.sidebar.style.flexDirection = "column";
     this.sidebar.style.overflowY = "auto";
 
-    this.element.appendChild(this.mapContainer);
+    this.element.appendChild(this.viewWrapper);
     this.element.appendChild(this.sidebar);
 
     // State
     this.zoomLevel = 12; // Start smaller for big map
-    this.hoverTile = null;
-
-    // Tooltip for hover info
-    this.tooltip = document.createElement("div");
-    this.tooltip.style.position = "absolute";
-    this.tooltip.style.padding = "5px 10px";
-    this.tooltip.style.backgroundColor = "rgba(0,0,0,0.8)";
-    this.tooltip.style.color = "#fff";
-    this.tooltip.style.borderRadius = "4px";
-    this.tooltip.style.pointerEvents = "none";
-    this.tooltip.style.display = "none";
-    this.tooltip.style.zIndex = "100";
-    this.mapContainer.appendChild(this.tooltip);
+    // this.hoverTile = null; // Removed
 
     // Events
     this.bindEvents();
@@ -83,35 +100,7 @@ export class MapView {
       this.renderMainCanvas();
     });
 
-    // Mouse Move (Hover)
-    this.canvas.addEventListener("mousemove", (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      // Mouse relative to Canvas (Viewport)
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      // Add scroll offset to get "World" pixels
-      const worldX = mouseX + this.mapContainer.scrollLeft;
-      const worldY = mouseY + this.mapContainer.scrollTop;
-
-      const tileX = Math.floor(worldX / this.zoomLevel);
-      const tileY = Math.floor(worldY / this.zoomLevel);
-
-      const tile = mapManager.getTile(tileX, tileY);
-
-      if (tile) {
-        this.hoverTile = tile;
-        this.updateTooltip(e.clientX, e.clientY, tile);
-      } else {
-        this.hoverTile = null;
-        this.tooltip.style.display = "none";
-      }
-    });
-
-    this.canvas.addEventListener("mouseleave", () => {
-      this.hoverTile = null;
-      this.tooltip.style.display = "none";
-    });
+    // Mouse Info - REMOVED
 
     // Wheel Zoom
     this.mapContainer.addEventListener("wheel", (e) => {
@@ -150,7 +139,12 @@ export class MapView {
       const tileCenterY = viewCenterY / oldZoom;
 
       this.zoomLevel = newZoom;
-      this.update(); // Resizes spacer
+
+      // Visual Sync: Resize spacer immediately to ensure scroll clamping works
+      const mapWidthTotal = mapManager.width * this.zoomLevel;
+      const mapHeightTotal = mapManager.height * this.zoomLevel;
+      this.spacer.style.width = mapWidthTotal + "px";
+      this.spacer.style.height = mapHeightTotal + "px";
 
       // Calculate new center in pixels
       const newViewCenterX = tileCenterX * newZoom;
@@ -161,6 +155,9 @@ export class MapView {
         newViewCenterX - this.mapContainer.clientWidth / 2;
       this.mapContainer.scrollTop =
         newViewCenterY - this.mapContainer.clientHeight / 2;
+
+      // Full Update (will re-verify sizes and render)
+      this.update();
     });
 
     // Handle Resize Observer for both dynamic min zoom AND virtual canvas resizing
@@ -183,11 +180,9 @@ export class MapView {
     });
     resizeObserver.observe(this.mapContainer);
 
-    // Handle "click"
+    // Handle "click" - REMOVED LOGGING
     this.canvas.addEventListener("click", (e) => {
-      if (!this.isDragging && this.hoverTile) {
-        console.log("Clicked Tile:", this.hoverTile);
-      }
+      // No-op for now
     });
 
     // Drag to Scroll Logic
@@ -250,37 +245,7 @@ export class MapView {
     });
   }
 
-  updateTooltip(x, y, tile) {
-    const typeInfo = Object.values(TERRAIN_TYPES).find(
-      (t) => t.id === tile.type,
-    );
-    const name = typeInfo ? typeInfo.id : tile.type;
-    const symbol = typeInfo ? typeInfo.symbol : "?";
-
-    // x, y are mouse client coordinates.
-    // Tooltip is inside mapContainer (relative).
-    const containerRect = this.mapContainer.getBoundingClientRect();
-
-    // With sticky canvas, container scroll affects content, but tooltip position needs
-    // to track the mouse relative to the container *viewport*.
-    // However, if we append tooltip to mapContainer (which scrolls),
-    // we need to add scrollLeft/scrollTop to keep it at the mouse position relative to the *content*?
-    // Wait, if mapContainer scrolls, 'absolute' children move with scroll.
-    // The mouse event gives us client coordinates.
-
-    // We want the tooltip to float near the mouse cursor.
-    // Easiest is to position it relative to the visible viewport (fixed-ish behavior),
-    // OR calculated "absolute" position including scroll.
-
-    // Let's use absolute relative to the Scrollable Content.
-    const relativeX = x - containerRect.left + this.mapContainer.scrollLeft;
-    const relativeY = y - containerRect.top + this.mapContainer.scrollTop;
-
-    this.tooltip.style.left = relativeX + 15 + "px";
-    this.tooltip.style.top = relativeY + 15 + "px";
-    this.tooltip.innerText = `${symbol} ${name} (${tile.x}, ${tile.y})`;
-    this.tooltip.style.display = "block";
-  }
+  // updateTooltip - REMOVED
 
   render(container) {
     container.innerHTML = "";
@@ -388,17 +353,28 @@ export class MapView {
     // Cache colors
     const colorCache = {};
     Object.values(TERRAIN_TYPES).forEach((t) => {
-      colorCache[t.id] = hexToRgb(t.color);
+      // Ensure hexToRgb returns valid object
+      const rgb = hexToRgb(t.color);
+      colorCache[t.id] = rgb;
+      // console.log(`Cached color for ${t.id}:`, rgb);
     });
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const tile = tiles[y][x];
-        // If hidden, render dark gray, else terrain color
-        let color = { r: 17, g: 17, b: 17 }; // #111
-
-        if (!this.hiddenTerrainTypes.has(tile.type)) {
-          color = colorCache[tile.type] || color;
+        let color; // Declare color variable
+        if (!tile.explored) {
+          // Fog of War: Black
+          color = { r: 5, g: 5, b: 5 }; // Deep Black/Grey
+        } else {
+          // Retrieve from cache or fallback to hot pink to signal error
+          const terrainColor = colorCache[tile.type];
+          if (terrainColor) {
+            color = terrainColor;
+          } else {
+            console.warn("Missing color for type:", tile.type);
+            color = { r: 255, g: 0, b: 255 }; // Hot Pink
+          }
         }
 
         const index = (y * width + x) * 4;
@@ -441,6 +417,10 @@ export class MapView {
 
     // Draw parameters
     // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+
+    // Debug Zoom
+    // console.log(`[MapView] Render Zoom: ${this.zoomLevel}, Source: ${sourceX.toFixed(2)},${sourceY.toFixed(2)} ${sourceW.toFixed(2)}x${sourceH.toFixed(2)} -> Dest: ${viewportWidth}x${viewportHeight}`);
+
     this.ctx.drawImage(
       this.offscreenCanvas,
       sourceX,
@@ -481,7 +461,7 @@ export class MapView {
     for (let y = validStartY; y < validEndY; y++) {
       for (let x = validStartX; x < validEndX; x++) {
         const tile = tiles[y][x];
-        if (this.hiddenTerrainTypes.has(tile.type)) continue;
+        if (!tile.explored) continue;
 
         const typeInfo = Object.values(TERRAIN_TYPES).find(
           (t) => t.id === tile.type,
@@ -523,10 +503,23 @@ export class MapView {
     regenBtn.style.border = "1px solid #666";
     regenBtn.onclick = () => {
       if (confirm("Regenerate world?")) {
-        mapManager.generateMap({ newSeed: true });
-        this.mapDataDirty = true; // Mark dirty
-        if (window.gameState) window.gameState.saveGame();
-        this.update();
+        // Show loading state
+        this.loadingOverlay.style.display = "flex";
+
+        // Yield to render thread so overlay appears
+        setTimeout(() => {
+          try {
+            mapManager.generateMap({ newSeed: true });
+            this.mapDataDirty = true; // Mark dirty
+            if (window.gameState) window.gameState.saveGame();
+            this.update();
+          } catch (err) {
+            console.error("Failed to generate map:", err);
+          } finally {
+            // Hide loading state
+            this.loadingOverlay.style.display = "none";
+          }
+        }, 100);
       }
     };
     this.sidebar.appendChild(regenBtn);
@@ -574,7 +567,7 @@ export class MapView {
     sep.style.margin = "10px 0";
     this.sidebar.appendChild(sep);
 
-    // Filters (Biomes)
+    // Legend (Biomes)
     const sortedTypes = Object.values(TERRAIN_TYPES)
       .filter((t) => t.id !== "HOME")
       .sort((a, b) => a.id.localeCompare(b.id));
@@ -589,25 +582,17 @@ export class MapView {
     item.style.display = "flex";
     item.style.alignItems = "center";
     item.style.padding = "4px";
-    item.style.cursor = "pointer";
     item.style.color = "#fff";
+    // item.style.cursor = "pointer"; // No longer clickable
 
     if (isHeader) {
       item.style.fontWeight = "bold";
       item.style.color = "#FFD700";
     }
 
-    const isHidden = this.hiddenTerrainTypes.has(type.id);
-    item.style.opacity = isHidden ? "0.5" : "1";
-
-    item.onclick = () => {
-      if (isHidden) this.hiddenTerrainTypes.delete(type.id);
-      else this.hiddenTerrainTypes.add(type.id);
-
-      // Since showing/hiding changes the background colors, we need to rebuild offscreen canvas
-      this.mapDataDirty = true;
-      this.update();
-    };
+    // No opacity changes or click handlers
+    // const isHidden = this.hiddenTerrainTypes.has(type.id);
+    // item.style.opacity = isHidden ? "0.5" : "1";
 
     const box = document.createElement("div");
     box.style.width = "16px";

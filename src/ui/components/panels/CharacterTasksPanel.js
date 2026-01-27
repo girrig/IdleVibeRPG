@@ -56,13 +56,13 @@ export class CharacterTasksPanel {
 
     goalSection.innerHTML = `
             ${headerHtml}
-            <div class="active-goal-card" style="margin-bottom: 10px; position: relative; padding-top: 15px; border-color: #fbbf24;">
+            <div class="active-goal-card activity-state" style="margin-bottom: 10px; position: relative; padding-top: 15px; border-color: #fbbf24;">
                 <button class="btn-stop-activity" style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 6px; color: #fca5a5; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; font-size: 14px; padding: 0;" title="Stop Activity">⏹</button>
                 <div class="goal-info">
                     <span class="goal-icon">${icon}</span>
                     <div class="goal-text">
                         <div class="goal-name">${formattedName}</div>
-                        <div style="font-size: 11px; color: #94a3b8;">Ongoing...</div>
+                        <div style="font-size: 11px; color: #94a3b8;">${activity.phase ? activity.phase : "Ongoing..."}</div>
                     </div>
                 </div>
                  <div class="goal-progress-bar-bg" style="background: rgba(255,255,255,0.05);">
@@ -416,11 +416,28 @@ export class CharacterTasksPanel {
     const hasActiveGoal = !!char.activeGoal;
     const isShowingActive = !!goalSection.querySelector(".active-goal-card");
 
-    // If Global State (Active vs Empty) Changed, full re-render of this section
-    if (hasActiveGoal !== isShowingActive) {
+    // If Global State (Active vs Activity vs Empty) Changed, full re-render of this section
+    const isShowingGoal = !!goalSection.querySelector(
+      ".active-goal-card:not(.activity-state)",
+    );
+    const isShowingActivity = !!goalSection.querySelector(
+      ".active-goal-card.activity-state",
+    );
+
+    let desiredState = "EMPTY";
+    if (hasActiveGoal) desiredState = "GOAL";
+    else if (char.currentActivity) desiredState = "ACTIVITY";
+
+    let currentState = "EMPTY";
+    if (isShowingGoal) currentState = "GOAL";
+    else if (isShowingActivity) currentState = "ACTIVITY";
+
+    if (desiredState !== currentState) {
       goalSection.innerHTML = "";
-      if (hasActiveGoal) {
+      if (desiredState === "GOAL") {
         CharacterTasksPanel.renderActiveState(goalSection, char, uiManager);
+      } else if (desiredState === "ACTIVITY") {
+        CharacterTasksPanel.renderActivityState(goalSection, char, uiManager);
       } else {
         CharacterTasksPanel.renderEmptyState(goalSection, char, uiManager);
       }
@@ -513,6 +530,7 @@ export class CharacterTasksPanel {
       // Update Queue
       const currentQueueList = goalSection.querySelector(".goal-queue-list");
       const newQueueHtml = CharacterTasksPanel.getQueueHTML(char);
+
       if (currentQueueList && newQueueHtml) {
         if (currentQueueList.outerHTML !== newQueueHtml) {
           currentQueueList.outerHTML = newQueueHtml;
@@ -525,6 +543,39 @@ export class CharacterTasksPanel {
               uiManager.renderMainWindow();
             });
           });
+        }
+      }
+    } else if (char.currentActivity && isShowingActivity) {
+      // Smart Update for Activity State
+      const activity = char.currentActivity;
+
+      // Update Name
+      const name = activity.target;
+      const formattedName = name
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+
+      const nameEl = goalSection.querySelector(".goal-name");
+      if (nameEl && nameEl.innerText !== formattedName)
+        nameEl.innerText = formattedName;
+
+      // Update Phase / Status
+      // The subtitle is the second div inside .goal-text
+      const statusEl = goalSection.querySelector(".goal-text > div:last-child");
+      if (statusEl) {
+        const phaseText = activity.phase ? activity.phase : "Ongoing...";
+        if (statusEl.innerText !== phaseText) {
+          statusEl.innerText = phaseText;
+
+          // Dynamic Color
+          if (activity.phase === "SEARCHING")
+            statusEl.style.color = "#fbbf24"; // Amber
+          else if (activity.phase === "EXPLORING")
+            statusEl.style.color = "#4ade80"; // Green
+          else if (activity.phase === "RETURNING")
+            statusEl.style.color = "#60a5fa"; // Blue
+          else statusEl.style.color = "#94a3b8"; // Gray
         }
       }
     }

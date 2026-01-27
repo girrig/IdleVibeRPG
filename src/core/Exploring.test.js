@@ -79,6 +79,14 @@ describe("Exploring Skill", () => {
       "Discovered new area!",
       "success",
     );
+
+    // KEY CHANGE: Check that it wasn't just the single tile, but a radius
+    // Assuming default sight range is 5
+    const r = 5;
+    const neighborTile = mapManager.getTile(newPos.x + 1, newPos.y);
+    // This implies we rely on default sight range.
+    // If Exploring skill calls exploreRadius, checking one neighbor is a good proxy.
+    expect(neighborTile.explored).toBe(true);
   });
 
   it("should gain reduced XP for revisiting explored tiles", () => {

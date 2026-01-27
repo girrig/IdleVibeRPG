@@ -92,4 +92,57 @@ describe("MapManager", () => {
     // With the new complex Whittaker system, we should see even more diversity (e.g. > 5)
     expect(types.size).toBeGreaterThanOrEqual(5);
   });
+
+  describe("Fog of War", () => {
+    it("should allow exploring individual tiles", () => {
+      mapManager.initialize();
+      const tile = mapManager.getTile(10, 10);
+      expect(tile.explored).toBe(false);
+
+      mapManager.exploreTile(10, 10);
+      expect(tile.explored).toBe(true);
+    });
+
+    it("should explore a radius of tiles", () => {
+      mapManager.initialize();
+      // Pick a center point away from home (250,250)
+      const cx = 100;
+      const cy = 100;
+      const radius = 2;
+
+      // Ensure center is unexplored first
+      expect(mapManager.getTile(cx, cy).explored).toBe(false);
+
+      mapManager.exploreRadius(cx, cy, radius);
+
+      // Check center
+      expect(mapManager.getTile(cx, cy).explored).toBe(true);
+
+      // Check boundaries
+      // (100, 100) + 2 => (102, 100) should be true
+      expect(mapManager.getTile(cx + radius, cy).explored).toBe(true);
+      expect(mapManager.getTile(cx - radius, cy).explored).toBe(true);
+      expect(mapManager.getTile(cx, cy + radius).explored).toBe(true);
+      expect(mapManager.getTile(cx, cy - radius).explored).toBe(true);
+
+      // Check diagonal (1^2 + 1^2 = 2 < 2^2) -> Inside
+      expect(mapManager.getTile(cx + 1, cy + 1).explored).toBe(true);
+
+      // Check outside (radius + 1)
+      expect(mapManager.getTile(cx + radius + 1, cy).explored).toBe(false);
+    });
+
+    it("should automatically reveal Home area on generation", () => {
+      mapManager.initialize();
+      const cx = Math.floor(mapManager.width / 2);
+      const cy = Math.floor(mapManager.height / 2);
+
+      // Center should be explored
+      expect(mapManager.getTile(cx, cy).explored).toBe(true);
+      expect(mapManager.getTile(cx, cy).type).toBe("HOME"); // As string ID
+
+      // Radius 5 check (e.g., cx+4 should be explored)
+      expect(mapManager.getTile(cx + 4, cy).explored).toBe(true);
+    });
+  });
 });
