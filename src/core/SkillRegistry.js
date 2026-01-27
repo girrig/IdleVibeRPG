@@ -297,8 +297,8 @@ export const SKILL_DEFINITIONS = {
           // gameState.triggerNotification("Found " + option.name + "! Exploring...", "success"); // Spammy?
           // Fallthrough to EXPLORING logic immediately
         } else {
-          // Look for known tiles
-          const target = mapManager.findNearestExploredTile(
+          // Look for KNOWN but UNVISITED tiles of this type
+          const target = mapManager.findNearestExploredUnvisitedTile(
             option.biomeId,
             x,
             y,
@@ -312,7 +312,37 @@ export const SKILL_DEFINITIONS = {
             else if (dy !== 0) nextPos = { x: x, y: y + dy };
             else if (dx !== 0) nextPos = { x: x + dx, y: y };
           }
-          // If no known tile, Random Wander (Fallback below)
+
+          // If no known tile of that type, find the FRONTIER to reveal new areas
+          if (!nextPos) {
+            const frontier = mapManager.findNearestFrontierTile(x, y);
+            if (frontier) {
+              // If we are AT the frontier, step into the unknown
+              if (frontier.x === x && frontier.y === y) {
+                const neighbors = [
+                  { x: x + 1, y: y },
+                  { x: x - 1, y: y },
+                  { x: x, y: y + 1 },
+                  { x: x, y: y - 1 },
+                ];
+                // Find any unexplored neighbor
+                const unknown = neighbors.find((n) => {
+                  const t = mapManager.getTile(n.x, n.y);
+                  return t && !t.explored;
+                });
+
+                if (unknown) nextPos = unknown;
+              } else {
+                // Move towards frontier
+                const dx = Math.sign(frontier.x - x);
+                const dy = Math.sign(frontier.y - y);
+                if (dx !== 0 && Math.random() < 0.5)
+                  nextPos = { x: x + dx, y: y };
+                else if (dy !== 0) nextPos = { x: x, y: y + dy };
+                else if (dx !== 0) nextPos = { x: x + dx, y: y };
+              }
+            }
+          }
         }
       }
 
@@ -390,6 +420,7 @@ export const SKILL_DEFINITIONS = {
 
       // Move
       char.position = nextPos;
+      mapManager.visitTile(nextPos.x, nextPos.y);
 
       // Explore with Radius
       const sightRadius = char.stats.sightRange || 3;

@@ -114,10 +114,10 @@ describe("Exploring Skill", () => {
 
     // Or simpler: Pre-explore ALL neighbors of current position.
     const { x, y } = char.position;
-    mapManager.exploreTile(x + 1, y);
-    mapManager.exploreTile(x - 1, y);
-    mapManager.exploreTile(x, y + 1);
-    mapManager.exploreTile(x, y - 1);
+    // Pre-explore ALL neighbors and the radius around them to ensure NO new tiles are revealed
+    // Character sight radius is typically 3. So if we explore radius 5 around current pos, moving 1 step should still check inside that zone.
+
+    mapManager.exploreRadius(x, y, 10);
 
     // Now move
     action(gameState, char);

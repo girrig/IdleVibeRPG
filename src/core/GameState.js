@@ -99,7 +99,7 @@ class GameState {
       inventory: this.inventory.items,
       lastTick: this.lastTick,
       settings: this.settings,
-      map: mapManager.getMapData(),
+      map: mapManager.getSerializableMapData(),
     };
     return SaveManager.save(
       "idleVibeRPG_save",

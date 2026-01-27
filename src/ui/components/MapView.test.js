@@ -114,6 +114,55 @@ describe("MapView Zoom Logic", () => {
     });
   });
 
+  describe("Rendering Logic", () => {
+    it("should NOT draw symbols for visited tiles (except HOME)", () => {
+      // Setup tiles
+      const tiles = [
+        [
+          { x: 0, y: 0, type: "FOREST", explored: true, visited: true }, // Visited Forest -> No Symbol
+          { x: 1, y: 0, type: "FOREST", explored: true, visited: false }, // Unvisited Forest -> Symbol
+          { x: 2, y: 0, type: "HOME", explored: true, visited: true }, // Visited Home -> Symbol (Landmark)
+        ],
+      ];
+
+      // Mock MapManager data
+      mapManager.getMapData = vi.fn(() => ({ tiles }));
+      mapManager.width = 3;
+      mapManager.height = 1;
+
+      // Force zoom high enough to trigger symbol rendering (>10)
+      mapView.zoomLevel = 20;
+      mapView.canvas.width = 800;
+      mapView.canvas.height = 600;
+
+      // Reset render mocks
+      mapView.ctx.fillText.mockClear();
+
+      mapView.renderMainCanvas();
+
+      // Expectation:
+      // 1. Visited Forest: Should NOT draw
+      // 2. Unvisited Forest: Should draw
+      // 3. Home: Should draw
+
+      // We check the calls to fillText.
+      // Note: TERRAIN_TYPES needs to be mocked or available. It is mocked in the top of the file.
+      // In the mock: OCEAN is the only type. Let's update the mock setup or just rely on fallback "?"?
+      // The code uses Object.values(TERRAIN_TYPES).find.
+      // Our mock TERRAIN_TYPES only has OCEAN.
+      // So for "FOREST", it will find nothing and use "?".
+      // For "HOME", it will find nothing and use "?".
+
+      // To make this precise, let's look at the Mock setup in the file again.
+      // It only defines OCEAN.
+      // But the logic `if (tile.visited && tile.type !== "HOME") continue;` doesn't depend on TERRAIN_TYPES.
+      // It runs BEFORE symbol lookup.
+
+      // So fillText should be called exactly 2 times (Index 1 and Index 2).
+      expect(mapView.ctx.fillText).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe("UI Elements", () => {
     it("should have a hidden loading overlay initialized", () => {
       expect(mapView.loadingOverlay).toBeDefined();

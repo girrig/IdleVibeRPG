@@ -27,16 +27,34 @@ describe("MapManager", () => {
 
   it("should recover state from save data", () => {
     mapManager.initialize();
-    const originalData = mapManager.getMapData();
+
+    // Modify a tile to test persistence of state
+    mapManager.exploreTile(10, 10);
+    mapManager.visitTile(10, 10);
+
+    const savedData = mapManager.getSerializableMapData();
+
+    // Assert compressed format
+    expect(savedData.tiles).toBeUndefined();
+    expect(savedData.seed).toBeDefined();
+    expect(savedData.exploredIndices.length).toBeGreaterThan(0);
 
     // create new instance
     const newManager = new MapManager();
-    newManager.initialize(originalData);
+    newManager.initialize(savedData);
 
+    // Assert regeneration
     expect(newManager.tiles.length).toBe(500);
-    // Deep compare first row to ensure persistence
-    expect(newManager.tiles[0][0].type).toBe(originalData.tiles[0][0].type);
-    expect(newManager.seed).toBe(originalData.seed);
+    expect(newManager.seed).toBe(savedData.seed);
+
+    // Assert State Restoration
+    const index = 10 * 500 + 10;
+    // Check if tile 10,10 is explored/visited in new manager
+    expect(newManager.getTile(10, 10).explored).toBe(true);
+    expect(newManager.getTile(10, 10).visited).toBe(true);
+
+    // Check unrelated tile
+    expect(newManager.getTile(0, 0).explored).toBe(false);
   });
 
   it("should regenerate map if saved data has wrong dimensions", () => {
@@ -143,6 +161,48 @@ describe("MapManager", () => {
 
       // Radius 5 check (e.g., cx+4 should be explored)
       expect(mapManager.getTile(cx + 4, cy).explored).toBe(true);
+    });
+  });
+
+  describe("Visited vs Explored", () => {
+    it("should distinguish between explored and visited", () => {
+      mapManager.initialize();
+      const cx = Math.floor(mapManager.width / 2);
+      const cy = Math.floor(mapManager.height / 2);
+
+      // Home should be visited
+      expect(mapManager.getTile(cx, cy).visited).toBe(true);
+
+      // Neighbor (via radius) explored but NOT visited
+      const neighbor = mapManager.getTile(cx + 1, cy);
+      expect(neighbor.explored).toBe(true);
+      expect(neighbor.visited).toBe(false);
+
+      // Visit it
+      mapManager.visitTile(cx + 1, cy);
+      expect(neighbor.visited).toBe(true);
+    });
+
+    it("should find nearest UNVISITED explored tile", () => {
+      mapManager.initialize();
+      // Mock a scenario
+      const t1 = mapManager.getTile(10, 10);
+      t1.type = "FOREST";
+      t1.explored = true;
+      t1.visited = true; // Visited already
+
+      const t2 = mapManager.getTile(12, 10);
+      t2.type = "FOREST";
+      t2.explored = true;
+      t2.visited = false; // Target
+
+      const result = mapManager.findNearestExploredUnvisitedTile(
+        "FOREST",
+        10,
+        10,
+      );
+      expect(result.x).toBe(12);
+      expect(result.y).toBe(10);
     });
   });
 });

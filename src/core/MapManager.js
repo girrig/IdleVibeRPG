@@ -71,44 +71,66 @@ export class MapManager {
   }
 
   initialize(savedData = null) {
-    if (savedData && savedData.tiles && savedData.tiles.length > 0) {
-      this.tiles = savedData.tiles;
+    if (savedData) {
       this.seed = savedData.seed || this.seed;
-      // Check for dimension mismatch
-      if (
-        this.tiles.length !== this.height ||
-        this.tiles[0].length !== this.width
-      ) {
-        console.log("Map dimensions mismatch, regenerating...");
-        this.generateMap();
-      } else {
-        // Patch Old Saves: Ensure 'explored' exists
-        // And ensure Home is explored (Radius 5)
-        let needsHomeReveal = false;
 
+      // 1. Regenerate the base terrain deterministically
+      this.generateMap({ newSeed: false });
+
+      // 2. Apply Saved State
+      if (savedData.tiles && savedData.tiles.length > 0) {
+        // LEGACY SUPPORT: Restore from full tile objects (Migration)
+        // We already regenerated, so we just overlay the explored/visited flags
+        // to ensure we map correctly even if generation logic slightly changed (though it shouldn't)
+        // Actually, strictly trusting the legacy tiles might be safer for transition,
+        // but memory-wise we want to move away from them.
+        // Let's just overlay the flags from the legacy data onto the new grid
         for (let y = 0; y < this.height; y++) {
           for (let x = 0; x < this.width; x++) {
-            if (this.tiles[y][x].explored === undefined) {
-              this.tiles[y][x].explored = false;
-              needsHomeReveal = true;
-            }
-            // Mark HOME tile as explored if found (legacy saves might have HOME type but not explored)
-            if (this.tiles[y][x].type === TERRAIN_TYPES.HOME.id) {
-              this.tiles[y][x].explored = true;
+            // Range check for legacy data
+            if (savedData.tiles[y] && savedData.tiles[y][x]) {
+              const savedTile = savedData.tiles[y][x];
+              if (savedTile) {
+                if (savedTile.explored) this.tiles[y][x].explored = true;
+                if (savedTile.visited) this.tiles[y][x].visited = true;
+              }
             }
           }
         }
-
-        if (needsHomeReveal) {
-          // Find home and reveal radius
-          // Center is usually 250, 250
-          const cx = Math.floor(this.width / 2);
-          const cy = Math.floor(this.height / 2);
-          this.exploreRadius(cx, cy, 5);
+      } else {
+        // NEW FORMAT: Indices
+        if (savedData.exploredIndices) {
+          savedData.exploredIndices.forEach((idx) => {
+            const x = idx % this.width;
+            const y = Math.floor(idx / this.width);
+            if (this.tiles[y] && this.tiles[y][x]) {
+              this.tiles[y][x].explored = true;
+            }
+          });
         }
+        if (savedData.visitedIndices) {
+          savedData.visitedIndices.forEach((idx) => {
+            const x = idx % this.width;
+            const y = Math.floor(idx / this.width);
+            if (this.tiles[y] && this.tiles[y][x]) {
+              this.tiles[y][x].visited = true;
+            }
+          });
+        }
+      }
+
+      // Ensure Home is revealed (Sanity Check)
+      const cx = Math.floor(this.width / 2);
+      const cy = Math.floor(this.height / 2);
+      if (!this.tiles[cy][cx].explored) {
+        this.exploreRadius(cx, cy, 5);
       }
     } else {
       this.generateMap();
+      // Reveal home for fresh game
+      const cx = Math.floor(this.width / 2);
+      const cy = Math.floor(this.height / 2);
+      this.exploreRadius(cx, cy, 5);
     }
   }
 
@@ -191,6 +213,7 @@ export class MapManager {
 
       // Mark Home as Explored and set Type
       this.tiles[centerY][centerX].explored = true;
+      this.tiles[centerY][centerX].visited = true;
       this.tiles[centerY][centerX].type = TERRAIN_TYPES.HOME.id;
 
       // Mark neighbors explored (Radius 5)
@@ -320,20 +343,50 @@ export class MapManager {
 
     // --- WATER LEVEL ---
     if (elevation < seaLevel - 0.25) {
-      return { x, y, type: TERRAIN_TYPES.OCEAN.id, explored: false };
+      return {
+        x,
+        y,
+        type: TERRAIN_TYPES.OCEAN.id,
+        explored: false,
+        visited: false,
+      };
     }
     if (elevation < seaLevel) {
-      return { x, y, type: TERRAIN_TYPES.SHALLOW_OCEAN.id, explored: false };
+      return {
+        x,
+        y,
+        type: TERRAIN_TYPES.SHALLOW_OCEAN.id,
+        explored: false,
+        visited: false,
+      };
     }
     if (elevation < seaLevel + 0.05) {
-      return { x, y, type: TERRAIN_TYPES.BEACH.id, explored: false };
+      return {
+        x,
+        y,
+        type: TERRAIN_TYPES.BEACH.id,
+        explored: false,
+        visited: false,
+      };
     }
 
     // --- MOUNTAINS ---
     if (elevation > 0.8) {
       if (temperature < 0)
-        return { x, y, type: TERRAIN_TYPES.ICE_SHEET.id, explored: false }; // High peaks
-      return { x, y, type: TERRAIN_TYPES.ALPINE.id, explored: false };
+        return {
+          x,
+          y,
+          type: TERRAIN_TYPES.ICE_SHEET.id,
+          explored: false,
+          visited: false,
+        }; // High peaks
+      return {
+        x,
+        y,
+        type: TERRAIN_TYPES.ALPINE.id,
+        explored: false,
+        visited: false,
+      };
     }
 
     // --- LAND BIOMES (Whittaker Diagram) ---
@@ -350,10 +403,28 @@ export class MapManager {
     if (temperature < -0.3) {
       // COLD
       if (adjMoisture < -0.3)
-        return { x, y, type: TERRAIN_TYPES.POLAR_DESERT.id, explored: false };
+        return {
+          x,
+          y,
+          type: TERRAIN_TYPES.POLAR_DESERT.id,
+          explored: false,
+          visited: false,
+        };
       if (adjMoisture < 0.3)
-        return { x, y, type: TERRAIN_TYPES.TUNDRA.id, explored: false };
-      return { x, y, type: TERRAIN_TYPES.BOREAL_FOREST.id, explored: false };
+        return {
+          x,
+          y,
+          type: TERRAIN_TYPES.TUNDRA.id,
+          explored: false,
+          visited: false,
+        };
+      return {
+        x,
+        y,
+        type: TERRAIN_TYPES.BOREAL_FOREST.id,
+        explored: false,
+        visited: false,
+      };
     } else if (temperature < 0.3) {
       // TEMPERATE
       if (adjMoisture < -0.4)
@@ -362,6 +433,7 @@ export class MapManager {
           y,
           type: TERRAIN_TYPES.TEMPERATE_DESERT.id,
           explored: false,
+          visited: false,
         };
       if (adjMoisture < 0.2)
         return {
@@ -369,6 +441,7 @@ export class MapManager {
           y,
           type: TERRAIN_TYPES.TEMPERATE_GRASSLAND.id,
           explored: false,
+          visited: false,
         };
       if (adjMoisture < 0.6)
         return {
@@ -376,12 +449,14 @@ export class MapManager {
           y,
           type: TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id,
           explored: false,
+          visited: false,
         };
       return {
         x,
         y,
         type: TERRAIN_TYPES.TEMPERATE_RAINFOREST.id,
         explored: false,
+        visited: false,
       }; // Or Swamp?
     } else {
       // HOT
@@ -391,6 +466,7 @@ export class MapManager {
           y,
           type: TERRAIN_TYPES.SUBTROPICAL_DESERT.id,
           explored: false,
+          visited: false,
         }; // Subtropical Desert
       if (adjMoisture < 0.2)
         return {
@@ -398,20 +474,47 @@ export class MapManager {
           y,
           type: TERRAIN_TYPES.TROPICAL_SAVANNA.id,
           explored: false,
+          visited: false,
         };
       return {
         x,
         y,
         type: TERRAIN_TYPES.TROPICAL_RAINFOREST.id,
         explored: false,
+        visited: false,
       };
     }
   }
 
   getMapData() {
+    // Runtime data for UI
     return {
       tiles: this.tiles,
       seed: this.seed,
+    };
+  }
+
+  getSerializableMapData() {
+    // Compress data: Only save Seed + Explored/Visited Indices
+    const exploredIndices = [];
+    const visitedIndices = [];
+
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const index = y * this.width + x;
+        if (this.tiles[y][x].explored) {
+          exploredIndices.push(index);
+        }
+        if (this.tiles[y][x].visited) {
+          visitedIndices.push(index);
+        }
+      }
+    }
+
+    return {
+      seed: this.seed,
+      exploredIndices,
+      visitedIndices,
     };
   }
 
@@ -595,6 +698,124 @@ export class MapManager {
     }
 
     // Fallback: If disconnected graph (rare in grid) or fully explored
+    return null;
+  }
+  // Find nearest tile that is explored but adjacent to unexplored (Frontier)
+  findNearestFrontierTile(startX, startY) {
+    const visited = new Set();
+    const queue = [{ x: startX, y: startY, dist: 0 }];
+    visited.add(`${startX},${startY}`);
+
+    const maxDist = 500; // Limit search radius
+
+    let head = 0;
+    while (head < queue.length) {
+      const curr = queue[head++];
+      if (curr.dist > maxDist) break;
+
+      const tile = this.getTile(curr.x, curr.y);
+      if (tile && tile.explored) {
+        // Check adjacency to unexplored
+        const neighbors = [
+          { x: curr.x + 1, y: curr.y },
+          { x: curr.x - 1, y: curr.y },
+          { x: curr.x, y: curr.y + 1 },
+          { x: curr.x, y: curr.y - 1 },
+        ];
+
+        let isFrontier = false;
+        for (const n of neighbors) {
+          const nTile = this.getTile(n.x, n.y);
+          if (nTile && !nTile.explored) {
+            isFrontier = true;
+            break;
+          }
+        }
+
+        if (isFrontier) return { x: curr.x, y: curr.y };
+      }
+
+      // Continue BFS logic
+      const neighbors = [
+        { x: curr.x + 1, y: curr.y },
+        { x: curr.x - 1, y: curr.y },
+        { x: curr.x, y: curr.y + 1 },
+        { x: curr.x, y: curr.y - 1 },
+      ];
+
+      for (const n of neighbors) {
+        if (n.x >= 0 && n.x < this.width && n.y >= 0 && n.y < this.height) {
+          const key = `${n.x},${n.y}`;
+          if (!visited.has(key)) {
+            // Only traverse explored tiles to reach the frontier edge
+            // Or allow traversing unexplored? No, character can only plan path through known space?
+            // Actually, if we are lost, we might need to traverse the unknown.
+            // But 'Frontier' implies known edge.
+            // We search outward from current pos.
+            visited.add(key);
+            queue.push({ x: n.x, y: n.y, dist: curr.dist + 1 });
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  visitTile(x, y) {
+    const tile = this.getTile(x, y);
+    if (tile && !tile.visited) {
+      tile.visited = true;
+      return true;
+    }
+    return false;
+  }
+
+  isVisited(x, y) {
+    const tile = this.getTile(x, y);
+    return tile ? !!tile.visited : false;
+  }
+
+  // Find nearest tile that is EXPLORED (visible) but NOT VISITED (new)
+  findNearestExploredUnvisitedTile(typeId, startX, startY) {
+    const visited = new Set();
+    const queue = [{ x: startX, y: startY, dist: 0 }];
+    visited.add(`${startX},${startY}`);
+    const maxDist = 500;
+
+    let head = 0;
+    while (head < queue.length) {
+      const curr = queue[head++];
+      if (curr.dist > maxDist) break;
+
+      const tile = this.getTile(curr.x, curr.y);
+      if (tile && tile.explored && !tile.visited && tile.type === typeId) {
+        return { x: curr.x, y: curr.y, dist: curr.dist };
+      }
+
+      const directions = [
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+      ];
+
+      for (const dir of directions) {
+        const nx = curr.x + dir.x;
+        const ny = curr.y + dir.y;
+        const key = `${nx},${ny}`;
+
+        if (
+          nx >= 0 &&
+          nx < this.width &&
+          ny >= 0 &&
+          ny < this.height &&
+          !visited.has(key)
+        ) {
+          visited.add(key);
+          queue.push({ x: nx, y: ny, dist: curr.dist + 1 });
+        }
+      }
+    }
     return null;
   }
 }

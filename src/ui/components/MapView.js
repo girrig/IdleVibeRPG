@@ -97,6 +97,8 @@ export class MapView {
   bindEvents() {
     // Scroll event for rendering updates
     this.mapContainer.addEventListener("scroll", () => {
+      this.lastScrollLeft = this.mapContainer.scrollLeft;
+      this.lastScrollTop = this.mapContainer.scrollTop;
       this.renderMainCanvas();
     });
 
@@ -250,7 +252,19 @@ export class MapView {
   render(container) {
     container.innerHTML = "";
     container.appendChild(this.element);
-    this.update();
+
+    // Restore Scroll Position if saved
+    if (this.lastScrollLeft !== undefined && this.lastScrollTop !== undefined) {
+      // We need to wait for layout/spacer update?
+      // this.update() calls resize logic.
+      this.update();
+
+      // Restore
+      this.mapContainer.scrollLeft = this.lastScrollLeft;
+      this.mapContainer.scrollTop = this.lastScrollTop;
+    } else {
+      this.update();
+    }
   }
 
   // Called when map data or zoom/filters change
@@ -460,8 +474,12 @@ export class MapView {
 
     for (let y = validStartY; y < validEndY; y++) {
       for (let x = validStartX; x < validEndX; x++) {
+        // console.log(`Rendering tile ${x},${y}`); // DEBUG
         const tile = tiles[y][x];
         if (!tile.explored) continue;
+
+        // Skip symbol for visited tiles (unless it's HOME, which we always want to see)
+        if (tile.visited && tile.type !== "HOME") continue;
 
         const typeInfo = Object.values(TERRAIN_TYPES).find(
           (t) => t.id === tile.type,
@@ -479,6 +497,53 @@ export class MapView {
           screenX + this.zoomLevel / 2,
           screenY + this.zoomLevel / 2,
         );
+      }
+    }
+
+    // --- 3. Draw Character ---
+    if (window.gameState && window.gameState.character) {
+      const charPos = window.gameState.character.position;
+      if (charPos) {
+        // Calculate Screen Position
+        const screenX = charPos.x * this.zoomLevel - scrollLeft;
+        const screenY = charPos.y * this.zoomLevel - scrollTop;
+
+        // Culling Check
+        if (
+          screenX + this.zoomLevel >= 0 &&
+          screenX < viewportWidth &&
+          screenY + this.zoomLevel >= 0 &&
+          screenY < viewportHeight
+        ) {
+          // Draw Glow
+          this.ctx.shadowColor = "white";
+          this.ctx.shadowBlur = 10;
+
+          this.ctx.fillStyle = "#fff";
+          this.ctx.beginPath();
+          this.ctx.arc(
+            screenX + this.zoomLevel / 2,
+            screenY + this.zoomLevel / 2,
+            this.zoomLevel / 3,
+            0,
+            Math.PI * 2,
+          );
+          this.ctx.fill();
+
+          // Reset shadow
+          this.ctx.shadowBlur = 0;
+
+          // Draw Label (if zoomed in)
+          if (this.zoomLevel > 15) {
+            this.ctx.fillStyle = "#fff";
+            this.ctx.font = "10px sans-serif"; // Fixed size label
+            this.ctx.fillText(
+              "HERO",
+              screenX + this.zoomLevel / 2,
+              screenY - 5,
+            );
+          }
+        }
       }
     }
   }
@@ -513,6 +578,9 @@ export class MapView {
             this.mapDataDirty = true; // Mark dirty
             if (window.gameState) window.gameState.saveGame();
             this.update();
+
+            // Force center on home after regeneration
+            setTimeout(() => this.centerOnHome(), 0);
           } catch (err) {
             console.error("Failed to generate map:", err);
           } finally {
