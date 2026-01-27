@@ -782,7 +782,7 @@ export class MapManager {
     const queue = [{ x: startX, y: startY, dist: 0 }];
     visited.add(`${startX},${startY}`);
 
-    const maxDist = 200; // Search limit to prevent infinite loops in massive biomes
+    const maxDist = 2000; // Search limit increased to support large biomes
 
     let head = 0;
     while (head < queue.length) {
@@ -794,6 +794,11 @@ export class MapManager {
         { x: curr.x - 1, y: curr.y },
         { x: curr.x, y: curr.y + 1 },
         { x: curr.x, y: curr.y - 1 },
+        // Add Diagonals for robust flooding (pinched biomes)
+        { x: curr.x + 1, y: curr.y + 1 },
+        { x: curr.x - 1, y: curr.y - 1 },
+        { x: curr.x + 1, y: curr.y - 1 },
+        { x: curr.x - 1, y: curr.y + 1 },
       ];
 
       for (const n of neighbors) {
@@ -806,12 +811,23 @@ export class MapManager {
 
             if (!tile.explored) {
               // Found an unexplored tile!
-              // Since we reached it by traversing ONLY valid biome tiles, this is a valid frontier.
-              return { x: n.x, y: n.y };
-            }
 
-            // If explored, strict biome check
-            if (tile.explored && tile.type === biomeType) {
+              // LOGIC UPDATE:
+              // Resetting to a robust "Find Target Biome" strategy.
+              // We check if the Unexplored Tile ITSELF is the biome we want.
+              // This allows us to traverse any explored terrain (e.g. Beach bridge) and then
+              // identify that the unexplored tile next to it is Forest.
+
+              if (tile.type === biomeType) {
+                return { x: n.x, y: n.y };
+              }
+
+              // Fallback: If we are "Flooding" without a specific target biome (biomeType might be generic),
+              // we might want to just keep exploring adjacent things.
+              // But usually this function is called WITH a target biome type.
+            } else {
+              // IT IS EXPLORED
+              // Traverse it! We can walk on any explored tile to find our destination.
               visited.add(key);
               queue.push({ x: n.x, y: n.y, dist: curr.dist + 1 });
             }

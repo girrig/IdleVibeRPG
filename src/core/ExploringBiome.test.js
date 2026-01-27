@@ -107,13 +107,11 @@ describe("Exploring Skill - Biome Logic", () => {
     char.currentActivity.phase = "EXPLORING";
     char.position = { x: 2, y: 2 };
 
-    // Explore ALL tiles (fully revealed map)
-    // The new "Flood" logic checks the frontier. If adjacent tiles are unexplored, it tries to explore them
-    // to see if the forest extends there.
-    // So to be "Finished", we must know the boundaries (surrounding tiles must be explored).
+    // Explore AND VISIT all tiles (fully revealed map)
     for (let y = 0; y < 10; y++) {
       for (let x = 0; x < 10; x++) {
         mapManager.exploreTile(x, y);
+        mapManager.visitTile(x, y);
       }
     }
 
@@ -127,9 +125,6 @@ describe("Exploring Skill - Biome Logic", () => {
   });
 
   it("should stop activity when RETURNING reaches home (250,250)", () => {
-    // Mock home check involves 250,250.
-    // Our test map is 10x10. We can overwrite home coord in logic OR move char to 250,250.
-    // Move char to 250,250.
     char.startActivity("EXPLORING", "find_forest", 0);
     char.currentActivity.phase = "RETURNING";
     char.position = { x: 250, y: 250 };
@@ -141,5 +136,90 @@ describe("Exploring Skill - Biome Logic", () => {
       expect.stringContaining("Returned home"),
       "success",
     );
+  });
+
+  describe("Robustness Checks", () => {
+    it("should cross explored but different-biome gaps to find target", () => {
+      // Setup: Forest(Explored) -> Beach(Explored) -> Forest(Unexplored)
+      // Vertical Path: (2,2) -> (2,3) -> (2,4)
+      // Indexes: tiles[2][2], tiles[3][2], tiles[4][2]
+
+      mapManager.tiles[2][2].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
+      mapManager.tiles[2][2].explored = true;
+
+      // Block side path (2,3) (Right) - tiles[2][3]
+      mapManager.tiles[2][3].type = TERRAIN_TYPES.OCEAN.id;
+      // Block diagonal path (3,3) (Down-Right) - tiles[3][3]
+      mapManager.tiles[3][3].type = TERRAIN_TYPES.OCEAN.id;
+
+      // 2,3 (y=3, x=2) (Down) - The Gap
+      mapManager.tiles[3][2].type = TERRAIN_TYPES.BEACH.id;
+      mapManager.tiles[3][2].explored = true;
+
+      // 2,4 (y=4, x=2) - The Target
+      mapManager.tiles[4][2].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
+      mapManager.tiles[4][2].explored = false;
+
+      // Start search from 2,2
+      const target = mapManager.findNearestUnexploredInAdjacentBiome(
+        2,
+        2,
+        TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id,
+      );
+
+      // Should skip over the Beach at 2,3 (coord: 2,3) to find Forest at 2,4
+      // Coordinates here: x=2, y=4.
+      expect(target).toEqual({ x: 2, y: 4 });
+    });
+
+    it("should handle diagonal connectivity", () => {
+      // Setup: Forest(Explored) at 2,2. Forest(Unexplored) at 3,3.
+      // Clear orthogonal neighbors to Ocean to force Diagonal
+      // Orthogonal neighbors of 2,2: 2,3 (tiles[3][2]) and 3,2 (tiles[2][3])
+      mapManager.tiles[3][2].type = TERRAIN_TYPES.OCEAN.id;
+      mapManager.tiles[2][3].type = TERRAIN_TYPES.OCEAN.id;
+
+      mapManager.tiles[2][2].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
+      mapManager.tiles[2][2].explored = true;
+
+      mapManager.tiles[3][3].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
+      mapManager.tiles[3][3].explored = false;
+
+      const target = mapManager.findNearestUnexploredInAdjacentBiome(
+        2,
+        2,
+        TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id,
+      );
+
+      expect(target).toEqual({ x: 3, y: 3 });
+    });
+
+    it("should prioritize visible unvisited tiles over distant unexplored ones", () => {
+      // Setup: Char at 2,2 (Explored, Visited Forest)
+      char.position = { x: 2, y: 2 };
+      mapManager.tiles[2][2].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
+      mapManager.tiles[2][2].explored = true;
+      mapManager.tiles[2][2].visited = true;
+
+      // 2,3 (y=3, x=2). DOWN neighbor.
+      // Is Explored, Unvisited Forest (Visible neighbor)
+      mapManager.tiles[3][2].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
+      mapManager.tiles[3][2].explored = true;
+      mapManager.tiles[3][2].visited = false;
+
+      // 2,4 (y=4, x=2). Further Down.
+      // Is Unexplored Forest (Unseen neighbor, further away)
+      mapManager.tiles[4][2].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
+      mapManager.tiles[4][2].explored = false;
+
+      char.startActivity("EXPLORING", "find_forest");
+      char.currentActivity.phase = "EXPLORING";
+
+      // Action
+      SKILL_DEFINITIONS.EXPLORING.action(gameState, char);
+
+      // Expect move to 2,3 (Visible/Explored)
+      expect(char.position).toEqual({ x: 2, y: 3 });
+    });
   });
 });

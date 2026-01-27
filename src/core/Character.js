@@ -243,9 +243,11 @@ export class Character {
     }
   }
 
-  stopActivity() {
+  stopActivity(force = false) {
     // If Exploring and NOT Returning and NOT at home, trigger Return Trip first
+    // UNLESS force is true
     if (
+      !force &&
       this.currentActivity &&
       this.currentActivity.type === "EXPLORING" &&
       this.currentActivity.phase !== "RETURNING"
@@ -261,6 +263,13 @@ export class Character {
           );
         return; // Cancel the immediate stop
       }
+    }
+
+    // Force Cancel / Normal Stop logic
+    // If we were exploring, and we are stopping (either forced or finished returning),
+    // ensure we are removed from the map (teleport to home).
+    if (this.currentActivity && this.currentActivity.type === "EXPLORING") {
+      this.position = { x: 250, y: 250 };
     }
 
     this.currentActivity = null;

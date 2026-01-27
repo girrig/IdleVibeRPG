@@ -370,16 +370,30 @@ export const SKILL_DEFINITIONS = {
         // But usually EXPLORING phase is triggered by "Find X". So option.biomeId is set.
 
         if (option.biomeId) {
-          target = mapManager.findNearestUnexploredInAdjacentBiome(
+          // PRIORITY 1: Look for KNOWN but UNVISITED tiles of this type
+          // This ensures we fully "walk" the visible forest before running to the unknown edge.
+          target = mapManager.findNearestExploredUnvisitedTile(
+            option.biomeId,
             x,
             y,
-            option.biomeId,
           );
+
+          // PRIORITY 2: If we have visited all known tiles, find the UNEXPLORED frontier
+          if (!target) {
+            target = mapManager.findNearestUnexploredInAdjacentBiome(
+              x,
+              y,
+              option.biomeId,
+            );
+          }
         } else {
           // Fallback if no specific target biome (e.g. wander -> explore? Not implemented yes)
           // Just default to current tile type?
           const currentTile = mapManager.getTile(x, y);
           if (currentTile) {
+            // For generic exploration, finding unvisited of current type seems mostly correct too?
+            // But for now let's stick to the Frontier logic for generic,
+            // or maybe apply the same logic. Let's start with just the directed case.
             target = mapManager.findNearestUnexploredInAdjacentBiome(
               x,
               y,
