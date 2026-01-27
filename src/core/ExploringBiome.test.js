@@ -107,11 +107,15 @@ describe("Exploring Skill - Biome Logic", () => {
     char.currentActivity.phase = "EXPLORING";
     char.position = { x: 2, y: 2 };
 
-    // Explore ALL forest tiles
-    mapManager.exploreTile(2, 2);
-    mapManager.exploreTile(2, 3);
-    mapManager.exploreTile(3, 2);
-    mapManager.exploreTile(3, 3);
+    // Explore ALL tiles (fully revealed map)
+    // The new "Flood" logic checks the frontier. If adjacent tiles are unexplored, it tries to explore them
+    // to see if the forest extends there.
+    // So to be "Finished", we must know the boundaries (surrounding tiles must be explored).
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        mapManager.exploreTile(x, y);
+      }
+    }
 
     SKILL_DEFINITIONS.EXPLORING.action(gameState, char);
 

@@ -359,10 +359,34 @@ export const SKILL_DEFINITIONS = {
         // MapManager handles it reasonably fast for small inputs, but 500x500 map...
         // Let's re-calculate for now. Real-time pathfinding.
 
-        const region = mapManager.getContiguousRegion(x, y);
+        // We are inside the biome. We want to find UNEXPLORED tiles in this region.
+        // Use "Flooding" logic: Find nearest unexplored tile connected by VISIBLE matching biome tiles.
+        // This ensures we fully explore the contiguous biome we discovered without "cheating" through fog.
 
-        // 2. Find nearest unexplored
-        const target = mapManager.findNearestUnexploredInRegion(region, x, y);
+        let target = null;
+
+        // If we are looking for a SPECIFIC biome, we use that.
+        // If we were just WANDERING and stumbled into something, we might want to flood whatever we are standing on.
+        // But usually EXPLORING phase is triggered by "Find X". So option.biomeId is set.
+
+        if (option.biomeId) {
+          target = mapManager.findNearestUnexploredInAdjacentBiome(
+            x,
+            y,
+            option.biomeId,
+          );
+        } else {
+          // Fallback if no specific target biome (e.g. wander -> explore? Not implemented yes)
+          // Just default to current tile type?
+          const currentTile = mapManager.getTile(x, y);
+          if (currentTile) {
+            target = mapManager.findNearestUnexploredInAdjacentBiome(
+              x,
+              y,
+              currentTile.type,
+            );
+          }
+        }
 
         if (target) {
           // Move towards it

@@ -775,6 +775,53 @@ export class MapManager {
     return tile ? !!tile.visited : false;
   }
 
+  // Find nearest tile that is UNEXPLORED but connected to start via EXPLORED tiles of matching biome
+  // Used for "Flooding" a biome
+  findNearestUnexploredInAdjacentBiome(startX, startY, biomeType) {
+    const visited = new Set();
+    const queue = [{ x: startX, y: startY, dist: 0 }];
+    visited.add(`${startX},${startY}`);
+
+    const maxDist = 200; // Search limit to prevent infinite loops in massive biomes
+
+    let head = 0;
+    while (head < queue.length) {
+      const curr = queue[head++];
+      if (curr.dist > maxDist) break;
+
+      const neighbors = [
+        { x: curr.x + 1, y: curr.y },
+        { x: curr.x - 1, y: curr.y },
+        { x: curr.x, y: curr.y + 1 },
+        { x: curr.x, y: curr.y - 1 },
+      ];
+
+      for (const n of neighbors) {
+        if (n.x >= 0 && n.x < this.width && n.y >= 0 && n.y < this.height) {
+          const key = `${n.x},${n.y}`;
+          if (!visited.has(key)) {
+            const tile = this.getTile(n.x, n.y);
+
+            if (!tile) continue;
+
+            if (!tile.explored) {
+              // Found an unexplored tile!
+              // Since we reached it by traversing ONLY valid biome tiles, this is a valid frontier.
+              return { x: n.x, y: n.y };
+            }
+
+            // If explored, strict biome check
+            if (tile.explored && tile.type === biomeType) {
+              visited.add(key);
+              queue.push({ x: n.x, y: n.y, dist: curr.dist + 1 });
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   // Find nearest tile that is EXPLORED (visible) but NOT VISITED (new)
   findNearestExploredUnvisitedTile(typeId, startX, startY) {
     const visited = new Set();
