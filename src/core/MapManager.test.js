@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { MapManager, TERRAIN_TYPES } from "./MapManager";
+import { MapManager } from "./MapManager";
+import { TERRAIN_TYPES } from "./TerrainTypes";
 
 describe("MapManager", () => {
   let mapManager;
@@ -209,6 +210,14 @@ describe("MapManager", () => {
       t1.explored = true;
       t1.visited = true; // Visited already
 
+      // Intermediate tile MUST be explored for connectivity
+      const tMid = mapManager.getTile(11, 10);
+      tMid.explored = true;
+      tMid.visited = true; // Mark visited so we skip it and find 12,10
+      // Type doesn't strictly matter for traversal if we only check explored,
+      // but let's make it forest to be safe if we add type checks later.
+      tMid.type = "FOREST";
+
       const t2 = mapManager.getTile(12, 10);
       t2.type = "FOREST";
       t2.explored = true;
@@ -219,6 +228,7 @@ describe("MapManager", () => {
         10,
         10,
       );
+      expect(result).toBeDefined();
       expect(result.x).toBe(12);
       expect(result.y).toBe(10);
     });

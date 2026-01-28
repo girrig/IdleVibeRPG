@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { mapManager, TERRAIN_TYPES } from "./MapManager";
+import { mapManager } from "./MapManager";
+import { TERRAIN_TYPES } from "./TerrainTypes";
 import { Character } from "./Character";
 import { SKILL_DEFINITIONS } from "./SkillRegistry";
 
@@ -220,6 +221,32 @@ describe("Exploring Skill - Biome Logic", () => {
 
       // Expect move to 2,3 (Visible/Explored)
       expect(char.position).toEqual({ x: 2, y: 3 });
+    });
+
+    it("should traverse Ocean to reach visible tiles", () => {
+      // Setup: Char at 2,2 (Explored, Visited Forest)
+      mapManager.tiles[2][2].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
+      mapManager.tiles[2][2].explored = true;
+      mapManager.tiles[2][2].visited = true;
+
+      // 2,3 (Down) is OCEAN (Explored) - The Obstacle
+      // Since Ocean IS WALKABLE, we can cross it!
+      mapManager.tiles[3][2].type = TERRAIN_TYPES.OCEAN.id;
+      mapManager.tiles[3][2].explored = true;
+
+      // 2,4 (Down) is Forest (Explored, Unvisited) - The Target
+      mapManager.tiles[4][2].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
+      mapManager.tiles[4][2].explored = true;
+      mapManager.tiles[4][2].visited = false;
+
+      const target = mapManager.findNearestExploredUnvisitedTile(
+        TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id,
+        2,
+        2,
+      );
+
+      // Should find 2,4 because we CAN walk through Ocean
+      expect(target).toEqual(expect.objectContaining({ x: 2, y: 4 }));
     });
   });
 });

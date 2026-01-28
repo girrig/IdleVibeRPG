@@ -86,6 +86,11 @@ describe("Exploring Skill - Targeting", () => {
     targetTile.type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
     targetTile.explored = true;
 
+    // Ensure connectivity! (Safety first: cannot path through fog)
+    mapManager.getTile(5, 5).explored = true;
+    mapManager.getTile(6, 5).explored = true;
+    mapManager.getTile(7, 5).explored = true;
+
     const action = SKILL_DEFINITIONS.EXPLORING.action;
 
     // Set activity to find_forest

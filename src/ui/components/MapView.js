@@ -699,7 +699,7 @@ export class MapView {
       box.style.border = "1px solid #fff"; // Highlight it
 
       const text = document.createElement("span");
-      text.innerText = "Home (Click to Center)";
+      text.innerText = `${homeType.symbol} Home (Click to Center)`;
       text.style.fontSize = "12px";
 
       item.appendChild(box);
@@ -749,8 +749,14 @@ export class MapView {
     box.style.marginRight = "8px";
 
     const text = document.createElement("span");
-    text.innerText = labelOverride || type.id;
+    // Format: "🌲 FOREST" (using symbol + id)
+    // Clean up ID: Replace underscores with spaces, Title Case if possible (css text-transform properly)
+    // For now simple regex replacement
+    const readableName = (labelOverride || type.id).replace(/_/g, " ");
+    const symbol = type.symbol || "";
+    text.innerText = `${symbol} ${readableName}`;
     text.style.fontSize = "12px";
+    text.style.textTransform = "capitalize"; // Make it look nicer
 
     item.appendChild(box);
     item.appendChild(text);
