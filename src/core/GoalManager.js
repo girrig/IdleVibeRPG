@@ -77,9 +77,15 @@ export class GoalManager {
     }
 
     const step = group.steps[group.currentStepIndex];
-    console.log(
-      `[startFlaggedGoal] Starting step ${group.currentStepIndex}: ${step.targetQuantity} ${step.targetItem}`,
-    );
+    if (step) {
+      console.log(
+        `[startFlaggedGoal] Starting step ${group.currentStepIndex}: ${step.targetQuantity} ${step.targetItem}`,
+      );
+    } else {
+      console.log(
+        `[startFlaggedGoal] Starting step ${group.currentStepIndex}: INVALID STEP`,
+      );
+    }
 
     taskRunner.startTask(gameState, character, step, group);
     this.executeGoal(character);

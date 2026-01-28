@@ -188,5 +188,146 @@ describe("GoalManager", () => {
         "info",
       );
     });
+    it("should remove goal from queue", () => {
+      const group1 = { id: 1, mainGoal: { itemId: "A", quantity: 1 } };
+      const group2 = { id: 2, mainGoal: { itemId: "B", quantity: 1 } };
+      mockChar.goalQueue = [group1, group2];
+
+      goalManager.removeGoalFromQueue(mockGameState, mockChar, 0);
+
+      expect(mockChar.goalQueue).toHaveLength(1);
+      expect(mockChar.goalQueue[0].id).toBe(2);
+      expect(mockGameState.triggerNotification).toHaveBeenCalledWith(
+        expect.stringContaining("Removed queued group"),
+        "info",
+      );
+    });
+
+    it("should reorder goal queue (normal swap)", () => {
+      const group1 = { id: 1 };
+      const group2 = { id: 2 };
+      mockChar.goalQueue = [group1, group2];
+
+      // Swap index 0 and 1
+      goalManager.reorderGoalQueue(mockGameState, mockChar, 0, 1);
+
+      expect(mockChar.goalQueue[0].id).toBe(2);
+      expect(mockChar.goalQueue[1].id).toBe(1);
+      expect(mockGameState.saveGame).toHaveBeenCalled();
+    });
+
+    it("should handle pausing active task (Active -> Queue)", () => {
+      // Moving Active (-1) to Queue (0)
+      const activeGroup = {
+        id: 99,
+        steps: [{ targetItem: "X", targetQuantity: 1 }],
+        currentStepIndex: 0,
+      };
+      mockChar.activeGoalGroup = activeGroup;
+      mockChar.goalQueue = [{ id: 1, steps: [] }];
+
+      goalManager.reorderGoalQueue(mockGameState, mockChar, -1, 1);
+
+      // ID 1 should be active (was at 0, now shifted to active)
+      expect(mockChar.activeGoalGroup.id).toBe(1);
+      // ID 99 was inserted at 1, but after shift of 0, it becomes 0
+      expect(mockChar.goalQueue[0].id).toBe(99);
+      expect(mockChar.stopActivity).toHaveBeenCalled();
+    });
+  });
+
+  describe("Regression Tests", () => {
+    // Tests migrated from test_dependency_logic_v2.js
+
+    it("should preventing exponential growth of dependencies (Getting Bigger Bug)", () => {
+      // Scenario: Queueing multiple identical goals should not cause dependencies to compound unexpectedly.
+      // If I queue "make 10 bars" 3 times, each should just require "mine 10 ore".
+
+      const char = { goalQueue: [], activeGoal: null };
+
+      // Setup mock behaviour for this specific test
+      // Logic: 10 Bars -> Need 10 Ore.
+      taskPlanner.resolveDependencies.mockImplementation((itemId, qty) => {
+        if (itemId === "copperBar" && qty === 10) {
+          return [
+            { itemId: "copper_ore", quantity: 10, source: { type: "MINING" } },
+          ];
+        }
+        return [];
+      });
+
+      // 1st
+      goalManager.setGoal(mockGameState, char, "copperBar", 10);
+      const group1 = char.goalQueue[0]; // Since it was first, might be active or queued depending on logic.
+      // But mockChar logic in setGoal says if activeGoalGroup exists... here it doesnt.
+      // Wait, standard setGoal behavior: if idle, starts immediately.
+      // So char.activeGoalGroup is set.
+
+      // Let's force it to queue by making char busy
+      char.activeGoalGroup = { id: "busy" };
+      char.goalQueue = [];
+
+      goalManager.setGoal(mockGameState, char, "copperBar", 10);
+      const step1 = char.goalQueue[0].steps[0];
+
+      goalManager.setGoal(mockGameState, char, "copperBar", 10);
+      const step2 = char.goalQueue[1].steps[0];
+
+      expect(step1.targetQuantity).toBe(10);
+      expect(step2.targetQuantity).toBe(10);
+    });
+
+    it("should handle Active Task Interference (Strict Conservative)", () => {
+      // Scenario: Active task is "Mine 10 Ore". Queue "Smith 10 Bars".
+      // Logic: "Smith 10 Bars" needs 10 Ore.
+      // Should NOT assume the active Mining task will satisfy the need (unless logic is very advanced).
+      // Strict safety means we add the dependency anyway.
+
+      // Mock existing active task
+      mockChar.activeGoalGroup = {
+        mainGoal: { itemId: "copper_ore", quantity: 10 },
+        steps: [{ itemId: "copper_ore", targetQuantity: 10 }],
+      };
+
+      // Mock planner to return dependency
+      taskPlanner.resolveDependencies.mockReturnValue([
+        { itemId: "copper_ore", quantity: 10 },
+        { itemId: "copperBar", quantity: 10 },
+      ]);
+
+      goalManager.setGoal(mockGameState, mockChar, "copperBar", 10);
+
+      const queuedGroup = mockChar.goalQueue[0];
+      const steps = queuedGroup.steps;
+
+      // Expect dependency to be present
+      expect(steps.some((s) => s.targetItem === "copper_ore")).toBe(true);
+    });
+
+    it("should persist startCount on resume (Persistence)", () => {
+      // Scenario: Task was half done.
+      const partialStep = {
+        targetItem: "copper_ore",
+        targetQuantity: 10,
+        startCount: 0,
+        status: "EXECUTING",
+      };
+
+      const group = {
+        steps: [partialStep],
+        currentStepIndex: 0,
+      };
+
+      // Manually setting up a queued item that looks like a saved game state
+      mockChar.goalQueue = [group];
+
+      // Trigger checkQueue to start it
+      mockChar.activeGoalGroup = null;
+      goalManager.checkQueue(mockGameState, mockChar);
+
+      expect(mockChar.activeGoalGroup).toBe(group);
+      expect(mockChar.activeGoalGroup.steps[0].startCount).toBe(0);
+      // Should not have reset startCount to current inventory
+    });
   });
 });

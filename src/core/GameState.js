@@ -34,13 +34,15 @@ class GameState {
     this.isResetting = false;
 
     // Listen for storage changes to handle multi-tab resets
-    window.addEventListener("storage", (e) => {
-      if (e.key === "idleVibeRPG_save" && e.newValue === null) {
-        console.log("Game reset detected in another tab. Reloading...");
-        this.isResetting = true; // Prevent saving during reload
-        location.reload();
-      }
-    });
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", (e) => {
+        if (e.key === "idleVibeRPG_save" && e.newValue === null) {
+          console.log("Game reset detected in another tab. Reloading...");
+          this.isResetting = true; // Prevent saving during reload
+          location.reload();
+        }
+      });
+    }
   }
 
   initialize() {
