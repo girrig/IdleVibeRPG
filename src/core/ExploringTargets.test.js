@@ -109,7 +109,7 @@ describe("Exploring Skill - Targeting", () => {
     expect(char.position.y).toBe(5);
   });
 
-  it("should gain bonus XP when patrolling target biome", () => {
+  it("should gain NO XP when moving through fully explored target biome", () => {
     // Setup: Character inside a forest, targeting forest
     const tile = mapManager.getTile(5, 5);
     tile.type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
@@ -127,6 +127,9 @@ describe("Exploring Skill - Targeting", () => {
     mapManager.getTile(6, 5).type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
     mapManager.getTile(6, 5).explored = true;
 
+    // Explore radius around destination to ensure no new tiles
+    mapManager.exploreRadius(6, 5, 10);
+
     // Mock MapManager to ensure we move to (6,5) or similar?
     // Since we are "finding forest" and (6,5) is known forest, we should move there?
     // Actually findNearestExploredTile might pick (5,5) (dist 0), or neighbors?
@@ -138,11 +141,13 @@ describe("Exploring Skill - Targeting", () => {
     // Random wander moves to neighbor.
 
     const action = SKILL_DEFINITIONS.EXPLORING.action;
+    // Reset XP first
+    char.skills.exploring.xp = 0;
+
     action(gameState, char);
 
-    // Expect XP gain to be > 10% base
-    // Base for find_forest is 30. 10% is 3. 50% is 15.
-    expect(char.skills.exploring.xp).toBeGreaterThanOrEqual(15);
+    // Expect XP gain to be 0 (no new tiles)
+    expect(char.skills.exploring.xp).toBe(0);
   });
   it("should random wander if target biome is unknown", () => {
     // Setup: Character at (5,5). NO Forest known.
@@ -172,6 +177,12 @@ describe("Exploring Skill - Targeting", () => {
     expect(options.find_desert).toBeDefined();
     expect(options.find_mountain).toBeDefined();
     expect(options.find_ocean).toBeDefined();
+
+    // Check new biomes
+    expect(options.find_beach).toBeDefined(); // Lvl 2
+    expect(options.find_swamp).toBeDefined(); // Lvl 10
+    expect(options.find_tropical_rainforest).toBeDefined(); // Lvl 20
+    expect(options.find_ice_sheet).toBeDefined(); // Lvl 35
 
     expect(options.find_forest.level).toBe(5);
     expect(options.find_ocean.level).toBe(30);

@@ -485,7 +485,7 @@ export class MapManager {
   }
 
   exploreRadius(centerX, centerY, radius) {
-    let anyNew = false;
+    const revealed = [];
     const r = Math.floor(radius);
 
     for (let y = centerY - r; y <= centerY + r; y++) {
@@ -496,12 +496,12 @@ export class MapManager {
           Math.pow(r, 2)
         ) {
           if (this.exploreTile(x, y)) {
-            anyNew = true;
+            revealed.push(this.getTile(x, y));
           }
         }
       }
     }
-    return anyNew;
+    return revealed;
   }
 
   // Find nearest explored tile of a specific type (BFS)

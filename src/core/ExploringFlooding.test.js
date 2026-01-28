@@ -4,6 +4,8 @@ import { mapManager } from "./MapManager";
 import { Character } from "./Character";
 import { SKILL_DEFINITIONS } from "./SkillRegistry";
 
+import { TERRAIN_TYPES } from "./TerrainTypes";
+
 // Helper to manually tick
 function tick(char) {
   const def = SKILL_DEFINITIONS[char.currentActivity.type];
@@ -19,6 +21,7 @@ describe("Exploring Flooding Logic", () => {
     // Mock GameState
     window.gameState = {
       triggerNotification: vi.fn(),
+      saveGame: vi.fn(), // Fix missing mock
       inventory: {
         addItem: vi.fn(),
         removeItem: vi.fn(),
@@ -39,7 +42,7 @@ describe("Exploring Flooding Logic", () => {
       for (let x = 0; x < 10; x++) {
         let type = "OCEAN";
         // Create 3x3 Forest at 0,0
-        if (x < 3 && y < 3) type = "FOREST";
+        if (x < 3 && y < 3) type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
         row.push({ x, y, type, explored: false, visited: false });
       }
       tiles.push(row);
@@ -74,7 +77,9 @@ describe("Exploring Flooding Logic", () => {
     const pos1 = char.position;
     expect(pos1).not.toEqual({ x: 0, y: 0 });
     // Should be in Forest
-    expect(mapManager.getTile(pos1.x, pos1.y).type).toBe("FOREST");
+    expect(mapManager.getTile(pos1.x, pos1.y).type).toBe(
+      TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id,
+    );
 
     // Reveal it (Simulate action completion)
     mapManager.visitTile(pos1.x, pos1.y);
@@ -84,7 +89,9 @@ describe("Exploring Flooding Logic", () => {
     tick(char);
     const pos2 = char.position;
     expect(pos2).not.toEqual(pos1);
-    expect(mapManager.getTile(pos2.x, pos2.y).type).toBe("FOREST");
+    expect(mapManager.getTile(pos2.x, pos2.y).type).toBe(
+      TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id,
+    );
   });
 
   it("should stop when biome is fully explored", () => {
@@ -92,6 +99,7 @@ describe("Exploring Flooding Logic", () => {
     for (let y = 0; y < 3; y++) {
       for (let x = 0; x < 3; x++) {
         mapManager.getTile(x, y).explored = true;
+        mapManager.getTile(x, y).visited = true;
       }
     }
 

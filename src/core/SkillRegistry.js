@@ -1,6 +1,7 @@
 import { getItemDefinition } from "./ItemRegistry";
 import { SKILL_COLORS, GAME_CONFIG } from "./Constants";
 import { mapManager } from "./MapManager";
+import { TERRAIN_TYPES } from "./TerrainTypes";
 
 export const SKILL_DEFINITIONS = {
   MINING: {
@@ -236,41 +237,139 @@ export const SKILL_DEFINITIONS = {
         xp: 15,
         icon: "🥾",
       },
-      // Target Specific Biomes
+      // Level 1-2: Easy / Common
       find_grassland: {
         name: "Find Grassland",
         level: 1,
         xp: 20,
-        icon: "🌾",
-        biomeId: "TEMPERATE_GRASSLAND",
+        icon: TERRAIN_TYPES.TEMPERATE_GRASSLAND.symbol,
+        biomeId: TERRAIN_TYPES.TEMPERATE_GRASSLAND.id,
+      },
+      find_beach: {
+        name: "Find Beach",
+        level: 2,
+        xp: 22,
+        icon: TERRAIN_TYPES.BEACH.symbol,
+        biomeId: TERRAIN_TYPES.BEACH.id,
+      },
+      // Level 3-5
+      find_shallow_ocean: {
+        name: "Find Shallows",
+        level: 3,
+        xp: 25,
+        icon: TERRAIN_TYPES.SHALLOW_OCEAN.symbol,
+        biomeId: TERRAIN_TYPES.SHALLOW_OCEAN.id,
       },
       find_forest: {
         name: "Find Forest",
         level: 5,
         xp: 30,
-        icon: "🌲",
-        biomeId: "TEMPERATE_DECIDUOUS_FOREST",
+        icon: TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.symbol,
+        biomeId: TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id,
       },
+      find_shrubland: {
+        name: "Find Shrubland",
+        level: 5,
+        xp: 30,
+        icon: TERRAIN_TYPES.SHRUBLAND.symbol,
+        biomeId: TERRAIN_TYPES.SHRUBLAND.id,
+      },
+      // Level 10
       find_desert: {
         name: "Find Desert",
         level: 10,
         xp: 40,
-        icon: "🌵",
-        biomeId: "SUBTROPICAL_DESERT",
+        icon: TERRAIN_TYPES.SUBTROPICAL_DESERT.symbol,
+        biomeId: TERRAIN_TYPES.SUBTROPICAL_DESERT.id,
       },
+      find_boreal_forest: {
+        name: "Find Boreal Forest",
+        level: 10,
+        xp: 40,
+        icon: TERRAIN_TYPES.BOREAL_FOREST.symbol,
+        biomeId: TERRAIN_TYPES.BOREAL_FOREST.id,
+      },
+      find_swamp: {
+        name: "Find Swamp",
+        level: 10,
+        xp: 45,
+        icon: TERRAIN_TYPES.SWAMP.symbol,
+        biomeId: TERRAIN_TYPES.SWAMP.id,
+      },
+      // Level 15
+      find_temperate_rainforest: {
+        name: "Find Temp. Rainforest",
+        level: 15,
+        xp: 50,
+        icon: TERRAIN_TYPES.TEMPERATE_RAINFOREST.symbol,
+        biomeId: TERRAIN_TYPES.TEMPERATE_RAINFOREST.id,
+      },
+      find_tropical_savanna: {
+        name: "Find Savanna",
+        level: 15,
+        xp: 50,
+        icon: TERRAIN_TYPES.TROPICAL_SAVANNA.symbol,
+        biomeId: TERRAIN_TYPES.TROPICAL_SAVANNA.id,
+      },
+      // Level 20
       find_mountain: {
         name: "Find Mountain",
         level: 20,
         xp: 60,
-        icon: "⛰️",
-        biomeId: "ALPINE",
+        icon: TERRAIN_TYPES.ALPINE.symbol,
+        biomeId: TERRAIN_TYPES.ALPINE.id,
       },
+      find_temperate_desert: {
+        name: "Find Temp. Desert",
+        level: 20,
+        xp: 60,
+        icon: TERRAIN_TYPES.TEMPERATE_DESERT.symbol,
+        biomeId: TERRAIN_TYPES.TEMPERATE_DESERT.id,
+      },
+      find_tropical_rainforest: {
+        name: "Find Jungle",
+        level: 20,
+        xp: 65,
+        icon: TERRAIN_TYPES.TROPICAL_RAINFOREST.symbol,
+        biomeId: TERRAIN_TYPES.TROPICAL_RAINFOREST.id,
+      },
+      // Level 25
+      find_tundra: {
+        name: "Find Tundra",
+        level: 25,
+        xp: 70,
+        icon: TERRAIN_TYPES.TUNDRA.symbol,
+        biomeId: TERRAIN_TYPES.TUNDRA.id,
+      },
+      // Level 30
       find_ocean: {
         name: "Find Ocean",
         level: 30,
         xp: 80,
-        icon: "🌊",
-        biomeId: "OCEAN",
+        icon: TERRAIN_TYPES.OCEAN.symbol,
+        biomeId: TERRAIN_TYPES.OCEAN.id,
+      },
+      find_alpine_tundra: {
+        name: "Find Alpine Tundra",
+        level: 30,
+        xp: 80,
+        icon: TERRAIN_TYPES.ALPINE_TUNDRA.symbol,
+        biomeId: TERRAIN_TYPES.ALPINE_TUNDRA.id,
+      },
+      // Level 35
+      find_polar_desert: {
+        name: "Find Polar Desert",
+        level: 35,
+        xp: 90,
+        icon: TERRAIN_TYPES.POLAR_DESERT.symbol,
+        biomeId: TERRAIN_TYPES.POLAR_DESERT.id,
+      },
+      find_ice_sheet: {
+        name: "Find Ice Sheet",
+        level: 35,
+        xp: 95,
+        icon: TERRAIN_TYPES.ICE_SHEET.symbol,
+        biomeId: TERRAIN_TYPES.ICE_SHEET.id,
       },
     },
     interval: 3000,
@@ -467,35 +566,48 @@ export const SKILL_DEFINITIONS = {
 
       // Explore with Radius
       const sightRadius = char.stats.sightRange || 3;
-      const revealed = mapManager.exploreRadius(
+      const revealedTiles = mapManager.exploreRadius(
         nextPos.x,
         nextPos.y,
         sightRadius,
       );
 
       // XP Logic
-      const newTile = mapManager.getTile(nextPos.x, nextPos.y);
-      let xpGain = Math.floor(option.xp * 0.1); // Default low XP (walking)
+      // Base rate from Wander option
+      const wanderXp = SKILL_DEFINITIONS.EXPLORING.options.wander.xp; // e.g. 15
 
-      if (revealed) {
-        xpGain = option.xp; // Full XP for discovery
-        gameState.triggerNotification("Discovered new area!", "success");
+      let totalXp = 0;
+
+      if (revealedTiles.length > 0) {
+        revealedTiles.forEach((tile) => {
+          let tileXp = wanderXp;
+
+          // Bonus if it's the specific target biome we want
+          // "specific tiles we want ... should be the base rate plus a bonus"
+          // We use option.xp as the total value (Base + Bonus)
+          if (option.biomeId && tile.type === option.biomeId) {
+            tileXp = option.xp;
+          }
+          totalXp += tileXp;
+        });
+
+        // Notify if significant?
+        if (revealedTiles.length >= 5) {
+          gameState.triggerNotification(
+            `Revealed ${revealedTiles.length} new tiles!`,
+            "success",
+          );
+        } else if (revealedTiles.length > 0) {
+          // Maybe silent or subtle?
+        }
       }
 
-      // Bonus if we are successfully patrolling target in EXPLORING phase
-      if (
-        char.currentActivity.phase === "EXPLORING" &&
-        newTile.type === option.biomeId
-      ) {
-        xpGain = Math.max(xpGain, Math.floor(option.xp * 0.5));
-      }
-
-      if (xpGain > 0) {
+      if (totalXp > 0) {
         if (char.talents.exploring_2 && Math.random() < 0.1) {
-          xpGain *= 2;
+          totalXp *= 2;
           // gameState.triggerNotification("Double Exploration XP!", "success");
         }
-        char.gainXp("exploring", xpGain);
+        char.gainXp("exploring", totalXp);
       }
     },
   },

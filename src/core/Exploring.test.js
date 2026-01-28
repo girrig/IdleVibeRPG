@@ -50,8 +50,6 @@ describe("Exploring Skill", () => {
     // Start at a random unexplored location (e.g. 100, 100)
     // Execute action
     // Fix: initialize activity state first so currentActivity is set
-    // NOTE: startActivity now resets position to HOME (250, 250).
-    // We must overload this for the test to verify "New Area" logic at 100,100.
     char.startActivity("EXPLORING", "wander", 0);
     const action = SKILL_DEFINITIONS.EXPLORING.action;
     char.position = { x: 100, y: 100 };
@@ -72,7 +70,7 @@ describe("Exploring Skill", () => {
 
     // Notification should trigger for new area
     expect(gameState.triggerNotification).toHaveBeenCalledWith(
-      "Discovered new area!",
+      expect.stringMatching(/Revealed \d+ new tiles!/),
       "success",
     );
 
@@ -85,7 +83,7 @@ describe("Exploring Skill", () => {
     expect(neighborTile.explored).toBe(true);
   });
 
-  it("should gain reduced XP for revisiting explored tiles", () => {
+  it("should gain NO XP for revisiting explored tiles", () => {
     const action = SKILL_DEFINITIONS.EXPLORING.action;
     char.startActivity("EXPLORING", "wander", 0);
 
@@ -118,7 +116,7 @@ describe("Exploring Skill", () => {
     // Now move
     action(gameState, char);
 
-    // Should have gained reduced XP (10% of 15 = 1)
-    expect(char.skills.exploring.xp).toBe(Math.floor(15 * 0.1));
+    // Should have gained NO XP (0)
+    expect(char.skills.exploring.xp).toBe(0);
   });
 });

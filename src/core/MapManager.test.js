@@ -150,7 +150,9 @@ describe("MapManager", () => {
       // Ensure center is unexplored first
       expect(mapManager.getTile(cx, cy).explored).toBe(false);
 
-      mapManager.exploreRadius(cx, cy, radius);
+      const revealed = mapManager.exploreRadius(cx, cy, radius);
+      expect(Array.isArray(revealed)).toBe(true);
+      expect(revealed.length).toBeGreaterThan(0);
 
       // Check center
       expect(mapManager.getTile(cx, cy).explored).toBe(true);
