@@ -1,5 +1,5 @@
 import { createNoise2D } from "simplex-noise";
-import { TERRAIN_TYPES } from "./TerrainTypes";
+import { TERRAIN_TYPES } from "./TerrainTypes.js";
 export { TERRAIN_TYPES };
 
 // Simple seeded random number generator (Mulberry32)

@@ -1,7 +1,7 @@
-import { getItemDefinition } from "./ItemRegistry";
-import { SKILL_COLORS, GAME_CONFIG } from "./Constants";
-import { mapManager } from "./MapManager";
-import { TERRAIN_TYPES } from "./TerrainTypes";
+import { getItemDefinition } from "./ItemRegistry.js";
+import { SKILL_COLORS, GAME_CONFIG } from "./Constants.js";
+import { mapManager } from "./MapManager.js";
+import { TERRAIN_TYPES } from "./TerrainTypes.js";
 
 export const SKILL_DEFINITIONS = {
   MINING: {
@@ -538,7 +538,35 @@ export const SKILL_DEFINITIONS = {
 
       // --- PHASE 0: WANDERING (Fallback) ---
       if (char.currentActivity.phase === "WANDERING") {
-        // Just random
+        // 1. Check immediate neighbors for UNEXPLORED tiles
+        const neighbors = [
+          { x: x + 1, y: y },
+          { x: x - 1, y: y },
+          { x: x, y: y + 1 },
+          { x: x, y: y - 1 },
+        ];
+
+        const unexploredNeighbors = neighbors.filter((n) => {
+          const t = mapManager.getTile(n.x, n.y);
+          return t && !t.explored;
+        });
+
+        if (unexploredNeighbors.length > 0) {
+          nextPos =
+            unexploredNeighbors[
+              Math.floor(Math.random() * unexploredNeighbors.length)
+            ];
+        } else {
+          // 2. If all neighbors explored, find nearest Frontier
+          const frontier = mapManager.findNearestFrontierTile(x, y);
+          if (frontier) {
+            const dx = Math.sign(frontier.x - x);
+            const dy = Math.sign(frontier.y - y);
+            if (dx !== 0 && Math.random() < 0.5) nextPos = { x: x + dx, y: y };
+            else if (dy !== 0) nextPos = { x: x, y: y + dy };
+            else if (dx !== 0) nextPos = { x: x + dx, y: y };
+          }
+        }
       }
 
       // Fallback: Random Wander (if not seeking or no target found)
@@ -591,15 +619,7 @@ export const SKILL_DEFINITIONS = {
           totalXp += tileXp;
         });
 
-        // Notify if significant?
-        if (revealedTiles.length >= 5) {
-          gameState.triggerNotification(
-            `Revealed ${revealedTiles.length} new tiles!`,
-            "success",
-          );
-        } else if (revealedTiles.length > 0) {
-          // Maybe silent or subtle?
-        }
+        // Notify removed as per user request
       }
 
       if (totalXp > 0) {

@@ -1,5 +1,5 @@
-import { getTalentDefinition, TALENT_DEFINITIONS } from "./TalentRegistry";
-import { SKILL_DEFINITIONS } from "./SkillRegistry";
+import { getTalentDefinition, TALENT_DEFINITIONS } from "./TalentRegistry.js";
+import { SKILL_DEFINITIONS } from "./SkillRegistry.js";
 
 // Circular dependency fix: Use window.gameState instead of import
 // import { gameState } from "./GameState";

@@ -68,12 +68,6 @@ describe("Exploring Skill", () => {
     // Should have gained XP
     expect(char.skills.exploring.xp).toBeGreaterThan(0);
 
-    // Notification should trigger for new area
-    expect(gameState.triggerNotification).toHaveBeenCalledWith(
-      expect.stringMatching(/Revealed \d+ new tiles!/),
-      "success",
-    );
-
     // KEY CHANGE: Check that it wasn't just the single tile, but a radius
     // Assuming default sight range is 5
     const r = 5;
@@ -96,21 +90,8 @@ describe("Exploring Skill", () => {
     // Reset XP to track gain clearly
     char.skills.exploring.xp = 0;
 
-    // Hack: Make all neighbors explored to force a "revisit" scenario if we move to one
-    //Actually, pure random walk might revisit.
-    // Let's manually force the character to a position where a neighbor IS explored.
-
-    // Let's just force the tile we are ON to be explored (it is).
-    // Try to move. If we move to a new tile, we get full XP.
-    // If we move to an explored tile, we get reduced XP.
-    // Since we can't easily force the random walk to go to a specific tile without mocking math.random,
-    // let's mock Math.random to verify the logic specifically.
-
-    // Or simpler: Pre-explore ALL neighbors of current position.
-    const { x, y } = char.position;
     // Pre-explore ALL neighbors and the radius around them to ensure NO new tiles are revealed
-    // Character sight radius is typically 3. So if we explore radius 5 around current pos, moving 1 step should still check inside that zone.
-
+    const { x, y } = char.position;
     mapManager.exploreRadius(x, y, 10);
 
     // Now move
@@ -118,5 +99,60 @@ describe("Exploring Skill", () => {
 
     // Should have gained NO XP (0)
     expect(char.skills.exploring.xp).toBe(0);
+  });
+
+  it("should prioritize immediate unexplored neighbors", () => {
+    char.startActivity("EXPLORING", "wander", 0);
+    char.currentActivity.phase = "WANDERING"; // Set phase to avoid reset
+    const action = SKILL_DEFINITIONS.EXPLORING.action;
+
+    // Center explored
+    const cx = 200,
+      cy = 200;
+    char.position = { x: cx, y: cy };
+    mapManager.exploreTile(cx, cy);
+
+    // Neighbors explored EXCEPT Right (cx+1, cy)
+    mapManager.exploreTile(cx - 1, cy); // Left
+    mapManager.exploreTile(cx, cy - 1); // Top
+    mapManager.exploreTile(cx, cy + 1); // Bottom
+
+    // Ensure target is UNEXPLORED
+    const targetTile = mapManager.getTile(cx + 1, cy);
+    targetTile.explored = false;
+
+    action(gameState, char);
+
+    expect(char.position.x).toBe(cx + 1);
+    expect(char.position.y).toBe(cy);
+  });
+
+  it("should seek frontier when surrounded by explored tiles", () => {
+    char.startActivity("EXPLORING", "wander", 0);
+    char.currentActivity.phase = "WANDERING"; // Set phase to avoid reset
+    const action = SKILL_DEFINITIONS.EXPLORING.action;
+
+    // Fully explore a 5x5 area around start
+    const cx = 300,
+      cy = 300;
+    char.position = { x: cx, y: cy };
+    mapManager.exploreRadius(cx, cy, 2);
+
+    // Verify initial state: Neighbors are explored
+    expect(mapManager.getTile(cx + 1, cy).explored).toBe(true);
+
+    // Action should find nearest frontier
+    action(gameState, char);
+
+    // Should have moved away from center (simple check)
+    expect(char.position).not.toEqual({ x: cx, y: cy });
+
+    // Calculate distance to center, should be 1 (since it moves one step)
+    const dist =
+      Math.abs(char.position.x - cx) + Math.abs(char.position.y - cy);
+    expect(dist).toBe(1);
+
+    // We can't easily predict EXACT direction without mocking findNearestFrontierTile return,
+    // but we know it should move.
   });
 });
