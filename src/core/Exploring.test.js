@@ -50,7 +50,7 @@ describe("Exploring Skill", () => {
     // Start at a random unexplored location (e.g. 100, 100)
     // Execute action
     // Fix: initialize activity state first so currentActivity is set
-    char.startActivity("EXPLORING", "wander", 0);
+    char.startActivity("EXPLORING", "wander_frontier", 0);
     const action = SKILL_DEFINITIONS.EXPLORING.action;
     char.position = { x: 100, y: 100 };
     const startPos = { ...char.position };
@@ -79,7 +79,7 @@ describe("Exploring Skill", () => {
 
   it("should gain NO XP for revisiting explored tiles", () => {
     const action = SKILL_DEFINITIONS.EXPLORING.action;
-    char.startActivity("EXPLORING", "wander", 0);
+    char.startActivity("EXPLORING", "wander_frontier", 0);
 
     // 1. Visit a tile
     action(gameState, char);
@@ -102,7 +102,7 @@ describe("Exploring Skill", () => {
   });
 
   it("should prioritize immediate unexplored neighbors", () => {
-    char.startActivity("EXPLORING", "wander", 0);
+    char.startActivity("EXPLORING", "wander_frontier", 0);
     char.currentActivity.phase = "WANDERING"; // Set phase to avoid reset
     const action = SKILL_DEFINITIONS.EXPLORING.action;
 
@@ -128,7 +128,7 @@ describe("Exploring Skill", () => {
   });
 
   it("should seek frontier when surrounded by explored tiles", () => {
-    char.startActivity("EXPLORING", "wander", 0);
+    char.startActivity("EXPLORING", "wander_frontier", 0);
     char.currentActivity.phase = "WANDERING"; // Set phase to avoid reset
     const action = SKILL_DEFINITIONS.EXPLORING.action;
 

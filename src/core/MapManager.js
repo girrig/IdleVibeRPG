@@ -788,6 +788,50 @@ export class MapManager {
     return null;
   }
 
+  // Find nearest tile that is Connected to Start (Walkable) and UNVISITED.
+  // Used for "Expansion" mode to visit every land tile (spiral fill).
+  findNearestUnvisitedWalkableTile(startX, startY) {
+    const visited = new Set();
+    const queue = [{ x: startX, y: startY, dist: 0 }];
+    visited.add(`${startX},${startY}`);
+
+    let head = 0;
+
+    while (head < queue.length) {
+      const curr = queue[head++];
+
+      const tile = this.getTile(curr.x, curr.y);
+      if (tile && !tile.visited) {
+        return { x: curr.x, y: curr.y };
+      }
+
+      const neighbors = [
+        { x: curr.x + 1, y: curr.y },
+        { x: curr.x - 1, y: curr.y },
+        { x: curr.x, y: curr.y + 1 },
+        { x: curr.x, y: curr.y - 1 },
+      ];
+
+      for (const n of neighbors) {
+        if (n.x >= 0 && n.x < this.width && n.y >= 0 && n.y < this.height) {
+          const key = `${n.x},${n.y}`;
+          if (!visited.has(key)) {
+            // Must be Walkable to traverse
+            const nTile = this.getTile(n.x, n.y);
+            // Check Walkability (consistent with isValidMove)
+            if (nTile &&
+              nTile.type !== TERRAIN_TYPES.OCEAN.id &&
+              nTile.type !== TERRAIN_TYPES.SHALLOW_OCEAN.id) {
+              visited.add(key);
+              queue.push({ x: n.x, y: n.y, dist: curr.dist + 1 });
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   // Find nearest tile that is EXPLORED (visible) but NOT VISITED (new)
   findNearestExploredUnvisitedTile(typeId, startX, startY) {
     const visited = new Set();

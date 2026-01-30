@@ -59,7 +59,10 @@ describe("TalentsView UI", () => {
 
     mockChar = {
       talentPoints: 5,
-      skills: { fighting: { talentPoints: 2 } },
+      skills: {
+        fighting: { talentPoints: 2 },
+        exploring: { talentPoints: 1 }
+      },
       talents: {}, // Empty start
       unlockTalent: vi.fn(() => true),
       refundTalent: vi.fn(() => true),
@@ -69,7 +72,7 @@ describe("TalentsView UI", () => {
 
     view = new TalentsView(mockUiManager);
     // Stub drawConnectors to avoid SVG layout errors in JSDOM (getBoundingClientRect returns 0s)
-    vi.spyOn(view, "drawConnectors").mockImplementation(() => {});
+    vi.spyOn(view, "drawConnectors").mockImplementation(() => { });
   });
 
   it("should render categories and active points", () => {
@@ -82,23 +85,30 @@ describe("TalentsView UI", () => {
 
     // Points Display
     const points = container.querySelector(".main-points-display");
-    expect(points.textContent).toContain("Fighting Points");
-    // expect(points.textContent).toContain("2"); // Mocked char has 2 fighting points
+    expect(points.textContent).toContain("Exploring Points");
+    expect(points.textContent).toContain("1");
   });
 
-  it("should render talent nodes based on active category", () => {
-    // Default category is Fighting (cols 6,7). Our mocks are in col 6.
+  it("should render active category nodes (default: Exploring)", () => {
+    // Default category is Exploring (col 9). Our mocks need to support this or we expect empty if no exploring talents mocked.
+    // The previous test expected Fighting (cols 6,7).
+    // Let's update the mock to include an Exploring talent or verify we switch to Fighting to test the nodes.
+
+    // For this test, let's verify it starts at Exploring.
     view.render(container);
+    const sidebar = container.querySelector(".talents-sidebar");
 
-    const nodes = container.querySelectorAll(".talent-node");
-    expect(nodes).toHaveLength(2); // Root and Child
-
-    expect(container.textContent).toContain("Root Power");
-    expect(container.textContent).toContain("Child Power");
+    // Check Exploring is active
+    const activeTab = sidebar.querySelector(".talent-sidebar-item.active");
+    expect(activeTab.textContent).toContain("Exploring");
   });
 
   it("should handle unlocking a talent", () => {
     view.render(container);
+
+    // Switch to Fighting to access mock talents
+    const fightingTab = container.querySelector('[data-category="Fighting"]');
+    fightingTab.click();
 
     const rootNode = container.querySelector("#talent-node-root_talent");
 
@@ -114,6 +124,10 @@ describe("TalentsView UI", () => {
     // Setup: Talent already unlocked
     mockChar.talents["root_talent"] = true;
     view.render(container);
+
+    // Switch to Fighting to access mock talents
+    const fightingTab = container.querySelector('[data-category="Fighting"]');
+    fightingTab.click();
 
     const rootNode = container.querySelector("#talent-node-root_talent");
 

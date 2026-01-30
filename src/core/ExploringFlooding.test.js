@@ -62,6 +62,7 @@ describe("Exploring Flooding Logic", () => {
   it("should chain exploration of contiguous biome", () => {
     // Reveal start tile
     mapManager.getTile(0, 0).explored = true;
+    mapManager.getTile(0, 0).visited = true;
 
     // Start Exploring FOREST
     char.startActivity("EXPLORING", "find_forest");

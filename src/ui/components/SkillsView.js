@@ -6,7 +6,7 @@ import { UI_COLORS, GAME_CONFIG } from "../../core/Constants";
 export class SkillsView {
   constructor(uiManager) {
     this.uiManager = uiManager;
-    this.activeSkillTab = "FIGHTING";
+    this.activeSkillTab = null;
   }
 
   render(container) {
@@ -21,12 +21,14 @@ export class SkillsView {
     const contentArea = document.createElement("div");
     contentArea.className = "skills-options-area";
 
-    // Ensure active tab defaults if not set
-    if (!this.activeSkillTab) this.activeSkillTab = "FIGHTING";
-
     const sortedSkills = Object.values(SKILL_DEFINITIONS).sort((a, b) =>
       a.name.localeCompare(b.name),
     );
+
+    // Ensure active tab defaults to the first skill in the sorted list if not set
+    if (!this.activeSkillTab && sortedSkills.length > 0) {
+      this.activeSkillTab = sortedSkills[0].id;
+    }
 
     sortedSkills.forEach((skill) => {
       // Create Sidebar Item

@@ -6,8 +6,6 @@ import { UI_COLORS } from "../../core/Constants";
 export class TalentsView {
   constructor(uiManager) {
     this.uiManager = uiManager;
-    this.uiManager = uiManager;
-    this.activeCategory = "Fighting";
     this.categories = [
       { id: "Exploring", label: "Exploring", icon: "🧭", columns: [9] },
       { id: "Fighting", label: "Fighting", icon: "⚔️", columns: [6, 7] },
@@ -16,6 +14,7 @@ export class TalentsView {
       { id: "Smithing", label: "Smithing", icon: "🔨", columns: [8] },
       { id: "Woodcutting", label: "Woodcutting", icon: "🪓", columns: [4] },
     ];
+    this.activeCategory = this.categories[0].id;
   }
 
   render(container) {
@@ -61,20 +60,20 @@ export class TalentsView {
             <div class="talents-sidebar">
 
                 ${this.categories
-                  .map((cat) => {
-                    const isActive = this.activeCategory === cat.id;
-                    const catColor = getCatColor(cat.id);
-                    const style = isActive
-                      ? `style="border-color: ${catColor}; color: ${catColor}; background: rgba(${this.hexToRgb(catColor)}, 0.1);"`
-                      : "";
-                    return `
+        .map((cat) => {
+          const isActive = this.activeCategory === cat.id;
+          const catColor = getCatColor(cat.id);
+          const style = isActive
+            ? `style="border-color: ${catColor}; color: ${catColor}; background: rgba(${this.hexToRgb(catColor)}, 0.1);"`
+            : "";
+          return `
                     <div class="talent-sidebar-item ${isActive ? "active" : ""}" data-category="${cat.id}" ${style}>
                         <span class="tab-icon">${cat.icon}</span>
                         <span class="tab-name">${cat.label}</span>
                     </div>
                 `;
-                  })
-                  .join("")}
+        })
+        .join("")}
             </div>
             <div class="talents-main">
                 <div class="main-points-display" style="color: ${activeColor}; border-color: ${activeColor}">

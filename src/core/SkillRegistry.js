@@ -231,11 +231,29 @@ export const SKILL_DEFINITIONS = {
     color: SKILL_COLORS.EXPLORING,
     continuous: true,
     options: {
-      wander: {
-        name: "Wander",
+      wander_expansion: {
+        name: "Expansion",
         level: 1,
         xp: 15,
-        icon: "🥾",
+        icon: "🏡",
+        description: "Fills in the map near home. Great for completionists.",
+        risk: "Low",
+      },
+      wander_frontier: {
+        name: "Frontier",
+        level: 5,
+        xp: 25,
+        icon: "🔭",
+        description: "Pushes the boundaries of the known world.",
+        risk: "Medium",
+      },
+      wander_expedition: {
+        name: "Expedition",
+        level: 10,
+        xp: 50,
+        icon: "⛺",
+        description: "Long-range journey into the deep unknown.",
+        risk: "High",
       },
       // Level 1-2: Easy / Common
       find_grassland: {
@@ -383,7 +401,7 @@ export const SKILL_DEFINITIONS = {
         char.position = { x: 250, y: 250 };
 
         char.currentActivity.phase = "SEARCHING"; // Default
-        if (targetId === "wander") char.currentActivity.phase = "WANDERING";
+        if (targetId.startsWith("wander")) char.currentActivity.phase = "WANDERING";
 
         gameState.triggerNotification("Departing from home...", "activity");
       }
@@ -391,6 +409,37 @@ export const SKILL_DEFINITIONS = {
       const phase = char.currentActivity.phase;
       const { x, y } = char.position;
       let nextPos = null;
+
+      const isValidMove = (nx, ny) => {
+        const width = mapManager.width || 500;
+        const height = mapManager.height || 500;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
+        const t = mapManager.getTile(nx, ny);
+        if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
+        return true;
+      };
+
+      const tryStep = (nx, ny) => {
+        if (isValidMove(nx, ny)) {
+          nextPos = { x: nx, y: ny };
+          return true;
+        }
+        return false;
+      };
+
+      const moveTowards = (dx, dy) => {
+        if (dx !== 0 && dy !== 0) {
+          if (Math.random() < 0.5) {
+            if (!tryStep(x + dx, y)) tryStep(x, y + dy);
+          } else {
+            if (!tryStep(x, y + dy)) tryStep(x + dx, y);
+          }
+        } else if (dx !== 0) {
+          tryStep(x + dx, y);
+        } else if (dy !== 0) {
+          tryStep(x, y + dy);
+        }
+      };
 
       // --- PHASE 1: SEARCHING ---
       if (phase === "SEARCHING") {
@@ -412,9 +461,8 @@ export const SKILL_DEFINITIONS = {
             const dx = Math.sign(target.x - x);
             const dy = Math.sign(target.y - y);
             // Basic pathfinding
-            if (dx !== 0 && Math.random() < 0.5) nextPos = { x: x + dx, y: y };
-            else if (dy !== 0) nextPos = { x: x, y: y + dy };
-            else if (dx !== 0) nextPos = { x: x + dx, y: y };
+            // Basic pathfinding
+            moveTowards(dx, dy);
           }
 
           // If no known tile of that type, find the FRONTIER to reveal new areas
@@ -505,7 +553,11 @@ export const SKILL_DEFINITIONS = {
           // Move towards it
           const dx = Math.sign(target.x - x);
           const dy = Math.sign(target.y - y);
-          if (dx !== 0 && Math.random() < 0.5) nextPos = { x: x + dx, y: y };
+
+          if (dx === 0 && dy === 0) {
+            nextPos = { x, y }; // Visit current
+          }
+          else if (dx !== 0 && Math.random() < 0.5) nextPos = { x: x + dx, y: y };
           else if (dy !== 0) nextPos = { x: x, y: y + dy };
           else if (dx !== 0) nextPos = { x: x + dx, y: y };
         } else {
@@ -536,54 +588,95 @@ export const SKILL_DEFINITIONS = {
         else if (dx !== 0) nextPos = { x: x + dx, y: y };
       }
 
-      // --- PHASE 0: WANDERING (Fallback) ---
+      // --- PHASE 0: WANDERING (Specific Algorithmic Support) ---
       if (char.currentActivity.phase === "WANDERING") {
-        // 1. Check immediate neighbors for UNEXPLORED tiles
-        const neighbors = [
-          { x: x + 1, y: y },
-          { x: x - 1, y: y },
-          { x: x, y: y + 1 },
-          { x: x, y: y - 1 },
-        ];
+        const type = targetId.split("_")[1] || "frontier"; // expansion, frontier, expedition
 
-        const unexploredNeighbors = neighbors.filter((n) => {
-          const t = mapManager.getTile(n.x, n.y);
-          return t && !t.explored;
-        });
+        // 1. EXPANSION: Fill gaps near HOME
+        if (type === "expansion") {
+          // Find nearest (accessible) unvisited tile spanning out from Home
+          const target = mapManager.findNearestUnvisitedWalkableTile(250, 250);
 
-        if (unexploredNeighbors.length > 0) {
-          nextPos =
-            unexploredNeighbors[
-              Math.floor(Math.random() * unexploredNeighbors.length)
-            ];
-        } else {
-          // 2. If all neighbors explored, find nearest Frontier
-          const frontier = mapManager.findNearestFrontierTile(x, y);
-          if (frontier) {
-            const dx = Math.sign(frontier.x - x);
-            const dy = Math.sign(frontier.y - y);
-            if (dx !== 0 && Math.random() < 0.5) nextPos = { x: x + dx, y: y };
-            else if (dy !== 0) nextPos = { x: x, y: y + dy };
-            else if (dx !== 0) nextPos = { x: x + dx, y: y };
+          if (target) {
+            const dx = Math.sign(target.x - x);
+            const dy = Math.sign(target.y - y);
+
+            if (dx === 0 && dy === 0) {
+              // We are ON the target (Unvisited). 
+              nextPos = { x, y }; // Stay here so visitTile triggers
+            } else {
+              moveTowards(dx, dy);
+            }
+          }
+        }
+
+        // 2. EXPEDITION: Long range target
+        else if (type === "expedition") {
+          // If we don't have a target, pick one far away
+          if (!char.currentActivity.expeditionTarget) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 150 + Math.random() * 100; // 150-250 tiles away
+            const tx = Math.floor(250 + Math.cos(angle) * dist);
+            const ty = Math.floor(250 + Math.sin(angle) * dist);
+            // Clamp
+            const clamp = (v) => Math.max(0, Math.min(499, v));
+            char.currentActivity.expeditionTarget = { x: clamp(tx), y: clamp(ty) };
+            gameState.triggerNotification("Expedition target set! Journeying...", "activity");
+          }
+
+          const target = char.currentActivity.expeditionTarget;
+          // Move towards target
+          const dx = Math.sign(target.x - x);
+          const dy = Math.sign(target.y - y);
+
+          // If blocked or random variation? Expeditions should be straighter.
+          if (dx !== 0 && Math.random() < 0.8) nextPos = { x: x + dx, y: y };
+          else if (dy !== 0) nextPos = { x: x, y: y + dy };
+          else if (dx !== 0) nextPos = { x: x + dx, y: y };
+
+          // If we arrived (or close enough)
+          if (Math.abs(target.x - x) < 5 && Math.abs(target.y - y) < 5) {
+            gameState.triggerNotification("Expedition reached! Returning...", "success");
+            char.currentActivity.phase = "RETURNING";
+            char.currentActivity.expeditionTarget = null;
+          }
+        }
+
+        // 3. FRONTIER (Default): Push outward from CURRENT location
+        else {
+          // Check immediate neighbors first
+          const neighbors = [
+            { x: x + 1, y: y }, { x: x - 1, y: y },
+            { x: x, y: y + 1 }, { x: x, y: y - 1 },
+          ];
+          const unexplored = neighbors.filter(n => {
+            const t = mapManager.getTile(n.x, n.y);
+            return t && !t.explored;
+          });
+
+          if (unexplored.length > 0) {
+            nextPos = unexplored[Math.floor(Math.random() * unexplored.length)];
+          } else {
+            // Find nearest frontier from HERE
+            const frontier = mapManager.findNearestFrontierTile(x, y);
+            if (frontier) {
+              const dx = Math.sign(frontier.x - x);
+              const dy = Math.sign(frontier.y - y);
+              moveTowards(dx, dy);
+            }
           }
         }
       }
 
-      // Fallback: Random Wander (if not seeking or no target found)
-      if (!nextPos) {
+      // Fallback if logic failed to produce nextPos (e.g. map fully explored)
+      if (!nextPos && char.currentActivity.phase === "WANDERING") {
+        // Random walk
         const neighbors = [
-          { x: x + 1, y: y },
-          { x: x - 1, y: y },
-          { x: x, y: y + 1 },
-          { x: x, y: y - 1 },
+          { x: x + 1, y: y }, { x: x - 1, y: y },
+          { x: x, y: y + 1 }, { x: x, y: y - 1 },
         ];
-        const validNeighbors = neighbors.filter(
-          (n) => n.x >= 0 && n.x < 500 && n.y >= 0 && n.y < 500,
-        ); // Hardcoded 500 for now or access mapManager.width
-        if (validNeighbors.length > 0) {
-          nextPos =
-            validNeighbors[Math.floor(Math.random() * validNeighbors.length)];
-        }
+        const valid = neighbors.filter(n => isValidMove(n.x, n.y));
+        if (valid.length > 0) nextPos = valid[Math.floor(Math.random() * valid.length)];
       }
 
       if (!nextPos) return;
@@ -601,8 +694,11 @@ export const SKILL_DEFINITIONS = {
       );
 
       // XP Logic
-      // Base rate from Wander option
-      const wanderXp = SKILL_DEFINITIONS.EXPLORING.options.wander.xp; // e.g. 15
+      // Base rate from specific Wander option or default to safe
+      let wanderXp = 10;
+      if (SKILL_DEFINITIONS.EXPLORING.options[targetId]) {
+        wanderXp = SKILL_DEFINITIONS.EXPLORING.options[targetId].xp;
+      }
 
       let totalXp = 0;
 
@@ -613,7 +709,7 @@ export const SKILL_DEFINITIONS = {
           // Bonus if it's the specific target biome we want
           // "specific tiles we want ... should be the base rate plus a bonus"
           // We use option.xp as the total value (Base + Bonus)
-          if (option.biomeId && tile.type === option.biomeId) {
+          if (option && option.biomeId && tile.type === option.biomeId) {
             tileXp = option.xp;
           }
           totalXp += tileXp;

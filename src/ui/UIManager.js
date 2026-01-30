@@ -297,7 +297,6 @@ export class UIManager {
           })
           .join("");
       } else if (activeTab === "EXPLORATION") {
-        // Exploring Options
         const exploring = SKILL_DEFINITIONS.EXPLORING;
         if (exploring && exploring.options) {
           const char = gameState.characters[this.selectedCharIndex];
@@ -305,33 +304,76 @@ export class UIManager {
             ? char.skills.exploring.level
             : 1;
 
-          const options = Object.entries(exploring.options)
-            .filter(([id, opt]) => {
+          // Split options
+          const allOptions = Object.entries(exploring.options);
+          const wanderOptions = allOptions.filter(([id]) =>
+            id.startsWith("wander"),
+          );
+          const biomeOptions = allOptions
+            .filter(([id]) => !id.startsWith("wander"))
+            .filter(([, opt]) => {
               // Level Check
               if (opt.level > charLevel) return false;
-
               // Search Check
               if (
                 searchTerm &&
                 !opt.name.toLowerCase().includes(searchTerm.toLowerCase())
               )
                 return false;
-
               return true;
             })
-            .sort((a, b) => a[1].level - b[1].level); // Sort by level
+            .sort((a, b) => a[1].level - b[1].level);
 
-          gridHtml = options
-            .map(([id, opt]) => {
-              return `
-                  <div class="goal-item-card" data-id="${id}" style="cursor: pointer; border-color: ${SKILL_DEFINITIONS.EXPLORING.color}">
-                      <div class="goal-item-icon">${opt.icon}</div>
-                      <div class="goal-item-name">${opt.name}</div>
-                      <div style="font-size: 10px; color: #888;">Lvl ${opt.level}</div>
+          // Render Wander Section
+          let wanderHtml = "";
+          if (!searchTerm) {
+            // Only show wander cards if not searching for specific biomes (or maybe always? let's hide if searching to reduce clutter)
+            wanderHtml = `
+              <div class="exploration-section-title">Wander Mode</div>
+              <div class="wander-options-container">
+                ${wanderOptions
+                .map(([id, opt]) => {
+                  const type = id.split("_")[1] || "normal"; // safe, normal, risky
+                  return `
+                    <div class="wander-card ${type}" data-id="${id}">
+                      <div class="wander-icon">${opt.icon}</div>
+                      <div class="wander-title">${opt.name}</div>
+                      <div class="wander-desc">${opt.description || "Just wandering..."}</div>
+                      <div class="wander-stats">Lvl ${opt.level} • ${opt.risk || "Medium"} Risk</div>
+                    </div>
+                  `;
+                })
+                .join("")}
+              </div>
+            `;
+          }
+
+          // Render Biome Section
+          const biomeHtml = `
+            <div class="exploration-section-title" style="margin-top: 20px;">Expeditions</div>
+            <div class="expeditions-grid">
+              ${biomeOptions
+              .map(([id, opt]) => {
+                return `
+                  <div class="biome-card" data-id="${id}">
+                    <div class="biome-icon">${opt.icon}</div>
+                    <div class="biome-info">
+                      <div class="biome-name">${opt.name}</div>
+                      <div class="biome-level">Requires Level ${opt.level}</div>
+                    </div>
                   </div>
-                 `;
-            })
-            .join("");
+                `;
+              })
+              .join("")}
+            </div>
+          `;
+
+          gridHtml = `
+            <div class="exploration-container">
+              ${wanderHtml}
+              ${biomeHtml}
+            </div>
+          `;
         }
       }
 
@@ -383,6 +425,13 @@ export class UIManager {
     const updateGrid = () => {
       const grid = modal.querySelector("#goals-grid-container");
       if (grid) {
+        // Toggle Grid Layout Class
+        if (activeTab === "EXPLORATION") {
+          grid.classList.remove("goals-grid");
+        } else {
+          grid.classList.add("goals-grid");
+        }
+
         grid.innerHTML = render();
         bindGridEvents();
       }
@@ -491,28 +540,30 @@ export class UIManager {
 
     // Grid Item Clicks (Need to re-bind on render)
     const bindGridEvents = () => {
-      modal.querySelectorAll(".goal-item-card").forEach((el) => {
-        el.addEventListener("click", () => {
-          const id = el.dataset.id;
-          const qty = parseInt(qtyInput.value, 10) || currentQty || 1;
+      modal
+        .querySelectorAll(".goal-item-card, .wander-card, .biome-card")
+        .forEach((el) => {
+          el.addEventListener("click", () => {
+            const id = el.dataset.id;
+            const qty = parseInt(qtyInput.value, 10) || currentQty || 1;
 
-          // If Exploration, we are selecting a skill option directly.
-          if (activeTab === "EXPLORATION") {
-            // The id is the option key (e.g., 'find_forest')
-            // We need to trigger the Exploring skill with this target
-            this.handleStartActivity("EXPLORING", id, 0);
-          } else {
-            // Standard Item Selection - let the system decide skill?
-            // Existing UIManager passes id to onSelect... wait.
-            // The original logic called onSelect(id, qty).
-            // onSelect was passed from CharacterDetail.
-            // Let's see how onSelect handles it.
-            onSelect(id, qty);
-          }
+            // If Exploration, we are selecting a skill option directly.
+            if (activeTab === "EXPLORATION") {
+              // The id is the option key (e.g., 'find_forest')
+              // We need to trigger the Exploring skill with this target
+              this.handleStartActivity("EXPLORING", id, 0);
+            } else {
+              // Standard Item Selection - let the system decide skill?
+              // Existing UIManager passes id to onSelect... wait.
+              // The original logic called onSelect(id, qty).
+              // onSelect was passed from CharacterDetail.
+              // Let's see how onSelect handles it.
+              onSelect(id, qty);
+            }
 
-          close();
+            close();
+          });
         });
-      });
     };
 
     // Initial Bind

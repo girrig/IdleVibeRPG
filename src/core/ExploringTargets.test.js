@@ -151,6 +151,9 @@ describe("Exploring Skill - Targeting", () => {
   });
   it("should random wander if target biome is unknown", () => {
     // Setup: Character at (5,5). NO Forest known.
+    // Ensure we are "in the known world" so frontier logic works
+    mapManager.getTile(5, 5).explored = true;
+
     const action = SKILL_DEFINITIONS.EXPLORING.action;
     char.currentActivity = {
       skill: "EXPLORING",
