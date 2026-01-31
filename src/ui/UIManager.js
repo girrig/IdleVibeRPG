@@ -339,7 +339,7 @@ export class UIManager {
                       <div class="wander-icon">${opt.icon}</div>
                       <div class="wander-title">${opt.name}</div>
                       <div class="wander-desc">${opt.description || "Just wandering..."}</div>
-                      <div class="wander-stats">Lvl ${opt.level} • ${opt.risk || "Medium"} Risk</div>
+                      <div class="wander-stats">Lvl ${opt.level}</div>
                     </div>
                   `;
                 })

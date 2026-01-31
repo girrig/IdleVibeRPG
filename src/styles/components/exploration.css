@@ -5,6 +5,9 @@
     display: flex;
     flex-direction: column;
     gap: 25px;
+    overflow-y: auto;
+    /* Ensure scrolling */
+    max-height: 100%;
 }
 
 .exploration-section-title {
@@ -21,121 +24,151 @@
 /* Wander Cards */
 .wander-options-container {
     display: flex;
-    gap: 15px;
     justify-content: center;
+    margin-bottom: 5px;
 }
 
 .wander-card {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
-    flex: 1;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    width: 100%;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    /* Horizontal layout */
     align-items: center;
+    justify-content: space-between;
+    gap: 15px;
     cursor: pointer;
-    transition: all 0.3s ease;
-    text-align: center;
+    transition: all 0.2s ease;
+    text-align: left;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .wander-card:hover {
-    transform: translateY(-5px);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+    border-color: rgba(76, 175, 80, 0.6);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Specific Safe Style overload */
 .wander-card.safe {
-    border-top: 3px solid #4CAF50;
-}
-
-.wander-card.normal {
-    border-top: 3px solid #2196F3;
-}
-
-.wander-card.risky {
-    border-top: 3px solid #F44336;
+    border-left: 4px solid #4CAF50;
+    border-top: 1px solid rgba(76, 175, 80, 0.3);
+    /* Reset top border */
 }
 
 .wander-icon {
-    font-size: 48px;
-    margin-bottom: 15px;
-    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
+    font-size: 32px;
+    margin-bottom: 0;
+    filter: drop-shadow(0 0 5px rgba(76, 175, 80, 0.4));
+    flex-shrink: 0;
+}
+
+.wander-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
 
 .wander-title {
     font-weight: bold;
-    font-size: 14px;
+    font-size: 15px;
     color: #eee;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
 }
 
 .wander-desc {
-    font-size: 11px;
-    color: #aaa;
-    margin-bottom: 10px;
-    line-height: 1.4;
+    font-size: 12px;
+    color: #ccc;
+    margin-bottom: 0;
+    line-height: 1.2;
+    max-width: 100%;
 }
 
 .wander-stats {
-    font-size: 10px;
-    padding: 4px 8px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
-    color: #ccc;
-    margin-top: auto;
-    /* Push to bottom */
+    font-size: 11px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 12px;
+    color: #aaa;
+    margin-top: 0;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    white-space: nowrap;
 }
 
 /* Expeditions Grid */
 .expeditions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 12px;
+    padding-bottom: 20px;
 }
 
 .biome-card {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(30, 30, 30, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
-    padding: 10px;
+    padding: 12px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     cursor: pointer;
     transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
 }
 
 .biome-card:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.biome-card.locked-overlay {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(10, 10, 10, 0.5);
+    border-style: dashed;
+}
+
+.biome-card.locked-overlay:hover {
+    transform: none;
+    background: rgba(10, 10, 10, 0.5);
 }
 
 .biome-icon {
-    font-size: 24px;
-    min-width: 30px;
+    font-size: 28px;
+    min-width: 32px;
     text-align: center;
 }
 
 .biome-info {
     display: flex;
     flex-direction: column;
+    flex: 1;
 }
 
 .biome-name {
-    font-size: 12px;
-    color: #ddd;
-    font-weight: 500;
+    font-size: 13px;
+    color: #eee;
+    font-weight: 600;
+    margin-bottom: 2px;
 }
 
 .biome-level {
-    font-size: 10px;
+    font-size: 11px;
     color: #888;
 }
 
-.locked-overlay {
-    opacity: 0.3;
-    filter: grayscale(1);
-    cursor: not-allowed;
+/* Scrollbar for container if needed */
+.exploration-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.exploration-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
 }

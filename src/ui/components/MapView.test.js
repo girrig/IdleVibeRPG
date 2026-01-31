@@ -38,9 +38,9 @@ describe("MapView Zoom Logic", () => {
 
     // Mock ResizeObserver globally BEFORE instantiation
     global.ResizeObserver = class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
+      observe() { }
+      unobserve() { }
+      disconnect() { }
     };
 
     // Mock canvas context
@@ -194,6 +194,25 @@ describe("MapView Zoom Logic", () => {
   });
 
   describe("UI Elements", () => {
+    it("should handle missing tiles/rows gracefully (Regression Test)", () => {
+      // Mock sparse/broken map data where a row is undefined
+      const brokenTiles = [];
+      brokenTiles[0] = [{ x: 0, y: 0, type: "OCEAN", explored: true }];
+      // Row 1 is undefined
+      brokenTiles[2] = [{ x: 0, y: 2, type: "OCEAN", explored: true }];
+
+      mapManager.getMapData.mockReturnValue({ tiles: brokenTiles });
+      mapManager.width = 3;
+      mapManager.height = 3;
+
+      mapView.zoomLevel = 10;
+
+      // Should NOT throw error
+      expect(() => {
+        mapView.renderMainCanvas();
+      }).not.toThrow();
+    });
+
     it("should have a hidden loading overlay initialized", () => {
       expect(mapView.loadingOverlay).toBeDefined();
       expect(mapView.loadingOverlay.style.display).toBe("none");

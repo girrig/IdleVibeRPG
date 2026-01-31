@@ -369,10 +369,10 @@ export class MapView {
       const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       return result
         ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16),
-          }
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
         : { r: 0, g: 0, b: 0 };
     };
 
@@ -551,10 +551,11 @@ export class MapView {
     this.ctx.fillStyle = "rgba(0,0,0,0.5)";
 
     for (let y = validStartY; y < validEndY; y++) {
+      if (!tiles[y]) continue;
       for (let x = validStartX; x < validEndX; x++) {
         // console.log(`Rendering tile ${x},${y}`); // DEBUG
         const tile = tiles[y][x];
-        if (!tile.explored) continue;
+        if (!tile || !tile.explored) continue;
 
         // Skip symbol for visited tiles (unless it's HOME, which we always want to see)
         if (tile.visited && tile.type !== "HOME") continue;
