@@ -8,7 +8,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: [],
     position: { row: 0, col: 3 },
-    effect: (char) => {}, // Handled in gainXp
+    effect: (char) => { }, // Handled in gainXp
   },
   mining_2: {
     id: "mining_2",
@@ -18,7 +18,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: ["mining_1"],
     position: { row: 1, col: 3 },
-    effect: (char) => {}, // Handled in Mining Action
+    effect: (char) => { }, // Handled in Mining Action
   },
 
   // Woodcutting Path
@@ -30,7 +30,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: [],
     position: { row: 0, col: 4 },
-    effect: (char) => {}, // Handled in gainXp
+    effect: (char) => { }, // Handled in gainXp
   },
   woodcutting_2: {
     id: "woodcutting_2",
@@ -40,7 +40,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: ["woodcutting_1"],
     position: { row: 1, col: 4 },
-    effect: (char) => {}, // Handled in Woodcutting Action
+    effect: (char) => { }, // Handled in Woodcutting Action
   },
 
   // Fishing Path
@@ -52,7 +52,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: [],
     position: { row: 0, col: 5 },
-    effect: (char) => {}, // Handled in gainXp
+    effect: (char) => { }, // Handled in gainXp
   },
   fishing_2: {
     id: "fishing_2",
@@ -62,7 +62,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: ["fishing_1"],
     position: { row: 1, col: 5 },
-    effect: (char) => {}, // Handled in Fishing Action
+    effect: (char) => { }, // Handled in Fishing Action
   },
 
   // Fighting Path
@@ -74,7 +74,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: [],
     position: { row: 0, col: 6 },
-    effect: (char) => {}, // Handled in gainXp
+    effect: (char) => { }, // Handled in gainXp
   },
   fighting_2: {
     id: "fighting_2",
@@ -84,7 +84,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: ["fighting_1"],
     position: { row: 1, col: 6 },
-    effect: (char) => {}, // Handled in Fighting Action
+    effect: (char) => { }, // Handled in Fighting Action
   },
 
   // Fighting Defense
@@ -96,7 +96,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: ["fighting_1"], // Branch from Fighting 1
     position: { row: 1, col: 7 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
   fighting_def_2: {
     id: "fighting_def_2",
@@ -106,7 +106,7 @@ export const TALENT_DEFINITIONS = {
     cost: 2,
     prerequisites: ["fighting_def_1"],
     position: { row: 2, col: 7 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
 
   // --- Level 3 & 4 Talents ---
@@ -139,9 +139,6 @@ export const TALENT_DEFINITIONS = {
       char.stats.strength += 20;
     },
     removeEffect: (char) => {
-      char.stats.strength -= 30; // Wait, previous was 20. Correct to 20.
-      // Actually, let me check the original code I wrote in previous turn.
-      // str_4 effect was += 20. So removeEffect should be -= 20.
       char.stats.strength -= 20;
     },
   },
@@ -157,7 +154,7 @@ export const TALENT_DEFINITIONS = {
     cost: 2,
     prerequisites: ["mining_2"],
     position: { row: 2, col: 3 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
   mining_4: {
     id: "mining_4",
@@ -167,7 +164,7 @@ export const TALENT_DEFINITIONS = {
     cost: 3,
     prerequisites: ["mining_3"],
     position: { row: 3, col: 3 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
 
   // Woodcutting
@@ -179,7 +176,7 @@ export const TALENT_DEFINITIONS = {
     cost: 2,
     prerequisites: ["woodcutting_2"],
     position: { row: 2, col: 4 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
   woodcutting_4: {
     id: "woodcutting_4",
@@ -189,7 +186,7 @@ export const TALENT_DEFINITIONS = {
     cost: 3,
     prerequisites: ["woodcutting_3"],
     position: { row: 3, col: 4 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
 
   // Fishing
@@ -201,7 +198,7 @@ export const TALENT_DEFINITIONS = {
     cost: 2,
     prerequisites: ["fishing_2"],
     position: { row: 2, col: 5 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
   fishing_4: {
     id: "fishing_4",
@@ -211,7 +208,7 @@ export const TALENT_DEFINITIONS = {
     cost: 3,
     prerequisites: ["fishing_3"],
     position: { row: 3, col: 5 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
 
   // Fighting
@@ -223,7 +220,7 @@ export const TALENT_DEFINITIONS = {
     cost: 2,
     prerequisites: ["fighting_2"],
     position: { row: 2, col: 6 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
   fighting_4: {
     id: "fighting_4",
@@ -233,7 +230,7 @@ export const TALENT_DEFINITIONS = {
     cost: 3,
     prerequisites: ["fighting_3"],
     position: { row: 3, col: 6 },
-    effect: (char) => {},
+    effect: (char) => { },
   },
   // Smithing
   smithing_1: {
@@ -244,7 +241,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: [],
     position: { row: 0, col: 8 },
-    effect: (char) => {}, // Handled in gainXp
+    effect: (char) => { }, // Handled in gainXp
   },
   smithing_2: {
     id: "smithing_2",
@@ -254,7 +251,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: ["smithing_1"],
     position: { row: 1, col: 8 },
-    effect: (char) => {}, // Handled in Smithing Action
+    effect: (char) => { }, // Handled in Smithing Action
   },
 
   // Exploring Path
@@ -266,7 +263,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: [],
     position: { row: 0, col: 9 },
-    effect: (char) => {}, // Handled in gainXp
+    effect: (char) => { }, // Handled in gainXp
   },
   exploring_2: {
     id: "exploring_2",
@@ -276,7 +273,7 @@ export const TALENT_DEFINITIONS = {
     cost: 1,
     prerequisites: ["exploring_1"],
     position: { row: 1, col: 9 },
-    effect: (char) => {}, // Handled in Exploring Action
+    effect: (char) => { }, // Handled in Exploring Action
   },
 };
 

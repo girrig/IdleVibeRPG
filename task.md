@@ -59,7 +59,9 @@
   - [x] Verify 64x64 Asset Integration (Visual Check) <!-- id: 59 -->
   - [x] Redesign Skills Sidebar (Tabbed Dashboard) <!-- id: 64 -->
   - [x] Implement Skill Icons & List View <!-- id: 65 -->
-- [x] Cleanup Unused Files <!-- id: 60 -->
+- [ ] Cleanup Unused Files <!-- id: 60 -->
+- [x] Add Version Number to Save Button <!-- id: 100 -->
+- [x] Auto-increment Version on Push <!-- id: 101 -->
 - [x] Redesign Inventory Grid (Cards) <!-- id: 61 -->
 - [x] Implement Store (Coins, Buying) <!-- id: 90 -->
 - [x] Implement Task Queue Drag & Drop <!-- id: 91 -->

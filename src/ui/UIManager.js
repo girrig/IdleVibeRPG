@@ -13,6 +13,7 @@ import { ITEM_DEFINITIONS } from "../core/ItemRegistry";
 import { sourceRegistry } from "../core/SourceRegistry";
 import { SKILL_DEFINITIONS } from "../core/SkillRegistry";
 import { goalManager } from "../core/GoalManager";
+import { version } from "../../package.json";
 
 // Helper
 function getItemDefinition(id) {
@@ -103,12 +104,24 @@ export class UIManager {
     `;
     this.container.appendChild(this.mainWindow);
 
+    // Top Right Container (Version + Save)
+    const topRightContainer = document.createElement("div");
+    topRightContainer.className = "top-right-container";
+
+    // Version Display
+    const versionDisplay = document.createElement("span");
+    versionDisplay.className = "version-display";
+    versionDisplay.innerText = `v${version}`;
+    topRightContainer.appendChild(versionDisplay);
+
     // Global Save Button
     const saveBtn = document.createElement("button");
     saveBtn.id = "global-save-btn";
     saveBtn.className = "btn-save-global";
     saveBtn.innerText = "Save";
-    this.container.appendChild(saveBtn);
+    topRightContainer.appendChild(saveBtn);
+
+    this.container.appendChild(topRightContainer);
 
     // Flag to ensure we don't double-render or clear prematurely
     this.isInitialized = true;

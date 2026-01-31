@@ -30,7 +30,8 @@
   border-left: none;
   border-top: none;
   border-bottom: none;
-  z-index: 100; /* Above main window content if needed */
+  z-index: 100;
+  /* Above main window content if needed */
 }
 
 #nav-map {
@@ -83,6 +84,7 @@
   pointer-events: none;
   transition: opacity 0.2s;
 }
+
 .sidebar-item:hover::after {
   opacity: 1;
 }
@@ -104,6 +106,7 @@
   color: #ccc;
   font-weight: 300;
 }
+
 .res-value {
   color: #fff;
   font-weight: 600;
@@ -114,7 +117,8 @@
 .main-window {
   position: absolute;
   top: 0;
-  left: 60px; /* Sidebar width */
+  left: 60px;
+  /* Sidebar width */
   right: 0;
   bottom: 0;
   width: auto;
@@ -150,10 +154,27 @@
   letter-spacing: 1px;
 }
 
-.btn-save-global {
+.top-right-container {
   position: absolute;
   top: 20px;
   right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  pointer-events: auto;
+  z-index: 200;
+}
+
+.version-display {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  font-family: monospace;
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+
+.btn-save-global {
+  /* Position handled by container */
   background: rgba(20, 20, 30, 0.95);
   border: 1px solid rgba(76, 209, 55, 0.6);
   color: #4cd137;
@@ -165,7 +186,8 @@
   letter-spacing: 1px;
   font-weight: 600;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: auto; /* Required since parent has none */
+  pointer-events: auto;
+  /* Required since parent has none */
   z-index: 200;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(4px);
@@ -194,7 +216,8 @@
   cursor: default;
   transform: none;
   box-shadow: none;
-  opacity: 1; /* Ensure full opacity for visibility */
+  opacity: 1;
+  /* Ensure full opacity for visibility */
 }
 
 .mw-content {
@@ -206,7 +229,8 @@
 .main-window {
   position: absolute;
   top: 0;
-  left: 60px; /* Sidebar width */
+  left: 60px;
+  /* Sidebar width */
   right: 0;
   bottom: 0;
   width: auto;
