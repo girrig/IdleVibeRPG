@@ -50,7 +50,7 @@ describe("Exploring Skill", () => {
     // Start at a random unexplored location (e.g. 100, 100)
     // Execute action
     // Fix: initialize activity state first so currentActivity is set
-    char.startActivity("EXPLORING", "wander_frontier", 0);
+    char.startActivity("EXPLORING", "wander_expansion", 0);
     const action = SKILL_DEFINITIONS.EXPLORING.action;
     char.position = { x: 100, y: 100 };
     const startPos = { ...char.position };
@@ -79,7 +79,7 @@ describe("Exploring Skill", () => {
 
   it("should gain NO XP for revisiting explored tiles", () => {
     const action = SKILL_DEFINITIONS.EXPLORING.action;
-    char.startActivity("EXPLORING", "wander_frontier", 0);
+    char.startActivity("EXPLORING", "wander_expansion", 0);
 
     // 1. Visit a tile
     action(gameState, char);
@@ -101,58 +101,5 @@ describe("Exploring Skill", () => {
     expect(char.skills.exploring.xp).toBe(0);
   });
 
-  it("should prioritize immediate unexplored neighbors", () => {
-    char.startActivity("EXPLORING", "wander_frontier", 0);
-    char.currentActivity.phase = "WANDERING"; // Set phase to avoid reset
-    const action = SKILL_DEFINITIONS.EXPLORING.action;
 
-    // Center explored
-    const cx = 200,
-      cy = 200;
-    char.position = { x: cx, y: cy };
-    mapManager.exploreTile(cx, cy);
-
-    // Neighbors explored EXCEPT Right (cx+1, cy)
-    mapManager.exploreTile(cx - 1, cy); // Left
-    mapManager.exploreTile(cx, cy - 1); // Top
-    mapManager.exploreTile(cx, cy + 1); // Bottom
-
-    // Ensure target is UNEXPLORED
-    const targetTile = mapManager.getTile(cx + 1, cy);
-    targetTile.explored = false;
-
-    action(gameState, char);
-
-    expect(char.position.x).toBe(cx + 1);
-    expect(char.position.y).toBe(cy);
-  });
-
-  it("should seek frontier when surrounded by explored tiles", () => {
-    char.startActivity("EXPLORING", "wander_frontier", 0);
-    char.currentActivity.phase = "WANDERING"; // Set phase to avoid reset
-    const action = SKILL_DEFINITIONS.EXPLORING.action;
-
-    // Fully explore a 5x5 area around start
-    const cx = 300,
-      cy = 300;
-    char.position = { x: cx, y: cy };
-    mapManager.exploreRadius(cx, cy, 2);
-
-    // Verify initial state: Neighbors are explored
-    expect(mapManager.getTile(cx + 1, cy).explored).toBe(true);
-
-    // Action should find nearest frontier
-    action(gameState, char);
-
-    // Should have moved away from center (simple check)
-    expect(char.position).not.toEqual({ x: cx, y: cy });
-
-    // Calculate distance to center, should be 1 (since it moves one step)
-    const dist =
-      Math.abs(char.position.x - cx) + Math.abs(char.position.y - cy);
-    expect(dist).toBe(1);
-
-    // We can't easily predict EXACT direction without mocking findNearestFrontierTile return,
-    // but we know it should move.
-  });
 });

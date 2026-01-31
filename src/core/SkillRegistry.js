@@ -239,22 +239,7 @@ export const SKILL_DEFINITIONS = {
         description: "Fills in the map near home. Great for completionists.",
         risk: "Low",
       },
-      wander_frontier: {
-        name: "Frontier",
-        level: 5,
-        xp: 25,
-        icon: "🔭",
-        description: "Pushes the boundaries of the known world.",
-        risk: "Medium",
-      },
-      wander_expedition: {
-        name: "Expedition",
-        level: 10,
-        xp: 50,
-        icon: "⛺",
-        description: "Long-range journey into the deep unknown.",
-        risk: "High",
-      },
+
       // Level 1-2: Easy / Common
       find_grassland: {
         name: "Find Grassland",
@@ -592,6 +577,7 @@ export const SKILL_DEFINITIONS = {
       if (char.currentActivity.phase === "WANDERING") {
         const type = targetId.split("_")[1] || "frontier"; // expansion, frontier, expedition
 
+
         // 1. EXPANSION: Fill gaps near HOME
         if (type === "expansion") {
           // Find nearest (accessible) unvisited tile spanning out from Home
@@ -605,63 +591,6 @@ export const SKILL_DEFINITIONS = {
               // We are ON the target (Unvisited). 
               nextPos = { x, y }; // Stay here so visitTile triggers
             } else {
-              moveTowards(dx, dy);
-            }
-          }
-        }
-
-        // 2. EXPEDITION: Long range target
-        else if (type === "expedition") {
-          // If we don't have a target, pick one far away
-          if (!char.currentActivity.expeditionTarget) {
-            const angle = Math.random() * Math.PI * 2;
-            const dist = 150 + Math.random() * 100; // 150-250 tiles away
-            const tx = Math.floor(250 + Math.cos(angle) * dist);
-            const ty = Math.floor(250 + Math.sin(angle) * dist);
-            // Clamp
-            const clamp = (v) => Math.max(0, Math.min(499, v));
-            char.currentActivity.expeditionTarget = { x: clamp(tx), y: clamp(ty) };
-            gameState.triggerNotification("Expedition target set! Journeying...", "activity");
-          }
-
-          const target = char.currentActivity.expeditionTarget;
-          // Move towards target
-          const dx = Math.sign(target.x - x);
-          const dy = Math.sign(target.y - y);
-
-          // If blocked or random variation? Expeditions should be straighter.
-          if (dx !== 0 && Math.random() < 0.8) nextPos = { x: x + dx, y: y };
-          else if (dy !== 0) nextPos = { x: x, y: y + dy };
-          else if (dx !== 0) nextPos = { x: x + dx, y: y };
-
-          // If we arrived (or close enough)
-          if (Math.abs(target.x - x) < 5 && Math.abs(target.y - y) < 5) {
-            gameState.triggerNotification("Expedition reached! Returning...", "success");
-            char.currentActivity.phase = "RETURNING";
-            char.currentActivity.expeditionTarget = null;
-          }
-        }
-
-        // 3. FRONTIER (Default): Push outward from CURRENT location
-        else {
-          // Check immediate neighbors first
-          const neighbors = [
-            { x: x + 1, y: y }, { x: x - 1, y: y },
-            { x: x, y: y + 1 }, { x: x, y: y - 1 },
-          ];
-          const unexplored = neighbors.filter(n => {
-            const t = mapManager.getTile(n.x, n.y);
-            return t && !t.explored;
-          });
-
-          if (unexplored.length > 0) {
-            nextPos = unexplored[Math.floor(Math.random() * unexplored.length)];
-          } else {
-            // Find nearest frontier from HERE
-            const frontier = mapManager.findNearestFrontierTile(x, y);
-            if (frontier) {
-              const dx = Math.sign(frontier.x - x);
-              const dy = Math.sign(frontier.y - y);
               moveTowards(dx, dy);
             }
           }
@@ -684,6 +613,7 @@ export const SKILL_DEFINITIONS = {
       // Move
       char.position = nextPos;
       mapManager.visitTile(nextPos.x, nextPos.y);
+
 
       // Explore with Radius
       const sightRadius = char.stats.sightRange || 3;

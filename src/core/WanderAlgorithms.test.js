@@ -107,66 +107,7 @@ describe("Wander Algorithms", () => {
         });
     });
 
-    describe("Frontier Wander (wander_frontier)", () => {
-        it("should push outward from CURRENT position", () => {
-            char.position = { x: 250, y: 250 };
-            char.startActivity("EXPLORING", "wander_frontier", 0);
-            mapManager.exploreRadius(250, 250, 5);
 
-            SKILL_DEFINITIONS.EXPLORING.action(gameState, char);
-
-            expect(char.position).not.toEqual({ x: 250, y: 250 });
-            const dist = Math.abs(char.position.x - 250) + Math.abs(char.position.y - 250);
-            expect(dist).toBe(1);
-        });
-
-        it("should move INTO the unknown when standing on the frontier", () => {
-            char.position = { x: 250, y: 250 };
-            mapManager.tiles[250][251].explored = false; // Right is unknown
-            mapManager.tiles[250][249].explored = false;
-            mapManager.tiles[251][250].explored = false;
-            mapManager.tiles[249][250].explored = false;
-            mapManager.tiles[250][250].explored = true;
-
-            char.startActivity("EXPLORING", "wander_frontier", 0);
-            SKILL_DEFINITIONS.EXPLORING.action(gameState, char);
-
-            expect(char.position).not.toEqual({ x: 250, y: 250 });
-            // Should stick to 251 or others.
-            const dx = Math.abs(char.position.x - 250);
-            const dy = Math.abs(char.position.y - 250);
-            expect(dx + dy).toBe(1);
-        });
-    });
-
-    describe("Expedition Wander (wander_expedition)", () => {
-        it("should set a distant target and move towards it", () => {
-            char.position = { x: 250, y: 250 };
-            char.startActivity("EXPLORING", "wander_expedition", 0);
-            SKILL_DEFINITIONS.EXPLORING.action(gameState, char);
-            const target = char.currentActivity.expeditionTarget;
-            const dist = Math.sqrt(Math.pow(target.x - 250, 2) + Math.pow(target.y - 250, 2));
-            expect(dist).toBeGreaterThan(140);
-
-            SKILL_DEFINITIONS.EXPLORING.action(gameState, char);
-            expect(char.currentActivity.expeditionTarget).toEqual(target);
-        });
-
-        it("should complete expedition upon arrival", () => {
-            char.position = { x: 250, y: 250 };
-            char.startActivity("EXPLORING", "wander_expedition", 0);
-            char.currentActivity.expeditionTarget = { x: 251, y: 250 };
-
-            SKILL_DEFINITIONS.EXPLORING.action(gameState, char); // Move to 251
-            // Force move just in case random deviation
-            char.position = { x: 251, y: 250 };
-
-            SKILL_DEFINITIONS.EXPLORING.action(gameState, char); // Arrival
-
-            expect(char.currentActivity.phase).toBe("RETURNING");
-            expect(char.currentActivity.expeditionTarget).toBeNull();
-        });
-    });
 
     describe("Simulation", () => {
         it("should clear the area around home in a simulation", () => {
