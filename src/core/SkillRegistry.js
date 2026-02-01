@@ -277,13 +277,7 @@ export const SKILL_DEFINITIONS = {
         biomeId: TERRAIN_TYPES.BEACH.id,
       },
       // Level 3-5
-      find_shallow_ocean: {
-        name: "Find Shallows",
-        level: 3,
-        xp: 25,
-        icon: TERRAIN_TYPES.SHALLOW_OCEAN.symbol,
-        biomeId: TERRAIN_TYPES.SHALLOW_OCEAN.id,
-      },
+
       find_forest: {
         name: "Find Forest",
         level: 5,
@@ -366,13 +360,7 @@ export const SKILL_DEFINITIONS = {
         biomeId: TERRAIN_TYPES.TUNDRA.id,
       },
       // Level 30
-      find_ocean: {
-        name: "Find Ocean",
-        level: 30,
-        xp: 80,
-        icon: TERRAIN_TYPES.OCEAN.symbol,
-        biomeId: TERRAIN_TYPES.OCEAN.id,
-      },
+
       find_alpine_tundra: {
         name: "Find Alpine Tundra",
         level: 30,
@@ -619,6 +607,7 @@ export const SKILL_DEFINITIONS = {
                 { x: x, y: y - 1 },
               ];
               const unknown = neighbors.find((n) => {
+                if (!isValidMove(n.x, n.y)) return false; // Don't step into water/out of bounds
                 const t = mapManager.getTile(n.x, n.y);
                 return t && !t.explored;
               });
@@ -626,8 +615,16 @@ export const SKILL_DEFINITIONS = {
               else {
                 // Fallback if surrounded by explored?
                 // Should theoretically find new frontier next tick?
-                // Just random walk
-                nextPos = isValidMove(x + 1, y) ? { x: x + 1, y } : { x: x - 1, y };
+                // Just random walk to acceptable tile
+                const validNeighbors = neighbors.filter((n) =>
+                  isValidMove(n.x, n.y),
+                );
+                if (validNeighbors.length > 0) {
+                  nextPos =
+                    validNeighbors[
+                    Math.floor(Math.random() * validNeighbors.length)
+                    ];
+                }
               }
             } else {
               moveTowards(dx, dy);

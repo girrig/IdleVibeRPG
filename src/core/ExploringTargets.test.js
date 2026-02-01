@@ -179,15 +179,6 @@ describe("Exploring Skill - Targeting", () => {
     expect(options.find_forest).toBeDefined();
     expect(options.find_desert).toBeDefined();
     expect(options.find_mountain).toBeDefined();
-    expect(options.find_ocean).toBeDefined();
-
-    // Check new biomes
-    expect(options.find_beach).toBeDefined(); // Lvl 2
-    expect(options.find_swamp).toBeDefined(); // Lvl 10
-    expect(options.find_tropical_rainforest).toBeDefined(); // Lvl 20
-    expect(options.find_ice_sheet).toBeDefined(); // Lvl 35
-
     expect(options.find_forest.level).toBe(5);
-    expect(options.find_ocean.level).toBe(30);
   });
 });

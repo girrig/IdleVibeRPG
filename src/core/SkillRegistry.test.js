@@ -231,5 +231,28 @@ describe('SkillRegistry', () => {
       // Mock moves +1 towards 255
       expect(mockChar.position).toEqual({ x: 251, y: 250 });
     });
+
+    it('should NOT wander into water when expanding', () => {
+      mockChar.currentActivity = { target: 'wander_expansion', phase: 'WANDERING' };
+      mockChar.position = { x: 250, y: 250 };
+
+      // Target is actually AT our location, meaning we should look for unknown neighbors
+      mapManager.findNearestFrontierTile.mockReturnValue({ x: 250, y: 250 });
+
+      // All neighbors are WATER
+      mapManager.getTile.mockImplementation((x, y) => {
+        if (x === 250 && y === 250) return { explored: true, type: 'grassland' };
+        return { explored: false, type: 'OCEAN' }; // Unexplored Ocean
+      });
+      // Ensure isValidMove returns false for Ocean (implied by SkillRegistry logic, but we mock dependencies?)
+      // Wait, SkillRegistry uses mapManager.getTile.
+      // But isValidMove logic is INTERNAL to SkillRegistry action.
+      // It calls mapManager.getTile. So our mock above works.
+
+      SKILL_DEFINITIONS.EXPLORING.action(mockGameState, mockChar);
+
+      // Should NOT move
+      expect(mockChar.position).toEqual({ x: 250, y: 250 });
+    });
   });
 });

@@ -706,12 +706,21 @@ export class MapManager {
     return null;
   }
   // Find nearest tile that is explored but adjacent to unexplored (Frontier)
+  // Find nearest tile that is explored but adjacent to unexplored (Frontier)
   findNearestFrontierTile(startX, startY) {
     const visited = new Set();
     const queue = [{ x: startX, y: startY, dist: 0 }];
     visited.add(`${startX},${startY}`);
 
     const maxDist = 500; // Limit search radius
+
+    const isWalkable = (tile) => {
+      if (!tile) return false;
+      return (
+        tile.type !== TERRAIN_TYPES.OCEAN.id &&
+        tile.type !== TERRAIN_TYPES.SHALLOW_OCEAN.id
+      );
+    };
 
     let head = 0;
     while (head < queue.length) {
@@ -720,6 +729,9 @@ export class MapManager {
 
       const tile = this.getTile(curr.x, curr.y);
       if (tile && tile.explored) {
+        // Must be walkable to be a valid standing spot
+        if (!isWalkable(tile)) continue;
+
         // Check adjacency to unexplored
         const neighbors = [
           { x: curr.x + 1, y: curr.y },
@@ -731,6 +743,9 @@ export class MapManager {
         let isFrontier = false;
         for (const n of neighbors) {
           const nTile = this.getTile(n.x, n.y);
+          // If neighbor is invalid (null) or NOT explored, it's a frontier edge
+          // Note: If nTile is null (edge of map), we can't really "explore" it.
+          // We generally want to find tiles adjacent to *unexplored valid tiles*.
           if (nTile && !nTile.explored) {
             isFrontier = true;
             break;
@@ -749,13 +764,21 @@ export class MapManager {
       ];
 
       for (const n of neighbors) {
-        if (n.x >= 0 && n.x < this.width && n.y >= 0 && n.y < this.height) {
+        if (
+          n.x >= 0 &&
+          n.x < this.width &&
+          n.y >= 0 &&
+          n.y < this.height
+        ) {
           const key = `${n.x},${n.y}`;
           if (!visited.has(key)) {
-            // Only traverse explored tiles to reach the frontier edge
-            // We must stay within the "Known World"
+            // Only traverse explored AND WALKABLE tiles to reach the frontier edge
             const neighborTile = this.getTile(n.x, n.y);
-            if (neighborTile && neighborTile.explored) {
+            if (
+              neighborTile &&
+              neighborTile.explored &&
+              isWalkable(neighborTile)
+            ) {
               visited.add(key);
               queue.push({ x: n.x, y: n.y, dist: curr.dist + 1 });
             }
