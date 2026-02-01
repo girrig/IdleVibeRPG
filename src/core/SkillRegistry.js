@@ -1,5 +1,5 @@
 import { getItemDefinition } from "./ItemRegistry.js";
-import { SKILL_COLORS, GAME_CONFIG, BIOME_RESOURCE_MAP } from "./Constants.js";
+import { SKILL_COLORS, GAME_CONFIG } from "./Constants.js";
 import { mapManager } from "./MapManager.js";
 import { TERRAIN_TYPES } from "./TerrainTypes.js";
 
@@ -255,12 +255,14 @@ export const SKILL_DEFINITIONS = {
         level: 1,
         xp: 15,
         icon: "🏡",
-        description: "Fills in the map near home. Great for completionists.",
+        description: "Reveals new areas near home.",
         risk: "Low",
       },
 
       // Level 1-2: Easy / Common
       find_grassland: {
+        // ...
+
         name: "Find Grassland",
         level: 1,
         xp: 20,
@@ -599,16 +601,34 @@ export const SKILL_DEFINITIONS = {
 
         // 1. EXPANSION: Fill gaps near HOME
         if (type === "expansion") {
-          // Find nearest (accessible) unvisited tile spanning out from Home
-          const target = mapManager.findNearestUnvisitedWalkableTile(250, 250);
+          // Find nearest FRONTIER tile spanning out from Home (250, 250)
+          // This prioritizes revealing the Fog of War closest to town.
+          const target = mapManager.findNearestFrontierTile(250, 250);
 
           if (target) {
             const dx = Math.sign(target.x - x);
             const dy = Math.sign(target.y - y);
 
             if (dx === 0 && dy === 0) {
-              // We are ON the target (Unvisited). 
-              nextPos = { x, y }; // Stay here so visitTile triggers
+              // We are AT the frontier (Explored edge).
+              // Step randomly to push into Unexplored
+              const neighbors = [
+                { x: x + 1, y: y },
+                { x: x - 1, y: y },
+                { x: x, y: y + 1 },
+                { x: x, y: y - 1 },
+              ];
+              const unknown = neighbors.find((n) => {
+                const t = mapManager.getTile(n.x, n.y);
+                return t && !t.explored;
+              });
+              if (unknown) nextPos = unknown;
+              else {
+                // Fallback if surrounded by explored?
+                // Should theoretically find new frontier next tick?
+                // Just random walk
+                nextPos = isValidMove(x + 1, y) ? { x: x + 1, y } : { x: x - 1, y };
+              }
             } else {
               moveTowards(dx, dy);
             }
@@ -631,23 +651,10 @@ export const SKILL_DEFINITIONS = {
 
       // Move
       char.position = nextPos;
+      // Move
+      char.position = nextPos;
       const isNewVisit = mapManager.visitTile(nextPos.x, nextPos.y);
-      if (isNewVisit) {
-        // Add resources based on Biome
-        const tile = mapManager.getTile(nextPos.x, nextPos.y);
-        const resourceDrop = BIOME_RESOURCE_MAP[tile.type];
-        if (resourceDrop) {
-          // Flatten checks: We just look for any matching keys in the generic map
-          // But wait, the map structure is { woodcutting: { oak_log: 20 } }
-          // We should iterate all categories
-          Object.values(resourceDrop).forEach((categoryDrops) => {
-            Object.entries(categoryDrops).forEach(([resId, amount]) => {
-              gameState.addAvailableResource(resId, amount);
-            });
-          });
-        }
-      }
-
+      // isNewVisit logic for resources REMOVED. Resources are now discovered on EXPLORE (visibility).
 
       // Explore with Radius
       const sightRadius = char.stats.sightRange || 3;
@@ -668,6 +675,13 @@ export const SKILL_DEFINITIONS = {
 
       if (revealedTiles.length > 0) {
         revealedTiles.forEach((tile) => {
+          // 1. RESOURCE DISCOVERY
+          if (tile.resource) {
+            gameState.addAvailableResource(tile.resource.type, tile.resource.amount);
+            // Optional: Notification for big finds?
+            // gameState.triggerNotification(`Found ${tile.resource.amount} ${tile.resource.type}!`, "success");
+          }
+
           let tileXp = wanderXp;
 
           // Bonus if it's the specific target biome we want

@@ -1,5 +1,6 @@
 import { createNoise2D } from "simplex-noise";
 import { TERRAIN_TYPES } from "./TerrainTypes.js";
+import { RESOURCE_GENERATION_CONFIG } from "./Constants.js";
 export { TERRAIN_TYPES };
 
 // Simple seeded random number generator (Mulberry32)
@@ -29,20 +30,23 @@ export class MapManager {
 
       // 2. Apply Saved State
       if (savedData.tiles && savedData.tiles.length > 0) {
-        // LEGACY SUPPORT: Restore from full tile objects (Migration)
-        // We already regenerated, so we just overlay the explored/visited flags
-        // to ensure we map correctly even if generation logic slightly changed (though it shouldn't)
-        // Actually, strictly trusting the legacy tiles might be safer for transition,
-        // but memory-wise we want to move away from them.
-        // Let's just overlay the flags from the legacy data onto the new grid
+        // LEGACY SUPPORT: Restore from full tile objects
         for (let y = 0; y < this.height; y++) {
           for (let x = 0; x < this.width; x++) {
-            // Range check for legacy data
             if (savedData.tiles[y] && savedData.tiles[y][x]) {
               const savedTile = savedData.tiles[y][x];
               if (savedTile) {
                 if (savedTile.explored) this.tiles[y][x].explored = true;
                 if (savedTile.visited) this.tiles[y][x].visited = true;
+                // Important: Resources are deterministic via generateMap, 
+                // but if we ever save state of resources (depletion), we'd need to load that here.
+                // For now, infinite resources or static amounts.
+                // If we want to track Depletion per tile, we need tile state save.
+                // Current Requirement: "resources count towards total available"
+                // The "Consumption" happens from GLOBAL pool.
+                // So the tile resource stays "visible" forever?
+                // Visuals: "Patches of resource".
+                // We'll stick to deterministic regen.
               }
             }
           }
@@ -94,9 +98,6 @@ export class MapManager {
     this.tiles = [];
 
     // Create seeded noise instances
-    // Seed: Elevation
-    // Seed+1: Moisture
-    // Seed+2: Temperature
     const rngElevation = mulberry32(this.seed);
     const rngMoisture = mulberry32(this.seed + 1);
     const rngTemperature = mulberry32(this.seed + 2);
@@ -129,6 +130,9 @@ export class MapManager {
 
     // Post-processing: Remove small biomes
     this.cleanupBiomes(options.minBiomeSize || 50, [TERRAIN_TYPES.BEACH.id]);
+
+    // Generate Resources (Factorio Style Clumps)
+    this.generateResources();
 
     // Check for Safe Start (Center)
     const centerX = Math.floor(this.width / 2);
@@ -165,9 +169,60 @@ export class MapManager {
       this.tiles[centerY][centerX].explored = true;
       this.tiles[centerY][centerX].visited = true;
       this.tiles[centerY][centerX].type = TERRAIN_TYPES.HOME.id;
+      // Clear resources at home
+      delete this.tiles[centerY][centerX].resource;
 
       // Mark neighbors explored (Radius 5)
       this.exploreRadius(centerX, centerY, 5);
+    }
+  }
+
+  generateResources() {
+    // Generate noise layers for each resource
+    const resourceGenerators = {};
+    Object.entries(RESOURCE_GENERATION_CONFIG).forEach(([key, config], index) => {
+      // Unique seed for each resource
+      const rng = mulberry32(this.seed + 100 + index);
+      resourceGenerators[key] = {
+        noise: createNoise2D(rng),
+        config: config
+      };
+    });
+
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const tile = this.tiles[y][x];
+        // Skip invalid tiles
+        if (!tile) continue;
+
+        // Check each resource (Order matters? First win?)
+        // We iterate in order defined in config.
+        for (const [key, gen] of Object.entries(resourceGenerators)) {
+          const conf = gen.config;
+
+          // 1. Biome Check
+          if (conf.allowedBiomes && !conf.allowedBiomes.includes(tile.type)) {
+            continue;
+          }
+
+          // 2. Noise Check
+          const value = gen.noise(x * conf.scale, y * conf.scale);
+          // Noise is -1 to 1. Normalize to 0-1? Or just use directly.
+          // Let's assume threshold is 0.7 (high peaks).
+          // Normalize: (v + 1) / 2
+          const normValue = (value + 1) / 2;
+
+          if (normValue > conf.threshold) {
+            // Spawn Resource!
+            tile.resource = {
+              type: conf.type,
+              amount: conf.amount
+            };
+            // First win (one resource per tile)
+            break;
+          }
+        }
+      }
     }
   }
 

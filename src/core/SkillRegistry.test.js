@@ -32,6 +32,9 @@ describe('SkillRegistry', () => {
         getCount: vi.fn(() => 100), // Default sufficient funds
       },
       triggerNotification: vi.fn(),
+      getAvailableResourceCount: vi.fn(() => 1000), // Sufficient for tests
+      consumeAvailableResource: vi.fn(),
+      addAvailableResource: vi.fn(),
     };
 
     mockChar = {
@@ -214,6 +217,19 @@ describe('SkillRegistry', () => {
       SKILL_DEFINITIONS.EXPLORING.action(mockGameState, mockChar);
 
       expect(mockChar.currentActivity.phase).toBe('RETURNING');
+    });
+
+    it('should wander towards frontier in expansion mode', () => {
+      mockChar.currentActivity = { target: 'wander_expansion', phase: 'WANDERING' };
+      mockChar.position = { x: 250, y: 250 };
+      mapManager.findNearestFrontierTile.mockReturnValue({ x: 255, y: 250 });
+      mapManager.exploreRadius.mockReturnValue([]);
+
+      SKILL_DEFINITIONS.EXPLORING.action(mockGameState, mockChar);
+
+      expect(mapManager.findNearestFrontierTile).toHaveBeenCalledWith(250, 250);
+      // Mock moves +1 towards 255
+      expect(mockChar.position).toEqual({ x: 251, y: 250 });
     });
   });
 });

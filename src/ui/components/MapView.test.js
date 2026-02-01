@@ -109,13 +109,13 @@ describe("MapView Zoom Logic", () => {
   });
 
   describe("Rendering Logic", () => {
-    it("should NOT draw symbols for visited tiles (except HOME)", () => {
+    it("should draw symbols ONLY for resources and HOME", () => {
       // Setup tiles
       const tiles = [
         [
-          { x: 0, y: 0, type: "FOREST", explored: true, visited: true }, // Visited Forest -> No Symbol
-          { x: 1, y: 0, type: "FOREST", explored: true, visited: false }, // Unvisited Forest -> Symbol
-          { x: 2, y: 0, type: "HOME", explored: true, visited: true }, // Visited Home -> Symbol (Landmark)
+          { x: 0, y: 0, type: "FOREST", explored: true }, // Standard Forest -> No Symbol
+          { x: 1, y: 0, type: "FOREST", explored: true, resource: { type: "oak_log", amount: 10 } }, // Resource -> Symbol
+          { x: 2, y: 0, type: "HOME", explored: true }, // Home -> Symbol
         ],
       ];
 
@@ -135,24 +135,10 @@ describe("MapView Zoom Logic", () => {
       mapView.renderMainCanvas();
 
       // Expectation:
-      // 1. Visited Forest: Should NOT draw
-      // 2. Unvisited Forest: Should draw
-      // 3. Home: Should draw
-
-      // We check the calls to fillText.
-      // Note: TERRAIN_TYPES needs to be mocked or available. It is mocked in the top of the file.
-      // In the mock: OCEAN is the only type. Let's update the mock setup or just rely on fallback "?"?
-      // The code uses Object.values(TERRAIN_TYPES).find.
-      // Our mock TERRAIN_TYPES only has OCEAN.
-      // So for "FOREST", it will find nothing and use "?".
-      // For "HOME", it will find nothing and use "?".
-
-      // To make this precise, let's look at the Mock setup in the file again.
-      // It only defines OCEAN.
-      // But the logic `if (tile.visited && tile.type !== "HOME") continue;` doesn't depend on TERRAIN_TYPES.
-      // It runs BEFORE symbol lookup.
-
-      // So fillText should be called exactly 2 times (Index 1 and Index 2).
+      // 1. Standard Forest: 0 calls
+      // 2. Resource: 1 call
+      // 3. Home: 1 call
+      // Total: 2 calls
       expect(mapView.ctx.fillText).toHaveBeenCalledTimes(2);
     });
 

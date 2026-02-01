@@ -1,6 +1,8 @@
 import { mapManager, TERRAIN_TYPES } from "../../core/MapManager";
+import { RESOURCE_GENERATION_CONFIG } from "../../core/Constants";
 
 export class MapView {
+  // ... (Constructor remains same)
   constructor() {
     this.element = document.createElement("div");
     this.element.className = "map-view";
@@ -561,25 +563,36 @@ export class MapView {
         const tile = tiles[y][x];
         if (!tile || !tile.explored) continue;
 
-        // Skip symbol for visited tiles (unless it's HOME, which we always want to see)
-        if (tile.visited && tile.type !== "HOME") continue;
+        // REDESIGN: Only draw symbols for RESOURCES (Factorio style clumps)
+        // Standard terrain is just color.
 
-        const typeInfo = Object.values(TERRAIN_TYPES).find(
-          (t) => t.id === tile.type,
-        );
-        const symbol = typeInfo ? typeInfo.symbol : "?";
+        if (tile.resource) {
+          const resConfig = RESOURCE_GENERATION_CONFIG[tile.resource.type];
+          const symbol = resConfig ? resConfig.icon : "📦";
 
-        // Calculate Screen Position
-        // WorldPos = x * zoom
-        // ScreenPos = WorldPos - ScrollLeft
-        const screenX = x * this.zoomLevel - scrollLeft;
-        const screenY = y * this.zoomLevel - scrollTop;
+          // Calculate Screen Position
+          // WorldPos = x * zoom
+          // ScreenPos = WorldPos - ScrollLeft
+          const screenX = x * this.zoomLevel - scrollLeft;
+          const screenY = y * this.zoomLevel - scrollTop;
 
-        this.ctx.fillText(
-          symbol,
-          screenX + this.zoomLevel / 2,
-          screenY + this.zoomLevel / 2,
-        );
+          this.ctx.fillText(
+            symbol,
+            screenX + this.zoomLevel / 2,
+            screenY + this.zoomLevel / 2,
+          );
+        } else if (tile.type === "HOME") {
+          // Always show Home
+          const typeInfo = Object.values(TERRAIN_TYPES).find(t => t.id === "HOME");
+          const symbol = typeInfo ? typeInfo.symbol : "🏠";
+          const screenX = x * this.zoomLevel - scrollLeft;
+          const screenY = y * this.zoomLevel - scrollTop;
+          this.ctx.fillText(
+            symbol,
+            screenX + this.zoomLevel / 2,
+            screenY + this.zoomLevel / 2,
+          );
+        }
       }
     }
 

@@ -39,23 +39,81 @@ export const GAME_CONFIG = {
   STARTING_POSITION: { x: 250, y: 250 },
 };
 
-export const BIOME_RESOURCE_MAP = {
-  // Woodcutting
-  TEMPERATE_DECIDUOUS_FOREST: { oak_log: 20 },
-  BOREAL_FOREST: { yew_log: 20 },
-  TEMPERATE_RAINFOREST: { willow_log: 20 },
-  TROPICAL_RAINFOREST: { magic_log: 5 },
-  SHRUBLAND: { oak_log: 5 },
+export const RESOURCE_GENERATION_CONFIG = {
+  // Config for Factorio-style resource patches
+  // Scale: Lower = larger, spread out patches. Higher = smaller, frequent spots.
+  // Threshold: Value (0-1) to spawn. Higher = rarer.
 
-  // Mining
-  ALPINE: { copper_ore: 15, iron_ore: 5 },
-  ALPINE_TUNDRA: { iron_ore: 15, coal: 10 },
-  SUBTROPICAL_DESERT: { copper_ore: 20 },
-  TEMPERATE_DESERT: { copper_ore: 10, iron_ore: 5 },
-  POLAR_DESERT: { mithril_ore: 2 }, // Rare
+  oak_log: {
+    type: "oak_log", name: "Oak Tree", icon: "🌳",
+    scale: 0.05, threshold: 0.6, amount: 20,
+    allowedBiomes: ["TEMPERATE_DECIDUOUS_FOREST", "SHRUBLAND", "TEMPERATE_GRASSLAND"]
+  },
+  willow_log: {
+    type: "willow_log", name: "Willow Tree", icon: "🌿",
+    scale: 0.05, threshold: 0.7, amount: 20,
+    allowedBiomes: ["TEMPERATE_RAINFOREST", "SWAMP"]
+  },
+  yew_log: {
+    type: "yew_log", name: "Yew Tree", icon: "🌲",
+    scale: 0.04, threshold: 0.75, amount: 20,
+    allowedBiomes: ["BOREAL_FOREST"]
+  },
+  magic_log: {
+    type: "magic_log", name: "Magic Tree", icon: "✨",
+    scale: 0.03, threshold: 0.85, amount: 5,
+    allowedBiomes: ["TROPICAL_RAINFOREST"]
+  },
+  copper_ore: {
+    type: "copper_ore", name: "Copper Vein", icon: "🟠",
+    scale: 0.08, threshold: 0.7, amount: 15,
+    allowedBiomes: ["ALPINE", "SUBTROPICAL_DESERT", "TEMPERATE_DESERT", "TEMPERATE_GRASSLAND", "SHRUBLAND"]
+  },
+  iron_ore: {
+    type: "iron_ore", name: "Iron Vein", icon: "⚪",
+    scale: 0.08, threshold: 0.75, amount: 10,
+    allowedBiomes: ["ALPINE", "TEMPERATE_DESERT", "ALPINE_TUNDRA", "TUNDRA"]
+  },
+  coal: {
+    type: "coal", name: "Coal Deposit", icon: "⚫",
+    scale: 0.06, threshold: 0.7, amount: 10,
+    allowedBiomes: ["ALPINE_TUNDRA", "SWAMP", "TEMPERATE_DECIDUOUS_FOREST"]
+  },
+  gold_ore: {
+    type: "gold_ore", name: "Gold Vein", icon: "🟡",
+    scale: 0.04, threshold: 0.8, amount: 5,
+    allowedBiomes: ["ALPINE", "SUBTROPICAL_DESERT"]
+  },
+  mithril_ore: {
+    type: "mithril_ore", name: "Mithril Vein", icon: "🔵",
+    scale: 0.03, threshold: 0.85, amount: 5,
+    allowedBiomes: ["POLAR_DESERT", "ICE_SHEET"]
+  },
+  // Fishing spots (Water)
+  raw_trout: {
+    type: "raw_trout", name: "Trout Spot", icon: "🐟",
+    scale: 0.1, threshold: 0.6, amount: 20,
+    allowedBiomes: ["SHALLOW_OCEAN", "BEACH"]
+  },
+  raw_salmon: {
+    type: "raw_salmon", name: "Salmon Spot", icon: "🐠",
+    scale: 0.1, threshold: 0.65, amount: 15,
+    allowedBiomes: ["SHALLOW_OCEAN"]
+  },
+  raw_tuna: {
+    type: "raw_tuna", name: "Tuna Shoal", icon: "🦈",
+    scale: 0.05, threshold: 0.6, amount: 10,
+    allowedBiomes: ["OCEAN"]
+  },
+  raw_lobster: {
+    type: "raw_lobster", name: "Lobster Cage", icon: "🦞",
+    scale: 0.05, threshold: 0.7, amount: 5,
+    allowedBiomes: ["OCEAN"]
+  },
+  raw_swordfish: {
+    type: "raw_swordfish", name: "Swordfish", icon: "🗡️",
+    scale: 0.03, threshold: 0.8, amount: 2,
+    allowedBiomes: ["OCEAN"]
+  }
 
-  // Fishing (Optional - visiting water adds fish?)
-  SHALLOW_OCEAN: { raw_trout: 15, raw_salmon: 5 },
-  OCEAN: { raw_tuna: 10, raw_lobster: 5, raw_swordfish: 2 },
-  BEACH: { raw_trout: 5 },
 };

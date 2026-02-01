@@ -141,8 +141,9 @@ class GameState {
     // Restore Map
     mapManager.initialize(data.map);
 
-    // Restore Available Resources
-    this.availableResources = data.availableResources || {};
+    // RECALCULATE RESOURCES based on the restored map
+    // This ensures compatibility with generation changes and "What you see is what you have"
+    this.recalculateResources();
 
     if (data.settings) {
       // Deep merge settings to ensure new keys exist
@@ -194,6 +195,21 @@ class GameState {
     setTimeout(() => {
       location.reload();
     }, 1000);
+  }
+
+  recalculateResources() {
+    this.availableResources = {};
+    const width = mapManager.width;
+    const height = mapManager.height;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const tile = mapManager.getTile(x, y);
+        if (tile && tile.explored && tile.resource) {
+          this.addAvailableResource(tile.resource.type, tile.resource.amount);
+        }
+      }
+    }
   }
 
   generateRandomName() {
