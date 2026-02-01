@@ -17,9 +17,8 @@ export class MainScene extends Phaser.Scene {
     console.log("MainScene started");
     try {
       gameState.initialize();
-      console.log("GameState initialized. calling uiManager.initialize()...");
       uiManager.initialize();
-      console.log("UIManager initialized");
+      console.log("Game initialized");
 
       // Centered on the "World Origin" of our scene objects (512, 384)
       this.cameras.main.centerOn(512, 384);

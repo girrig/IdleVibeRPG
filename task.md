@@ -70,6 +70,9 @@
 - [x] Refine Notification Position and Sizing <!-- id: 94 -->
 - [x] Debug Expansion Wander Logic <!-- id: 95 -->
 - [x] Update Wander Tests for Expansion <!-- id: 96 -->
+- [x] Improve Integration Test Coverage <!-- id: 102 -->
+  - [x] Create MainScene integration test <!-- id: 103 -->
+  - [x] Verify Resource Node generation in tests <!-- id: 104 -->
 - [x] World Aesthetics (Polish) <!-- id: 26 -->
   - [x] Generate Ground Tiles (Grass/Dirt) <!-- id: 27 -->
   - [x] Generate Environment Props (Trees, Rocks) <!-- id: 28 -->

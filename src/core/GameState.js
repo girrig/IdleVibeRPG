@@ -206,7 +206,10 @@ class GameState {
       for (let x = 0; x < width; x++) {
         const tile = mapManager.getTile(x, y);
         if (tile && tile.explored && tile.resource) {
-          this.addAvailableResource(tile.resource.type, tile.resource.amount);
+          // Segregate resources by Biome to allow biome-specific loot tables
+          // Key format: "resource_id:biome_id"
+          const key = `${tile.resource.type}:${tile.type}`;
+          this.addAvailableResource(key, tile.resource.amount);
         }
       }
     }
@@ -309,7 +312,18 @@ class GameState {
   }
 
   getAvailableResourceCount(resourceId) {
-    return this.availableResources[resourceId] || 0;
+    if (this.availableResources[resourceId]) {
+      return this.availableResources[resourceId];
+    }
+    // Check for prefix matches (e.g. "mineral_node" matches "mineral_node:DESERT")
+    const prefix = resourceId + ":";
+    let sum = 0;
+    Object.keys(this.availableResources).forEach((key) => {
+      if (key.startsWith(prefix)) {
+        sum += this.availableResources[key];
+      }
+    });
+    return sum;
   }
 
   consumeAvailableResource(resourceId, amount = 1) {

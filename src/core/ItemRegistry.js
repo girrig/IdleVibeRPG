@@ -5,6 +5,7 @@ export const ITEM_DEFINITIONS = {
   coal: { name: "Coal", icon: "⚫", value: 5, category: "Ore" },
   gold_ore: { name: "Gold Ore", icon: "🟡", value: 20, category: "Ore" },
   mithril_ore: { name: "Mithril Ore", icon: "🔵", value: 30, category: "Ore" },
+  stone: { name: "Stone", icon: "🪨", value: 1, category: "Resource" },
 
   // Logs
   oak_log: { name: "Oak Log", icon: "🌳", value: 2, category: "Log" },

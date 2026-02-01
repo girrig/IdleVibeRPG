@@ -1,6 +1,6 @@
 import { createNoise2D } from "simplex-noise";
 import { TERRAIN_TYPES } from "./TerrainTypes.js";
-import { RESOURCE_GENERATION_CONFIG } from "./Constants.js";
+import { RESOURCE_NODES } from "./Constants.js";
 export { TERRAIN_TYPES };
 
 // Simple seeded random number generator (Mulberry32)
@@ -178,52 +178,42 @@ export class MapManager {
   }
 
   generateResources() {
-    // Generate noise layers for each resource
-    const resourceGenerators = {};
-    Object.entries(RESOURCE_GENERATION_CONFIG).forEach(([key, config], index) => {
-      // Unique seed for each resource
-      const rng = mulberry32(this.seed + 100 + index);
-      resourceGenerators[key] = {
-        noise: createNoise2D(rng),
-        config: config
-      };
-    });
+    // 4. Generate Resources (Factorio-style noise clumps)
+    // Iterate over RESOURCE_NODES instead of individual resources
+    Object.values(RESOURCE_NODES).forEach((config) => {
+      // Use a unique seed offset for each resource type so they don't overlap perfectly
+      // String to hash
+      let param = 0;
+      for (let i = 0; i < config.id.length; i++) {
+        param += config.id.charCodeAt(i);
+      }
 
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
-        const tile = this.tiles[y][x];
-        // Skip invalid tiles
-        if (!tile) continue;
+      // Fix: simplex-noise v4 requires a Random Function, not a seed number.
+      // We use our existing mulberry32 to create a seeded RNG.
+      const rng = mulberry32(this.seed + param);
+      const noise = createNoise2D(rng);
 
-        // Check each resource (Order matters? First win?)
-        // We iterate in order defined in config.
-        for (const [key, gen] of Object.entries(resourceGenerators)) {
-          const conf = gen.config;
-
-          // 1. Biome Check
-          if (conf.allowedBiomes && !conf.allowedBiomes.includes(tile.type)) {
-            continue;
-          }
-
-          // 2. Noise Check
-          const value = gen.noise(x * conf.scale, y * conf.scale);
-          // Noise is -1 to 1. Normalize to 0-1? Or just use directly.
-          // Let's assume threshold is 0.7 (high peaks).
-          // Normalize: (v + 1) / 2
-          const normValue = (value + 1) / 2;
-
-          if (normValue > conf.threshold) {
-            // Spawn Resource!
-            tile.resource = {
-              type: conf.type,
-              amount: conf.amount
-            };
-            // First win (one resource per tile)
-            break;
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          const tile = this.tiles[y][x];
+          // Check biome
+          if (config.allowedBiomes.includes(tile.type)) {
+            // Check noise (0.0 to 1.0)
+            const val = (noise(x * config.scale, y * config.scale) + 1) / 2;
+            if (val > config.threshold) {
+              // Place Resource Node
+              if (!tile.resource) {
+                // Priority? First come first serve. Order in config matters.
+                tile.resource = {
+                  type: config.id, // e.g. "mineral_node"
+                  amount: config.amount,
+                };
+              }
+            }
           }
         }
       }
-    }
+    });
   }
 
   // Identifies connected regions of same type.

@@ -120,6 +120,28 @@ describe("MapManager", () => {
     expect(types.size).toBeGreaterThanOrEqual(5);
   });
 
+  describe("Resource Generation", () => {
+    it("should generate resources without error (Simplex Noise Integ check)", () => {
+      // This test ensures that the createNoise2D call receives a valid argument (function),
+      // preventing the "random is not a function" crash.
+      const mgr = new MapManager();
+      mgr.initialize();
+      // resources are generated during initialize -> generateMap -> generateResources
+
+      // Verify we have some resources
+      let resourceCount = 0;
+      for (let y = 0; y < mgr.height; y++) {
+        for (let x = 0; x < mgr.width; x++) {
+          if (mgr.tiles[y][x].resource) {
+            resourceCount++;
+          }
+        }
+      }
+      // With default settings, we should have plenty of resources
+      expect(resourceCount).toBeGreaterThan(0);
+    });
+  });
+
   describe("Fog of War", () => {
     it("should allow exploring individual tiles", () => {
       mapManager.initialize();

@@ -21,11 +21,11 @@ describe('SourceRegistry', () => {
         expect(copper).toBeDefined();
         expect(copper.type).toBe('SKILL');
         expect(copper.skillId).toBe('MINING');
-        expect(copper.target).toBe('copper_ore');
+        expect(copper.target).toBe('mine_minerals');
         expect(copper.reqLevel).toBe(1);
 
         const gold = sourceRegistry.getSource('gold_ore');
-        expect(gold.reqLevel).toBe(20);
+        expect(gold.reqLevel).toBe(1); // Gold is now obtained from lvl 1 nodes (rare drop)
     });
 
     it('should retrieve correct source for mob drops (Fighting)', () => {

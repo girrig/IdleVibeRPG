@@ -224,16 +224,17 @@ export class SkillsView {
     // Available World Resource Check (for Woodcuttin/Mining/etc)
     let availableHtml = "";
     const targetResources = ["WOODCUTTING", "MINING", "FISHING"]; // Skills that gather from world
-    if (targetResources.includes(activeSkill.id) && key) { // Check key is simple resource ID often
-      // Actually, key is often the resource ID (oak_log, copper_ore)
-      // Let's verify if gameState has any record of it.
-      const avail = gameState.getAvailableResourceCount(key);
-      // Only show if it's relevant (non-zero or matching type)
-      // Or always show "World: 0" if it's a gatherable?
-      // Let's show it prominently.
-      availableHtml = `<div class="action-available" style="font-size: 0.9em; margin-top: 4px; color: #888;">
-            World: <span class="avail-count" data-res-id="${key}" style="color: ${avail > 0 ? '#4ade80' : '#f87171'}">${avail}</span>
-        </div>`;
+    if (targetResources.includes(activeSkill.id)) {
+      const resourceKey = opt.resourceId || key;
+      if (resourceKey) {
+        const avail = gameState.getAvailableResourceCount(resourceKey);
+        // Only show if it's relevant (non-zero or matching type)
+        // Or always show "World: 0" if it's a gatherable?
+        // Let's show it prominently.
+        availableHtml = `<div class="action-available" style="font-size: 0.9em; margin-top: 4px; color: #888;">
+              World: <span class="avail-count" data-res-id="${resourceKey}" style="color: ${avail > 0 ? "#4ade80" : "#f87171"}">${avail}</span>
+          </div>`;
+      }
     }
 
     card.innerHTML = `

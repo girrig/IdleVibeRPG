@@ -1,5 +1,5 @@
 import { getItemDefinition } from "./ItemRegistry.js";
-import { SKILL_COLORS, GAME_CONFIG } from "./Constants.js";
+import { SKILL_COLORS, GAME_CONFIG, RESOURCE_NODES } from "./Constants.js";
 import { mapManager } from "./MapManager.js";
 import { TERRAIN_TYPES } from "./TerrainTypes.js";
 
@@ -10,59 +10,102 @@ export const SKILL_DEFINITIONS = {
     icon: "⛏️",
     color: SKILL_COLORS.MINING,
     options: {
-      copper_ore: {
-        name: "Copper Ore",
+      mine_minerals: {
+        resourceId: "mineral_node",
+        name: "Mine Minerals",
         level: 1,
-        xp: 10,
-        icon: "🟠",
-        interval: 2000,
-      },
-      iron_ore: {
-        name: "Iron Ore",
-        level: 5,
-        xp: 20,
-        icon: "⚪",
-        interval: 4000,
-      },
-      coal: { name: "Coal", level: 10, xp: 30, icon: "⚫", interval: 6000 },
-      gold_ore: {
-        name: "Gold Ore",
-        level: 20,
-        xp: 45,
-        icon: "🟡",
-        interval: 8000,
-      },
-      mithril_ore: {
-        name: "Mithril Ore",
-        level: 30,
-        xp: 60,
-        icon: "🔵",
-        interval: 10000,
+        xp: 15, // Base XP, effectively varied by drop? Or constant? Constant is fine for now.
+        icon: "🪨",
+        interval: 3000,
       },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
-      const targetId = char.currentActivity.target;
-      const option = SKILL_DEFINITIONS.MINING.options[targetId];
-      let amount = 1;
-      // mining_2: 10% chance for double ore
-      if (char.talents.mining_2 && Math.random() < 0.1) {
-        amount = 2;
-        // Optional: Notify double drop?
-        // gameState.triggerNotification("Double Ore!", "success");
+      // Find available mineral nodes
+      const allResources = gameState.availableResources;
+      const mineralKeys = Object.keys(allResources).filter((k) =>
+        k.startsWith("mineral_node:"),
+      );
+
+      if (mineralKeys.length === 0) {
+        // Double check generic "mineral_node" just in case of legacy/fallback
+        if (gameState.getAvailableResourceCount("mineral_node") > 0) {
+          // Fallback for generic nodes without biome?
+          // Treat as default.
+        } else {
+          gameState.triggerNotification(
+            "No mineral veins found! Explore more areas.",
+            "error",
+          );
+          char.stopActivity();
+          return;
+        }
       }
 
-      // 1. Check World Availability
-      if (gameState.getAvailableResourceCount(targetId) < amount) {
-        gameState.triggerNotification("This resource is depleted! Explore more.", "error");
+      // Weighted Random Selection of Source Node
+      // P(Biome) = Count(Biome) / TotalCounts
+      let totalNodes = 0;
+      const candidates = [];
+      mineralKeys.forEach((key) => {
+        const count = allResources[key];
+        if (count > 0) {
+          totalNodes += count;
+          candidates.push({ key, count });
+        }
+      });
+
+      if (totalNodes === 0) {
         char.stopActivity();
         return;
       }
 
-      // 2. Consume & Reward
-      gameState.consumeAvailableResource(targetId, amount);
-      gameState.inventory.addItem(targetId, amount);
-      if (option) char.gainXp("mining", option.xp);
+      let r = Math.random() * totalNodes;
+      let selectedKey = candidates[0].key;
+      for (const c of candidates) {
+        if (r < c.count) {
+          selectedKey = c.key;
+          break;
+        }
+        r -= c.count;
+      }
+
+      // Logic: Biome is suffix
+      const biome = selectedKey.split(":")[1];
+      const nodeDef = RESOURCE_NODES.mineral_node;
+
+      // Get Loot Table
+      let table = nodeDef.default_drops;
+      if (nodeDef.biome_drops && nodeDef.biome_drops[biome]) {
+        table = nodeDef.biome_drops[biome];
+      }
+
+      // Roll Loot
+      // Sum weights
+      const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let dropItem = table[0].item;
+      for (const entry of table) {
+        if (roll < entry.weight) {
+          dropItem = entry.item;
+          break;
+        }
+        roll -= entry.weight;
+      }
+
+      // Action
+      // 1. Consume Node
+      // Talent: mining_2 (Double Ore?) -> Does it mean consume 1 get 2? Or just double resource?
+      // Let's keep it simple: consume 1 node, get 1 item (chance for 2 items)
+      gameState.consumeAvailableResource(selectedKey, 1);
+
+      let amount = 1;
+      if (char.talents.mining_2 && Math.random() < 0.1) {
+        amount = 2;
+        gameState.triggerNotification("Double Ore!", "success");
+      }
+
+      gameState.inventory.addItem(dropItem, amount);
+      char.gainXp("mining", 20); // Flat XP for mining the node
     },
   },
   WOODCUTTING: {
@@ -71,31 +114,78 @@ export const SKILL_DEFINITIONS = {
     icon: "🪓",
     color: SKILL_COLORS.WOODCUTTING,
     options: {
-      oak_log: { name: "Oak Log", level: 1, xp: 10, icon: "🌳" },
-      willow_log: { name: "Willow Log", level: 5, xp: 20, icon: "🌿" },
-      maple_log: { name: "Maple Log", level: 10, xp: 30, icon: "🍁" },
-      yew_log: { name: "Yew Log", level: 20, xp: 45, icon: "🌲" },
-      magic_log: { name: "Magic Log", level: 30, xp: 60, icon: "✨" },
+      chop_wood: { name: "Chop Wood", resourceId: "tree_node", level: 1, xp: 20, icon: "🌲", interval: 3000 },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
-      const targetId = char.currentActivity.target;
-      const option = SKILL_DEFINITIONS.WOODCUTTING.options[targetId];
-      let amount = 1;
-      // woodcutting_2: 10% chance for double logs
-      if (char.talents.woodcutting_2 && Math.random() < 0.1) amount = 2;
+      // Find available tree nodes
+      const allResources = gameState.availableResources;
+      const treeKeys = Object.keys(allResources).filter((k) =>
+        k.startsWith("tree_node:")
+      );
 
-      // 1. Check World Availability
-      if (gameState.getAvailableResourceCount(targetId) < amount) {
-        gameState.triggerNotification("This resource is depleted! Explore more.", "error");
+      if (treeKeys.length === 0) {
+        gameState.triggerNotification("No forests found! Explore more areas.", "error");
         char.stopActivity();
         return;
       }
 
-      // 2. Consume & Reward
-      gameState.consumeAvailableResource(targetId, amount);
-      gameState.inventory.addItem(targetId, amount);
-      if (option) char.gainXp("woodcutting", option.xp);
+      // Weighted Random Selection
+      let totalNodes = 0;
+      const candidates = [];
+      treeKeys.forEach((key) => {
+        const count = allResources[key];
+        if (count > 0) {
+          totalNodes += count;
+          candidates.push({ key, count });
+        }
+      });
+
+      if (totalNodes === 0) {
+        char.stopActivity();
+        return;
+      }
+
+      let r = Math.random() * totalNodes;
+      let selectedKey = candidates[0].key;
+      for (const c of candidates) {
+        if (r < c.count) {
+          selectedKey = c.key;
+          break;
+        }
+        r -= c.count;
+      }
+
+      // Logic: Biome is suffix
+      const biome = selectedKey.split(":")[1];
+      const nodeDef = RESOURCE_NODES.tree_node;
+
+      let table = nodeDef.default_drops;
+      if (nodeDef.biome_drops && nodeDef.biome_drops[biome]) {
+        table = nodeDef.biome_drops[biome];
+      }
+
+      const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let dropItem = table[0].item;
+      for (const entry of table) {
+        if (roll < entry.weight) {
+          dropItem = entry.item;
+          break;
+        }
+        roll -= entry.weight;
+      }
+
+      // Action
+      gameState.consumeAvailableResource(selectedKey, 1);
+
+      let amount = 1;
+      if (char.talents.woodcutting_2 && Math.random() < 0.1) {
+        amount = 2;
+      }
+
+      gameState.inventory.addItem(dropItem, amount);
+      char.gainXp("woodcutting", 20);
     },
   },
   FISHING: {
@@ -104,22 +194,79 @@ export const SKILL_DEFINITIONS = {
     icon: "🎣",
     color: SKILL_COLORS.FISHING,
     options: {
-      raw_trout: { name: "Raw Trout", level: 1, xp: 10, icon: "🐟" },
-      raw_salmon: { name: "Raw Salmon", level: 5, xp: 20, icon: "🐠" },
-      raw_tuna: { name: "Raw Tuna", level: 10, xp: 30, icon: "🦈" },
-      raw_lobster: { name: "Raw Lobster", level: 20, xp: 45, icon: "🦞" },
-      raw_swordfish: { name: "Raw Swordfish", level: 30, xp: 60, icon: "🗡️" },
+      fish_spot: { name: "Catch Fish", resourceId: "fishing_spot", level: 1, xp: 15, icon: "🐟", interval: 3000 },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
-      const targetId = char.currentActivity.target;
-      const option = SKILL_DEFINITIONS.FISHING.options[targetId];
-      let amount = 1;
-      // fishing_2: 10% chance for double fish
-      if (char.talents.fishing_2 && Math.random() < 0.1) amount = 2;
+      // Find available fishing spots
+      const allResources = gameState.availableResources;
+      const fishKeys = Object.keys(allResources).filter((k) =>
+        k.startsWith("fishing_spot:")
+      );
 
-      gameState.inventory.addItem(targetId, amount);
-      if (option) char.gainXp("fishing", option.xp);
+      if (fishKeys.length === 0) {
+        gameState.triggerNotification("No fishing spots found! Explore the coast.", "error");
+        char.stopActivity();
+        return;
+      }
+
+      // Weighted Random Selection
+      let totalNodes = 0;
+      const candidates = [];
+      fishKeys.forEach((key) => {
+        const count = allResources[key];
+        if (count > 0) {
+          totalNodes += count;
+          candidates.push({ key, count });
+        }
+      });
+
+      if (totalNodes === 0) {
+        char.stopActivity();
+        return;
+      }
+
+      let r = Math.random() * totalNodes;
+      let selectedKey = candidates[0].key;
+      for (const c of candidates) {
+        if (r < c.count) {
+          selectedKey = c.key;
+          break;
+        }
+        r -= c.count;
+      }
+
+      // Logic: Biome is suffix
+      const biome = selectedKey.split(":")[1];
+      const nodeDef = RESOURCE_NODES.fishing_spot;
+
+      let table = nodeDef.default_drops;
+      if (nodeDef.biome_drops && nodeDef.biome_drops[biome]) {
+        table = nodeDef.biome_drops[biome];
+      }
+
+      const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let dropItem = table[0].item;
+      for (const entry of table) {
+        if (roll < entry.weight) {
+          dropItem = entry.item;
+          break;
+        }
+        roll -= entry.weight;
+      }
+
+      // Action
+      gameState.consumeAvailableResource(selectedKey, 1);
+
+      let amount = 1;
+      if (char.talents.fishing_2 && Math.random() < 0.1) {
+        amount = 2;
+        // gameState.triggerNotification("Double Fish!", "success");
+      }
+
+      gameState.inventory.addItem(dropItem, amount);
+      char.gainXp("fishing", 20);
     },
   },
   FIGHTING: {
@@ -674,7 +821,8 @@ export const SKILL_DEFINITIONS = {
         revealedTiles.forEach((tile) => {
           // 1. RESOURCE DISCOVERY
           if (tile.resource) {
-            gameState.addAvailableResource(tile.resource.type, tile.resource.amount);
+            const key = `${tile.resource.type}:${tile.type}`;
+            gameState.addAvailableResource(key, tile.resource.amount);
             // Optional: Notification for big finds?
             // gameState.triggerNotification(`Found ${tile.resource.amount} ${tile.resource.type}!`, "success");
           }

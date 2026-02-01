@@ -1,15 +1,15 @@
 {
   "name": "idle-vibe-rpg",
   "private": true,
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "yarn test:unit && yarn test:browser",
-    "test:unit": "vitest run --exclude src/ui/components/MapView.test.js",
-    "test:browser": "vitest run src/ui/components/MapView.test.js --browser",
+    "test:unit": "vitest run --exclude src/ui/components/MapView.test.js --exclude src/scenes/MainScene.test.js",
+    "test:browser": "vitest run src/ui/components/MapView.test.js src/scenes/MainScene.test.js --browser",
     "test:watch": "vitest",
     "prepare": "husky",
     "release": "npm version patch && git push",

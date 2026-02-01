@@ -1,5 +1,5 @@
 import { mapManager, TERRAIN_TYPES } from "../../core/MapManager";
-import { RESOURCE_GENERATION_CONFIG } from "../../core/Constants";
+import { RESOURCE_NODES } from "../../core/Constants";
 
 export class MapView {
   // ... (Constructor remains same)
@@ -567,7 +567,7 @@ export class MapView {
         // Standard terrain is just color.
 
         if (tile.resource) {
-          const resConfig = RESOURCE_GENERATION_CONFIG[tile.resource.type];
+          const resConfig = RESOURCE_NODES[tile.resource.type];
           const symbol = resConfig ? resConfig.icon : "📦";
 
           // Calculate Screen Position
@@ -645,100 +645,134 @@ export class MapView {
   }
 
   renderSidebar() {
-    this.sidebar.innerHTML = "";
-    const header = document.createElement("h3");
-    header.innerText = "Terrain";
-    header.style.color = "#fff";
-    header.style.textAlign = "center";
-    this.sidebar.appendChild(header);
+    try {
+      this.sidebar.innerHTML = "";
+      const header = document.createElement("h3");
+      header.innerText = "Terrain";
+      header.style.color = "#fff";
+      header.style.textAlign = "center";
+      this.sidebar.appendChild(header);
 
-    // Regen Button
-    const regenBtn = document.createElement("button");
-    regenBtn.innerText = "Regenerate World";
-    regenBtn.style.width = "100%";
-    regenBtn.style.padding = "8px";
-    regenBtn.style.marginBottom = "15px";
-    regenBtn.style.cursor = "pointer";
-    regenBtn.style.backgroundColor = "#444";
-    regenBtn.style.color = "#fff";
-    regenBtn.style.border = "1px solid #666";
-    regenBtn.onclick = () => {
-      if (confirm("Regenerate world?")) {
-        // Show loading state
-        this.loadingOverlay.style.display = "flex";
+      // Regen Button
+      const regenBtn = document.createElement("button");
+      regenBtn.innerText = "Regenerate World";
+      regenBtn.style.width = "100%";
+      regenBtn.style.padding = "8px";
+      regenBtn.style.marginBottom = "15px";
+      regenBtn.style.cursor = "pointer";
+      regenBtn.style.backgroundColor = "#444";
+      regenBtn.style.color = "#fff";
+      regenBtn.style.border = "1px solid #666";
+      regenBtn.onclick = () => {
+        if (confirm("Regenerate world?")) {
+          // Show loading state
+          this.loadingOverlay.style.display = "flex";
 
-        // Yield to render thread so overlay appears
-        setTimeout(() => {
-          try {
-            mapManager.generateMap({ newSeed: true });
-            this.mapDataDirty = true; // Mark dirty
-            if (window.gameState) window.gameState.saveGame();
-            this.update();
+          // Yield to render thread so overlay appears
+          setTimeout(() => {
+            try {
+              mapManager.generateMap({ newSeed: true });
+              this.mapDataDirty = true; // Mark dirty
+              if (window.gameState) window.gameState.saveGame();
+              this.update();
 
-            // Force center on home after regeneration
-            setTimeout(() => this.centerOnHome(), 0);
-          } catch (err) {
-            console.error("Failed to generate map:", err);
-          } finally {
-            // Hide loading state
-            this.loadingOverlay.style.display = "none";
-          }
-        }, 100);
+              // Force center on home after regeneration
+              setTimeout(() => this.centerOnHome(), 0);
+            } catch (err) {
+              console.error("Failed to generate map:", err);
+            } finally {
+              // Hide loading state
+              this.loadingOverlay.style.display = "none";
+            }
+          }, 100);
+        }
+      };
+      this.sidebar.appendChild(regenBtn);
+
+      // 1. Home / Specials
+      const homeType = TERRAIN_TYPES.HOME;
+      if (homeType) {
+        const item = document.createElement("div");
+        item.style.display = "flex";
+        item.style.alignItems = "center";
+        item.style.padding = "4px";
+        item.style.cursor = "pointer";
+        item.style.color = "#FFD700"; // Gold
+        item.style.fontWeight = "bold";
+        item.style.marginBottom = "5px";
+
+        item.onclick = () => this.centerOnHome();
+
+        // Add hover effect
+        item.onmouseenter = () =>
+          (item.style.backgroundColor = "rgba(255, 255, 255, 0.1)");
+        item.onmouseleave = () => (item.style.backgroundColor = "transparent");
+
+        const box = document.createElement("div");
+        box.style.width = "16px";
+        box.style.height = "16px";
+        box.style.minWidth = "16px";
+        box.style.flexShrink = "0";
+        box.style.backgroundColor = homeType.color;
+        box.style.marginRight = "8px";
+        box.style.border = "1px solid #fff"; // Highlight it
+
+        const text = document.createElement("span");
+        text.innerText = `${homeType.symbol} Home (Click to Center)`;
+        text.style.fontSize = "12px";
+
+        item.appendChild(box);
+        item.appendChild(text);
+        this.sidebar.appendChild(item);
       }
-    };
-    this.sidebar.appendChild(regenBtn);
 
-    // 1. Home / Specials
-    const homeType = TERRAIN_TYPES.HOME;
-    if (homeType) {
-      const item = document.createElement("div");
-      item.style.display = "flex";
-      item.style.alignItems = "center";
-      item.style.padding = "4px";
-      item.style.cursor = "pointer";
-      item.style.color = "#FFD700"; // Gold
-      item.style.fontWeight = "bold";
-      item.style.marginBottom = "5px";
+      // Separator
+      const sep = document.createElement("hr");
+      sep.style.borderColor = "rgba(255,255,255,0.1)";
+      sep.style.margin = "10px 0";
+      this.sidebar.appendChild(sep);
 
-      item.onclick = () => this.centerOnHome();
+      // Legend (Biomes)
+      const sortedTypes = Object.values(TERRAIN_TYPES)
+        .filter((t) => t.id !== "HOME")
+        .sort((a, b) => a.id.localeCompare(b.id));
 
-      // Add hover effect
-      item.onmouseenter = () =>
-        (item.style.backgroundColor = "rgba(255, 255, 255, 0.1)");
-      item.onmouseleave = () => (item.style.backgroundColor = "transparent");
+      sortedTypes.forEach((type) => {
+        this.createSidebarItem(type);
+      });
 
-      const box = document.createElement("div");
-      box.style.width = "16px";
-      box.style.height = "16px";
-      box.style.minWidth = "16px";
-      box.style.flexShrink = "0";
-      box.style.backgroundColor = homeType.color;
-      box.style.marginRight = "8px";
-      box.style.border = "1px solid #fff"; // Highlight it
+      // Separator
+      const sep2 = document.createElement("hr");
+      sep2.style.borderColor = "rgba(255,255,255,0.1)";
+      sep2.style.margin = "10px 0";
+      this.sidebar.appendChild(sep2);
 
-      const text = document.createElement("span");
-      text.innerText = `${homeType.symbol} Home (Click to Center)`;
-      text.style.fontSize = "12px";
+      const resHeader = document.createElement("h3");
+      resHeader.innerText = "Resources";
+      resHeader.style.color = "#fff";
+      resHeader.style.fontSize = "14px";
+      resHeader.style.marginBottom = "5px";
+      resHeader.style.textAlign = "center";
+      this.sidebar.appendChild(resHeader);
 
-      item.appendChild(box);
-      item.appendChild(text);
-      this.sidebar.appendChild(item);
+      if (!RESOURCE_NODES) {
+        throw new Error("RESOURCE_NODES is undefined");
+      }
+
+      Object.values(RESOURCE_NODES).forEach((node) => {
+        this.createSidebarItem(
+          {
+            id: node.id,
+            color: "transparent", // No background color for resources
+            symbol: node.icon,
+          },
+          node.name,
+        );
+      });
+    } catch (e) {
+      console.error("Sidebar Render Error:", e);
+      this.sidebar.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
     }
-
-    // Separator
-    const sep = document.createElement("hr");
-    sep.style.borderColor = "rgba(255,255,255,0.1)";
-    sep.style.margin = "10px 0";
-    this.sidebar.appendChild(sep);
-
-    // Legend (Biomes)
-    const sortedTypes = Object.values(TERRAIN_TYPES)
-      .filter((t) => t.id !== "HOME")
-      .sort((a, b) => a.id.localeCompare(b.id));
-
-    sortedTypes.forEach((type) => {
-      this.createSidebarItem(type);
-    });
   }
 
   createSidebarItem(type, labelOverride = null, isHeader = false) {

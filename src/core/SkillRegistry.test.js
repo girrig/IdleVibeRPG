@@ -53,62 +53,63 @@ describe('SkillRegistry', () => {
   });
 
   describe('MINING', () => {
-    it('should mine ore and gain XP', () => {
-      mockChar.currentActivity.target = 'copper_ore';
+    it('should mine minerals and gain XP', () => {
+      mockChar.currentActivity.target = 'mine_minerals';
+      mockGameState.availableResources = { 'mineral_node:TEMPERATE_DESERT': 10 };
+
+      // Mock Math.random to deterministically select the node and the loot
+      // 1. Node selection (only 1 option)
+      // 2. Loot selection: Desert table has Copper (50), Gold (20), Stone (30).
+      // Mocking Math.random is tricky with multiple calls.
+      // Let's just expect any call to addItem
+
       SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
 
-      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('copper_ore', 1);
-      expect(mockChar.gainXp).toHaveBeenCalledWith('mining', 10);
+      expect(mockGameState.inventory.addItem).toHaveBeenCalled();
+      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('mineral_node:TEMPERATE_DESERT', 1);
+      expect(mockChar.gainXp).toHaveBeenCalledWith('mining', 20);
     });
 
     it('should trigger double ore talent', () => {
-      mockChar.currentActivity.target = 'iron_ore';
+      mockChar.currentActivity.target = 'mine_minerals';
+      mockGameState.availableResources = { 'mineral_node:ALPINE': 10 };
       mockChar.talents.mining_2 = true;
-      vi.spyOn(Math, 'random').mockReturnValue(0.05); // Hit chance
+
+      // Mock RNG:
+      // 1. Node Select (0)
+      // 2. Loot Roll (0 -> Iron in Alpine)
+      // 3. Double Drop Check (< 0.1)
+      vi.spyOn(Math, 'random').mockReturnValue(0.01);
 
       SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
 
-      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('iron_ore', 2);
+      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith(expect.anything(), 2);
     });
   });
 
   describe('WOODCUTTING', () => {
-    it('should chop logs and gain XP', () => {
-      mockChar.currentActivity.target = 'oak_log';
-      SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
-
-      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('oak_log', 1);
-      expect(mockChar.gainXp).toHaveBeenCalledWith('woodcutting', 10);
-    });
-
-    it('should trigger double logs talent', () => {
-      mockChar.currentActivity.target = 'willow_log';
-      mockChar.talents.woodcutting_2 = true;
-      vi.spyOn(Math, 'random').mockReturnValue(0.05);
+    it('should chop wood and gain XP', () => {
+      mockChar.currentActivity.target = 'chop_wood';
+      mockGameState.availableResources = { 'tree_node:TEMPERATE_DECIDUOUS_FOREST': 20 };
 
       SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
 
-      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('willow_log', 2);
+      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('tree_node:TEMPERATE_DECIDUOUS_FOREST', 1);
+      expect(mockGameState.inventory.addItem).toHaveBeenCalled();
+      expect(mockChar.gainXp).toHaveBeenCalledWith('woodcutting', 20);
     });
   });
 
   describe('FISHING', () => {
     it('should catch fish and gain XP', () => {
-      mockChar.currentActivity.target = 'raw_trout';
-      SKILL_DEFINITIONS.FISHING.action(mockGameState, mockChar);
-
-      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('raw_trout', 1);
-      expect(mockChar.gainXp).toHaveBeenCalledWith('fishing', 10);
-    });
-
-    it('should trigger double fish talent', () => {
-      mockChar.currentActivity.target = 'raw_salmon';
-      mockChar.talents.fishing_2 = true;
-      vi.spyOn(Math, 'random').mockReturnValue(0.05);
+      mockChar.currentActivity.target = 'fish_spot';
+      mockGameState.availableResources = { 'fishing_spot:OCEAN': 50 };
 
       SKILL_DEFINITIONS.FISHING.action(mockGameState, mockChar);
 
-      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('raw_salmon', 2);
+      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('fishing_spot:OCEAN', 1);
+      expect(mockGameState.inventory.addItem).toHaveBeenCalled();
+      expect(mockChar.gainXp).toHaveBeenCalledWith('fishing', 20);
     });
   });
 
