@@ -1,4 +1,5 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-node scripts/smart-release.js
+# Run tests before pushing to ensure quality
+yarn test
