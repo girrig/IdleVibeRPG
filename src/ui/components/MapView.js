@@ -386,8 +386,12 @@ export class MapView {
     });
 
     for (let y = 0; y < height; y++) {
+      if (!tiles[y]) continue; // Safety check
       for (let x = 0; x < width; x++) {
         const tile = tiles[y][x];
+        // Safety check for undefined tiles
+        if (!tile) continue;
+
         let color; // Declare color variable
         if (!tile.explored) {
           // Fog of War: Black

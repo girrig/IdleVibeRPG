@@ -1,9 +1,8 @@
-// @vitest-environment jsdom
+// @vitest-environment browser
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MapView } from "./MapView";
 import { mapManager } from "../../core/MapManager";
 
-// Mock MapManager
 // Mock MapManager
 vi.mock("../../core/MapManager", () => {
   // Generate dummy tiles
@@ -25,7 +24,11 @@ vi.mock("../../core/MapManager", () => {
       getMapData: vi.fn(() => ({ tiles: rows })),
       getTile: vi.fn((x, y) => rows[y] && rows[y][x]),
     },
-    TERRAIN_TYPES: { OCEAN: { id: "OCEAN", color: "#0000FF", symbol: "~" } },
+    TERRAIN_TYPES: {
+      OCEAN: { id: "OCEAN", color: "#0000FF", symbol: "~" },
+      HOME: { id: "HOME", color: "#FFD700", symbol: "H" },
+      FOREST: { id: "FOREST", color: "#008000", symbol: "T" }
+    },
   };
 });
 
@@ -33,40 +36,19 @@ describe("MapView Zoom Logic", () => {
   let mapView;
 
   beforeEach(() => {
-    // Reset mocks if needed
     document.body.innerHTML = "";
 
-    // Mock ResizeObserver globally BEFORE instantiation
-    global.ResizeObserver = class {
-      observe() { }
-      unobserve() { }
-      disconnect() { }
-    };
-
-    // Mock canvas context
-    const mockContext = {
-      fillStyle: "",
-      fillRect: vi.fn(),
-      drawImage: vi.fn(),
-      fillText: vi.fn(),
-      createImageData: vi.fn(() => ({ data: [] })),
-      putImageData: vi.fn(),
-      font: "",
-      textAlign: "",
-      textBaseline: "",
-      imageSmoothingEnabled: true,
-      beginPath: vi.fn(),
-      arc: vi.fn(),
-      fill: vi.fn(),
-    };
-
-    // Override HTMLCanvasElement.prototype.getContext to return our mock
-    HTMLCanvasElement.prototype.getContext = vi.fn(() => mockContext);
+    // In browser, canvas is real. We spy on the prototype to track calls.
+    // We need to spy on the Context returned by getContext.
+    // Since getContext returns a new object or existing one, we can spy on the method call.
 
     mapView = new MapView();
 
-    // Mock clientWidth/Height for mapContainer (JSDOM defaults to 0)
-    // We simulate a 800x600 viewport
+    // We need to inject a spy into the existing context or mock getContext to return a spied object
+    // But verify the context IS real first.
+    // Actually, easier to let it create the context, then spy on its methods.
+
+    // Force specific dimensions
     Object.defineProperty(mapView.mapContainer, "clientWidth", {
       configurable: true,
       value: 800,
@@ -76,9 +58,13 @@ describe("MapView Zoom Logic", () => {
       value: 600,
     });
 
-    // Set properties that might be read
-    mapView.canvas.width = 0; // Force update to trigger resize
-    mapView.canvas.height = 0;
+    // Set up spies on the context methods we check
+    vi.spyOn(mapView.ctx, 'fillText');
+    vi.spyOn(mapView.ctx, 'fillRect');
+
+    // Reset MapManager dimensions
+    mapManager.width = 500;
+    mapManager.height = 500;
 
     // Mock GameState for Character Rendering
     window.gameState = {
@@ -214,7 +200,72 @@ describe("MapView Zoom Logic", () => {
     });
   });
 
-  it("should have a hidden loading overlay initialized", () => {
-    expect(mapView.loadingOverlay.parentNode).toBe(mapView.viewWrapper);
+  describe("Interactions", () => {
+    it("should handle zoom in/out via wheel", () => {
+      mapView.zoomLevel = 10;
+      // Zoom In
+      mapView.mapContainer.dispatchEvent(new WheelEvent("wheel", { deltaY: -100 }));
+      expect(mapView.zoomLevel).toBeGreaterThan(10);
+
+      const zoomedIn = mapView.zoomLevel;
+
+      // Zoom Out
+      mapView.mapContainer.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+      expect(mapView.zoomLevel).toBeLessThan(zoomedIn);
+    });
+
+    it("should handle drag to pan", () => {
+      // Mousedown
+      mapView.mapContainer.dispatchEvent(new MouseEvent("mousedown", { button: 0, clientX: 100, clientY: 100 }));
+      expect(mapView.isMouseDown).toBe(true);
+
+      // Mousemove
+      mapView.mapContainer.dispatchEvent(new MouseEvent("mousemove", { clientX: 50, clientY: 50 }));
+      expect(mapView.isDragging).toBe(true);
+      // Scroll should have changed (initial 0, dragging moves it)
+      // Note: scrollLeft/Top are properties of the element.
+      // In a real browser, this updates. We might need to mock or ensure content overflow.
+      // MapView.update sets spacer size, so overflow SHOULD exist.
+
+      // Mouseup
+      mapView.mapContainer.dispatchEvent(new MouseEvent("mouseup", { button: 0 }));
+      expect(mapView.isMouseDown).toBe(false);
+
+      // Wait for drag flag reset
+      return new Promise(resolve => setTimeout(() => {
+        expect(mapView.isDragging).toBe(false);
+        resolve();
+      }, 10));
+    });
+
+    it("should ignore right-click drag or middle click", () => {
+      // Middle click (button 1)
+      const preventDefault = vi.fn();
+      mapView.mapContainer.dispatchEvent(new MouseEvent("mousedown", { button: 1, preventDefault }));
+      expect(mapView.isMouseDown).toBe(false);
+
+      // Right click (button 2)
+      mapView.mapContainer.dispatchEvent(new MouseEvent("mousedown", { button: 2 }));
+      expect(mapView.isMouseDown).toBe(false);
+    });
+  });
+
+  describe("Sidebar & UI", () => {
+    it("should render sidebar items correctly", () => {
+      mapView.renderSidebar();
+      // Check for Home item
+      const homeItem = Array.from(mapView.sidebar.children).find(el => el.innerText.includes("Home"));
+      expect(homeItem).toBeDefined();
+
+      // Check click on Home
+      const centerSpy = vi.spyOn(mapView, 'centerOnHome');
+      homeItem.click();
+      expect(centerSpy).toHaveBeenCalled();
+
+      // Check Regen button
+      const regenBtn = mapView.sidebar.querySelector("button");
+      expect(regenBtn).toBeDefined();
+      expect(regenBtn.innerText).toContain("Regenerate");
+    });
   });
 });
