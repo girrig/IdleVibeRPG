@@ -221,6 +221,21 @@ export class SkillsView {
       costHtml = `<div class="action-cost" style="font-size: 0.8em; color: ${UI_COLORS.COST};">Requires: ${costStr}</div>`;
     }
 
+    // Available World Resource Check (for Woodcuttin/Mining/etc)
+    let availableHtml = "";
+    const targetResources = ["WOODCUTTING", "MINING", "FISHING"]; // Skills that gather from world
+    if (targetResources.includes(activeSkill.id) && key) { // Check key is simple resource ID often
+      // Actually, key is often the resource ID (oak_log, copper_ore)
+      // Let's verify if gameState has any record of it.
+      const avail = gameState.getAvailableResourceCount(key);
+      // Only show if it's relevant (non-zero or matching type)
+      // Or always show "World: 0" if it's a gatherable?
+      // Let's show it prominently.
+      availableHtml = `<div class="action-available" style="font-size: 0.9em; margin-top: 4px; color: #888;">
+            World: <span class="avail-count" data-res-id="${key}" style="color: ${avail > 0 ? '#4ade80' : '#f87171'}">${avail}</span>
+        </div>`;
+    }
+
     card.innerHTML = `
               ${iconHtml}
       <div class="action-details">
@@ -230,12 +245,20 @@ export class SkillsView {
           <span class="action-xp">${opt.xp} XP</span>
           <span class="action-time">⏱️ ${(opt.interval || activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL) / 1000}s</span>
         </div>
+        ${availableHtml}
         ${costHtml}
       </div>
               ${isLocked ? '<div class="lock-overlay">🔒</div>' : ""}
       `;
 
-    // Read-Only: No click handler
+    // Click handler for task starting
+    card.addEventListener("click", () => {
+      if (!isLocked) {
+        const char = gameState.characters[this.uiManager.selectedCharIndex];
+        // start task...
+        this.uiManager.handleSkillAction(activeSkill.id, key);
+      }
+    });
 
     container.appendChild(card);
   }
@@ -297,6 +320,18 @@ export class SkillsView {
         Object.entries(activeSkill.options).forEach(([key, opt]) => {
           if (cardIndex >= cards.length) return;
           const card = cards[cardIndex];
+
+          // Update Available Count
+          const availSpan = card.querySelector(".avail-count");
+          if (availSpan) {
+            const resId = availSpan.getAttribute("data-res-id");
+            if (resId) {
+              const avail = gameState.getAvailableResourceCount(resId);
+              availSpan.innerText = avail;
+              availSpan.style.color = avail > 0 ? '#4ade80' : '#f87171';
+            }
+          }
+
           const isLocked = currentLvl < opt.level;
           if (isLocked) {
             card.classList.add("locked");

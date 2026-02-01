@@ -1,5 +1,5 @@
 import { getItemDefinition } from "./ItemRegistry.js";
-import { SKILL_COLORS, GAME_CONFIG } from "./Constants.js";
+import { SKILL_COLORS, GAME_CONFIG, BIOME_RESOURCE_MAP } from "./Constants.js";
 import { mapManager } from "./MapManager.js";
 import { TERRAIN_TYPES } from "./TerrainTypes.js";
 
@@ -51,6 +51,16 @@ export const SKILL_DEFINITIONS = {
         // Optional: Notify double drop?
         // gameState.triggerNotification("Double Ore!", "success");
       }
+
+      // 1. Check World Availability
+      if (gameState.getAvailableResourceCount(targetId) < amount) {
+        gameState.triggerNotification("This resource is depleted! Explore more.", "error");
+        char.stopActivity();
+        return;
+      }
+
+      // 2. Consume & Reward
+      gameState.consumeAvailableResource(targetId, amount);
       gameState.inventory.addItem(targetId, amount);
       if (option) char.gainXp("mining", option.xp);
     },
@@ -75,6 +85,15 @@ export const SKILL_DEFINITIONS = {
       // woodcutting_2: 10% chance for double logs
       if (char.talents.woodcutting_2 && Math.random() < 0.1) amount = 2;
 
+      // 1. Check World Availability
+      if (gameState.getAvailableResourceCount(targetId) < amount) {
+        gameState.triggerNotification("This resource is depleted! Explore more.", "error");
+        char.stopActivity();
+        return;
+      }
+
+      // 2. Consume & Reward
+      gameState.consumeAvailableResource(targetId, amount);
       gameState.inventory.addItem(targetId, amount);
       if (option) char.gainXp("woodcutting", option.xp);
     },
@@ -612,7 +631,22 @@ export const SKILL_DEFINITIONS = {
 
       // Move
       char.position = nextPos;
-      mapManager.visitTile(nextPos.x, nextPos.y);
+      const isNewVisit = mapManager.visitTile(nextPos.x, nextPos.y);
+      if (isNewVisit) {
+        // Add resources based on Biome
+        const tile = mapManager.getTile(nextPos.x, nextPos.y);
+        const resourceDrop = BIOME_RESOURCE_MAP[tile.type];
+        if (resourceDrop) {
+          // Flatten checks: We just look for any matching keys in the generic map
+          // But wait, the map structure is { woodcutting: { oak_log: 20 } }
+          // We should iterate all categories
+          Object.values(resourceDrop).forEach((categoryDrops) => {
+            Object.entries(categoryDrops).forEach(([resId, amount]) => {
+              gameState.addAvailableResource(resId, amount);
+            });
+          });
+        }
+      }
 
 
       // Explore with Radius

@@ -38,3 +38,24 @@ export const GAME_CONFIG = {
   },
   STARTING_POSITION: { x: 250, y: 250 },
 };
+
+export const BIOME_RESOURCE_MAP = {
+  // Woodcutting
+  TEMPERATE_DECIDUOUS_FOREST: { oak_log: 20 },
+  BOREAL_FOREST: { yew_log: 20 },
+  TEMPERATE_RAINFOREST: { willow_log: 20 },
+  TROPICAL_RAINFOREST: { magic_log: 5 },
+  SHRUBLAND: { oak_log: 5 },
+
+  // Mining
+  ALPINE: { copper_ore: 15, iron_ore: 5 },
+  ALPINE_TUNDRA: { iron_ore: 15, coal: 10 },
+  SUBTROPICAL_DESERT: { copper_ore: 20 },
+  TEMPERATE_DESERT: { copper_ore: 10, iron_ore: 5 },
+  POLAR_DESERT: { mithril_ore: 2 }, // Rare
+
+  // Fishing (Optional - visiting water adds fish?)
+  SHALLOW_OCEAN: { raw_trout: 15, raw_salmon: 5 },
+  OCEAN: { raw_tuna: 10, raw_lobster: 5, raw_swordfish: 2 },
+  BEACH: { raw_trout: 5 },
+};

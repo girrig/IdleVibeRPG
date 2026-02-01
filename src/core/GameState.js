@@ -43,6 +43,8 @@ class GameState {
         }
       });
     }
+
+    this.availableResources = {}; // Tracks globally available resources found on map
   }
 
   initialize() {
@@ -102,6 +104,7 @@ class GameState {
       lastTick: this.lastTick,
       settings: this.settings,
       map: mapManager.getSerializableMapData(),
+      availableResources: this.availableResources,
     };
     return SaveManager.save(
       "idleVibeRPG_save",
@@ -137,6 +140,9 @@ class GameState {
 
     // Restore Map
     mapManager.initialize(data.map);
+
+    // Restore Available Resources
+    this.availableResources = data.availableResources || {};
 
     if (data.settings) {
       // Deep merge settings to ensure new keys exist
@@ -176,6 +182,7 @@ class GameState {
     // 2. Clear Internal State immediately for checking visual feedback
     this.characters = [];
     this.inventory.items = {};
+    this.availableResources = {};
 
     // 3. Update UI to show empty state
     this.notifyListeners();
@@ -273,6 +280,28 @@ class GameState {
     // Only show +1 if qty is 1, etc.
     const sign = qty > 0 ? "+" : ""; // though usually we only add positive amounts here
     this.triggerNotification(`${sign}${qty} ${name} ${icon}`, "item");
+  }
+
+  // --- World Resource Management ---
+
+  addAvailableResource(resourceId, amount) {
+    if (!this.availableResources[resourceId]) {
+      this.availableResources[resourceId] = 0;
+    }
+    this.availableResources[resourceId] += amount;
+    // Optional: Notify on big discoveries?
+  }
+
+  getAvailableResourceCount(resourceId) {
+    return this.availableResources[resourceId] || 0;
+  }
+
+  consumeAvailableResource(resourceId, amount = 1) {
+    if (this.getAvailableResourceCount(resourceId) >= amount) {
+      this.availableResources[resourceId] -= amount;
+      return true;
+    }
+    return false;
   }
 
   tick() {
