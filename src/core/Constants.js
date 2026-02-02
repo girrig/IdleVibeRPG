@@ -44,7 +44,7 @@ export const RESOURCE_NODES = {
   mineral_node: {
     id: "mineral_node",
     name: "Mineral Vein",
-    icon: "🪨",
+    icon: "⛏️",
     scale: 0.1, // Frequent but varied
     threshold: 0.65,
     amount: 25, // Capacity of the node (how many Mining actions)

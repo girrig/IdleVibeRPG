@@ -76,14 +76,7 @@ export class MapView {
 
     // Sidebar
     this.sidebar = document.createElement("div");
-    this.sidebar.style.width = "200px";
-    this.sidebar.style.minWidth = "200px";
-    this.sidebar.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
-    this.sidebar.style.borderLeft = "1px solid rgba(255, 255, 255, 0.1)";
-    this.sidebar.style.padding = "20px";
-    this.sidebar.style.display = "flex";
-    this.sidebar.style.flexDirection = "column";
-    this.sidebar.style.overflowY = "auto";
+    this.sidebar.className = "map-view-sidebar";
 
     this.element.appendChild(this.viewWrapper);
     this.element.appendChild(this.sidebar);
@@ -91,6 +84,12 @@ export class MapView {
     // State
     this.zoomLevel = 12; // Start smaller for big map
     // this.hoverTile = null; // Removed
+
+    // Sidebar Section Persistence
+    this.sectionStates = {
+      Terrain: false,
+      Resources: false
+    };
 
     // Events
     this.bindEvents();
@@ -255,6 +254,11 @@ export class MapView {
     container.innerHTML = "";
     container.appendChild(this.element);
 
+    // Ensure sidebar is rendered (idempotent check)
+    if (this.sidebar.childElementCount === 0) {
+      this.renderSidebar();
+    }
+
     // Restore Scroll Position if saved
     if (this.lastScrollLeft !== undefined && this.lastScrollTop !== undefined) {
       // We need to wait for layout/spacer update?
@@ -271,7 +275,8 @@ export class MapView {
 
   // Called when map data or zoom/filters change
   update() {
-    this.renderSidebar();
+    // this.renderSidebar(); // REMOVED: Static sidebar shouldn't re-render on game tick
+
 
     const mapWidthTotal = mapManager.width * this.zoomLevel;
     const mapHeightTotal = mapManager.height * this.zoomLevel;
@@ -644,25 +649,67 @@ export class MapView {
     }
   }
 
+  // Helper: Create Collapsible Section
+  createCollapsibleSection(title, defaultIsOpen, contentCallback) {
+    const container = document.createElement("div");
+
+    // Resolve initial state: Use stored state if available, otherwise default
+    const isOpen = this.sectionStates[title] !== undefined ? this.sectionStates[title] : defaultIsOpen;
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "map-sidebar-header";
+    // If not open by default, add collapsed class initially? (Logic below handles click)
+
+    // Chevron Icon (SVG)
+    const chevron = document.createElement("div");
+    chevron.innerHTML = `<svg viewBox="0 0 24 24" class="header-icon"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg>`;
+
+    const titleText = document.createElement("span");
+    titleText.innerText = title;
+
+    header.appendChild(titleText);
+    header.appendChild(chevron);
+
+    // Content Wrapper
+    const content = document.createElement("div");
+    content.className = "sidebar-section-content";
+    if (!isOpen) {
+      content.classList.add("collapsed");
+      header.classList.add("collapsed");
+    }
+
+    // Toggle Logic
+    header.onclick = () => {
+      const isCollapsed = content.classList.contains("collapsed");
+      if (isCollapsed) {
+        content.classList.remove("collapsed");
+        header.classList.remove("collapsed");
+        this.sectionStates[title] = true;
+      } else {
+        content.classList.add("collapsed");
+        header.classList.add("collapsed");
+        this.sectionStates[title] = false;
+      }
+    };
+
+    container.appendChild(header);
+    container.appendChild(content);
+
+    // Build Content
+    contentCallback(content);
+
+    return container;
+  }
+
   renderSidebar() {
     try {
       this.sidebar.innerHTML = "";
-      const header = document.createElement("h3");
-      header.innerText = "Terrain";
-      header.style.color = "#fff";
-      header.style.textAlign = "center";
-      this.sidebar.appendChild(header);
 
       // Regen Button
       const regenBtn = document.createElement("button");
       regenBtn.innerText = "Regenerate World";
-      regenBtn.style.width = "100%";
-      regenBtn.style.padding = "8px";
-      regenBtn.style.marginBottom = "15px";
-      regenBtn.style.cursor = "pointer";
-      regenBtn.style.backgroundColor = "#444";
-      regenBtn.style.color = "#fff";
-      regenBtn.style.border = "1px solid #666";
+      regenBtn.className = "map-sidebar-btn";
       regenBtn.onclick = () => {
         if (confirm("Regenerate world?")) {
           // Show loading state
@@ -689,129 +736,102 @@ export class MapView {
       };
       this.sidebar.appendChild(regenBtn);
 
-      // 1. Home / Specials
+      // 1. Home / Specials (Moved to top level)
       const homeType = TERRAIN_TYPES.HOME;
       if (homeType) {
         const item = document.createElement("div");
-        item.style.display = "flex";
-        item.style.alignItems = "center";
-        item.style.padding = "4px";
-        item.style.cursor = "pointer";
-        item.style.color = "#FFD700"; // Gold
-        item.style.fontWeight = "bold";
-        item.style.marginBottom = "5px";
-
+        item.className = "sidebar-item-row interactive";
         item.onclick = () => this.centerOnHome();
 
-        // Add hover effect
-        item.onmouseenter = () =>
-          (item.style.backgroundColor = "rgba(255, 255, 255, 0.1)");
-        item.onmouseleave = () => (item.style.backgroundColor = "transparent");
-
         const box = document.createElement("div");
-        box.style.width = "16px";
-        box.style.height = "16px";
-        box.style.minWidth = "16px";
-        box.style.flexShrink = "0";
+        box.className = "terrain-color-box";
         box.style.backgroundColor = homeType.color;
-        box.style.marginRight = "8px";
-        box.style.border = "1px solid #fff"; // Highlight it
 
         const text = document.createElement("span");
-        text.innerText = `${homeType.symbol} Home (Click to Center)`;
-        text.style.fontSize = "12px";
+        text.className = "sidebar-item-text";
+        text.innerText = `Home (Click to Center)`;
 
         item.appendChild(box);
         item.appendChild(text);
         this.sidebar.appendChild(item);
       }
 
-      // Separator
-      const sep = document.createElement("hr");
-      sep.style.borderColor = "rgba(255,255,255,0.1)";
-      sep.style.margin = "10px 0";
-      this.sidebar.appendChild(sep);
+      // --- Terrain Section ---
+      const terrainParams = (container) => {
+        // Legend (Biomes)
+        const sortedTypes = Object.values(TERRAIN_TYPES)
+          .filter((t) => t.id !== "HOME")
+          .sort((a, b) => a.id.localeCompare(b.id));
 
-      // Legend (Biomes)
-      const sortedTypes = Object.values(TERRAIN_TYPES)
-        .filter((t) => t.id !== "HOME")
-        .sort((a, b) => a.id.localeCompare(b.id));
+        sortedTypes.forEach((type) => {
+          const item = this.createSidebarItemElement(type, null, false, false);
+          container.appendChild(item);
+        });
+      };
 
-      sortedTypes.forEach((type) => {
-        this.createSidebarItem(type);
-      });
+      this.sidebar.appendChild(this.createCollapsibleSection("Terrain", false, terrainParams));
 
-      // Separator
-      const sep2 = document.createElement("hr");
-      sep2.style.borderColor = "rgba(255,255,255,0.1)";
-      sep2.style.margin = "10px 0";
-      this.sidebar.appendChild(sep2);
+      // --- Resources Section ---
+      const resourceParams = (container) => {
+        if (!RESOURCE_NODES) return;
 
-      const resHeader = document.createElement("h3");
-      resHeader.innerText = "Resources";
-      resHeader.style.color = "#fff";
-      resHeader.style.fontSize = "14px";
-      resHeader.style.marginBottom = "5px";
-      resHeader.style.textAlign = "center";
-      this.sidebar.appendChild(resHeader);
+        Object.values(RESOURCE_NODES).forEach((node) => {
+          const item = this.createSidebarItemElement(
+            {
+              id: node.id,
+              color: "transparent",
+              symbol: node.icon,
+            },
+            node.name
+          );
+          container.appendChild(item);
+        });
+      };
 
-      if (!RESOURCE_NODES) {
-        throw new Error("RESOURCE_NODES is undefined");
-      }
-
-      Object.values(RESOURCE_NODES).forEach((node) => {
-        this.createSidebarItem(
-          {
-            id: node.id,
-            color: "transparent", // No background color for resources
-            symbol: node.icon,
-          },
-          node.name,
-        );
-      });
+      this.sidebar.appendChild(this.createCollapsibleSection("Resources", false, resourceParams));
     } catch (e) {
       console.error("Sidebar Render Error:", e);
       this.sidebar.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
     }
   }
 
-  createSidebarItem(type, labelOverride = null, isHeader = false) {
+  createSidebarItemElement(type, labelOverride = null, isHeader = false, showSymbol = true) {
     const item = document.createElement("div");
-    item.style.display = "flex";
-    item.style.alignItems = "center";
-    item.style.padding = "4px";
-    item.style.color = "#fff";
-    // item.style.cursor = "pointer"; // No longer clickable
+    item.className = "sidebar-item-row";
 
     if (isHeader) {
+      // Legacy flag
       item.style.fontWeight = "bold";
-      item.style.color = "#FFD700";
+      item.style.color = "#fbbf24";
     }
 
-    // No opacity changes or click handlers
-    // const isHidden = this.hiddenTerrainTypes.has(type.id);
-    // item.style.opacity = isHidden ? "0.5" : "1";
-
     const box = document.createElement("div");
-    box.style.width = "16px";
-    box.style.height = "16px";
-    box.style.minWidth = "16px"; // Extra safety
-    box.style.flexShrink = "0"; // Prevent shrinking
+    box.className = "terrain-color-box";
     box.style.backgroundColor = type.color;
-    box.style.marginRight = "8px";
+
+    // Hide box for resources if they are transparent
+    if (type.color === "transparent") {
+      box.style.display = "none";
+    }
 
     const text = document.createElement("span");
-    // Format: "🌲 FOREST" (using symbol + id)
-    // Clean up ID: Replace underscores with spaces, Title Case if possible (css text-transform properly)
-    // For now simple regex replacement
-    const readableName = (labelOverride || type.id).replace(/_/g, " ");
-    const symbol = type.symbol || "";
-    text.innerText = `${symbol} ${readableName}`;
-    text.style.fontSize = "12px";
-    text.style.textTransform = "capitalize"; // Make it look nicer
+    text.className = "sidebar-item-text";
 
-    item.appendChild(box);
+    const readableName = (labelOverride || type.id).toLowerCase().replace(/_/g, " ");
+    const symbol = (showSymbol && type.symbol) ? type.symbol : "";
+
+    const content = symbol ? `${symbol}  ${readableName}` : readableName;
+    text.innerText = content.trim();
+
+    if (type.color !== "transparent") {
+      item.appendChild(box);
+    }
     item.appendChild(text);
-    this.sidebar.appendChild(item);
+    return item;
+  }
+
+  // Legacy Adapter if needed, or just remove if unused. Keeping for safety but it wont be called internally.
+  createSidebarItem(type, labelOverride = null, isHeader = false, showSymbol = true) {
+    this.sidebar.appendChild(this.createSidebarItemElement(type, labelOverride, isHeader, showSymbol));
   }
 }

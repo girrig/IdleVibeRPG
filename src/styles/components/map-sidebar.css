@@ -1,0 +1,166 @@
+/* Map Sidebar Container */
+.map-view-sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: rgba(20, 20, 30, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+/* Headers */
+.map-sidebar-header {
+    color: #fbbf24;
+    /* Amber-400 / Gold */
+    text-align: left;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(251, 191, 36, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.map-sidebar-header:hover {
+    color: #fcd34d;
+    /* Amber-300 */
+    border-bottom-color: rgba(251, 191, 36, 0.4);
+}
+
+.header-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+    fill: currentColor;
+}
+
+.map-sidebar-header.collapsed .header-icon {
+    transform: rotate(-90deg);
+}
+
+.sidebar-section-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+    max-height: 1000px;
+    /* Arbitrary large height */
+    opacity: 1;
+}
+
+.sidebar-section-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: 0;
+    /* Clean up spacing */
+}
+
+.map-sidebar-header.secondary {
+    margin-top: 20px;
+    color: #ffff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 12px;
+}
+
+/* Items */
+.sidebar-item-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.03);
+    transition: all 0.2s ease;
+    color: #e2e8f0;
+    border: 1px solid transparent;
+}
+
+.sidebar-item-row.interactive:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    transform: translateX(2px);
+    border-color: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+}
+
+.sidebar-item-row.interactive:active {
+    transform: scale(0.98) translateX(2px);
+}
+
+/* Color Box for Terrain */
+.terrain-color-box {
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    border-radius: 3px;
+    margin-right: 12px;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Text */
+.sidebar-item-text {
+    font-size: 14px;
+    text-transform: capitalize;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+}
+
+/* Buttons */
+.map-sidebar-btn {
+    width: 100%;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    /* Indigo */
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.map-sidebar-btn:hover {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.map-sidebar-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Scrollbar */
+.map-view-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.map-view-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.map-view-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.map-view-sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
