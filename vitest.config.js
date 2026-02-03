@@ -3,6 +3,7 @@ import { playwright } from '@vitest/browser-playwright';
 
 export default defineConfig({
     test: {
+        environment: 'jsdom',
         coverage: {
             provider: 'istanbul',
             reporter: ['text', 'json-summary', 'html'],
@@ -18,9 +19,6 @@ export default defineConfig({
                     statements: 80,
                 }
             },
-            environment: 'jsdom',
-
-            // exclude: ['src/main.jsx', 'postgresql/**'], // Example exclusions
         },
         browser: {
             enabled: false, // Disabled by default, enabled via CLI flag --browser

@@ -1,8 +1,20 @@
 import { getTalentDefinition, TALENT_DEFINITIONS } from "./TalentRegistry.js";
 import { SKILL_DEFINITIONS } from "./SkillRegistry.js";
 
-// Circular dependency fix: Use window.gameState instead of import
-// import { gameState } from "./GameState";
+// Maps talent column position to skill ID for talent point costs
+const COLUMN_TO_SKILL = {
+  3: "mining",
+  4: "woodcutting",
+  5: "fishing",
+  6: "fighting",
+  7: "fighting", // Defense branch shares fighting points
+  8: "smithing",
+  9: "exploring",
+};
+
+function getSkillForTalentColumn(col) {
+  return COLUMN_TO_SKILL[col] || null;
+}
 
 export class Character {
   constructor(id, name, type = "WARRIOR") {
@@ -13,9 +25,7 @@ export class Character {
     this.sprite = "character";
     this.stats = {
       level: 1,
-
       strength: 10,
-      dexterity: 10,
       dexterity: 10,
       intelligence: 10,
       sightRange: 5, // Radius of fog clear
@@ -48,6 +58,11 @@ export class Character {
     this.currentActivity = null; // e.g. { type: 'MINING', target: 'copper_ore', startTime: 12345, quantity: 10, progress: 0 }
     this.activityQueue = []; // Array of { type, target, quantity }
     this.activeGoalGroup = null; // Current GoalGroup being executed
+    this.gameContext = null; // Injected reference for notifications/saving (avoids circular imports)
+  }
+
+  setGameContext(ctx) {
+    this.gameContext = ctx;
   }
 
   static fromData(data) {
@@ -65,7 +80,6 @@ export class Character {
         char.skills[key].talentPoints = 0;
       }
     }
-    char.talents = { ...(data.talents || {}) };
     char.talents = { ...(data.talents || {}) };
     if (data.talentPoints === undefined) char.talentPoints = 3; // Retroactive grant for old saves
 
@@ -93,15 +107,7 @@ export class Character {
     let skillIdForPoints = null;
 
     if (!isAttribute) {
-      // Find which skill corresponds to this talent
-      // Simple mapping based on known structure
-      if (def.position.col === 3) skillIdForPoints = "mining";
-      else if (def.position.col === 4) skillIdForPoints = "woodcutting";
-      else if (def.position.col === 5) skillIdForPoints = "fishing";
-      else if (def.position.col === 6 || def.position.col === 7)
-        skillIdForPoints = "fighting";
-      else if (def.position.col === 8) skillIdForPoints = "smithing";
-      else if (def.position.col === 9) skillIdForPoints = "exploring";
+      skillIdForPoints = getSkillForTalentColumn(def.position.col);
     }
 
     // Check Resources (Do not deduct yet)
@@ -132,8 +138,8 @@ export class Character {
       def.effect(this);
     }
 
-    if (window.gameState)
-      window.gameState.triggerNotification(
+    if (this.gameContext)
+      this.gameContext.triggerNotification(
         `Unlocked talent: ${def.name}`,
         "master",
       );
@@ -166,15 +172,7 @@ export class Character {
     if (isAttribute) {
       this.talentPoints += def.cost;
     } else {
-      let skillIdForPoints = null;
-      if (def.position.col === 3) skillIdForPoints = "mining";
-      else if (def.position.col === 4) skillIdForPoints = "woodcutting";
-      else if (def.position.col === 5) skillIdForPoints = "fishing";
-      else if (def.position.col === 6 || def.position.col === 7)
-        skillIdForPoints = "fighting";
-      else if (def.position.col === 8) skillIdForPoints = "smithing";
-      else if (def.position.col === 9) skillIdForPoints = "exploring";
-
+      const skillIdForPoints = getSkillForTalentColumn(def.position.col);
       if (skillIdForPoints && this.skills[skillIdForPoints]) {
         this.skills[skillIdForPoints].talentPoints += def.cost;
       }
@@ -183,8 +181,8 @@ export class Character {
     // 4. Remove Talent
     delete this.talents[talentId];
 
-    if (window.gameState)
-      window.gameState.triggerNotification(
+    if (this.gameContext)
+      this.gameContext.triggerNotification(
         `Refunded talent: ${def.name}`,
         "info",
       );
@@ -196,8 +194,8 @@ export class Character {
     // If busy, add to queue
     if (this.currentActivity) {
       this.activityQueue.push({ type, target, quantity });
-      if (window.gameState)
-        window.gameState.triggerNotification(
+      if (this.gameContext)
+        this.gameContext.triggerNotification(
           `${this.name}: Queued ${target} (x${quantity > 0 ? quantity : "∞"})`,
           "activity",
         );
@@ -218,8 +216,8 @@ export class Character {
       def && def.color ? { id: "activity", color: def.color } : "activity";
 
     // Only notify if NOT driven by a goal (TaskRunner handles goal start notification)
-    if (window.gameState) {
-      window.gameState.triggerNotification(
+    if (this.gameContext) {
+      this.gameContext.triggerNotification(
         `${this.name} started ${type} on ${target} (x${quantity > 0 ? quantity : "∞"})`,
         notifType,
       );
@@ -229,8 +227,8 @@ export class Character {
   completeCurrentTask() {
     if (!this.currentActivity) return;
 
-    if (window.gameState)
-      window.gameState.triggerNotification(
+    if (this.gameContext)
+      this.gameContext.triggerNotification(
         `${this.name} finished ${this.currentActivity.target}`,
         "activity",
       );
@@ -256,8 +254,8 @@ export class Character {
       const homeY = 250;
       if (this.position.x !== homeX || this.position.y !== homeY) {
         this.currentActivity.phase = "RETURNING";
-        if (window.gameState)
-          window.gameState.triggerNotification(
+        if (this.gameContext)
+          this.gameContext.triggerNotification(
             `${this.name}: "Heading back to town..."`,
             "activity",
           );
@@ -274,8 +272,8 @@ export class Character {
 
     this.currentActivity = null;
     this.activityQueue = []; // Clear queue on manual stop
-    if (window.gameState)
-      window.gameState.triggerNotification(
+    if (this.gameContext)
+      this.gameContext.triggerNotification(
         `${this.name} stopped activity (Queue Cleared)`,
         "activity",
       );
@@ -318,11 +316,10 @@ export class Character {
       const notifType =
         def && def.color ? { id: "levelUp", color: def.color } : "levelUp";
 
-      if (window.gameState) {
-        window.gameState.triggerNotification(msg, notifType);
-        window.gameState.saveGame();
+      if (this.gameContext) {
+        this.gameContext.triggerNotification(msg, notifType);
+        this.gameContext.saveGame();
       }
-      // TODO: Notify UI of level up (via GameState listeners)
     }
   }
 }

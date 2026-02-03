@@ -128,9 +128,11 @@ class GameState {
     if (!data) return false;
 
     // Restore characters
-    this.characters = data.characters.map((charData) =>
-      Character.fromData(charData),
-    );
+    this.characters = data.characters.map((charData) => {
+      const char = Character.fromData(charData);
+      char.setGameContext(this);
+      return char;
+    });
 
     // Restore Inventory
     this.inventory.loadData({ items: data.inventory });
@@ -247,6 +249,7 @@ class GameState {
 
   addCharacter(char) {
     console.log("Adding Character:", char.name);
+    char.setGameContext(this);
     this.characters.push(char);
     this.notifyListeners();
   }
@@ -277,8 +280,7 @@ class GameState {
     // Check master switch
     if (!this.settings.notifications.master) return;
 
-    // Start by resolving the type key (string)
-    // Start by resolving the type key (string)
+    // Resolve the type key (string) from type object or direct string
     const typeKey = type && typeof type === "object" ? type.id : type;
 
     // Check specific type switch if exists

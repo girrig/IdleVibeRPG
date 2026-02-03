@@ -1,20 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Character } from "./Character";
 
-// Mock dependencies
-vi.mock("./GameState", () => ({
-  gameState: {
-    triggerNotification: vi.fn(),
-    saveGame: vi.fn(),
-  },
-}));
-
-// Mock window.gameState
-global.window = {
-  gameState: {
-    triggerNotification: vi.fn(),
-    saveGame: vi.fn(),
-  },
+// Mock game context for dependency injection
+const mockGameContext = {
+  triggerNotification: vi.fn(),
+  saveGame: vi.fn(),
 };
 
 describe("Character Core Logic", () => {
@@ -23,6 +13,7 @@ describe("Character Core Logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     char = new Character("char1", "Hero");
+    char.setGameContext(mockGameContext);
   });
 
   describe("Initialization & Persistence", () => {
@@ -76,7 +67,7 @@ describe("Character Core Logic", () => {
       expect(char.skills.mining.xp).toBe(0);
 
       // Should trigger notification
-      expect(window.gameState.triggerNotification).toHaveBeenCalledWith(
+      expect(mockGameContext.triggerNotification).toHaveBeenCalledWith(
         expect.stringContaining("Level Up"),
         expect.anything(),
       );

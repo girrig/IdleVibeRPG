@@ -13,7 +13,22 @@ vi.mock("./MapManager", () => ({
     getSerializableMapData: vi.fn(() => ({ tiles: [] })),
   },
 }));
-vi.mock("./Character");
+vi.mock("./Character", () => {
+  class MockCharacter {
+    constructor(id, name, type) {
+      this.id = id;
+      this.name = name;
+      this.type = type;
+    }
+    setGameContext() {}
+    static fromData(data) {
+      const char = new MockCharacter(data.id, data.name, data.type);
+      Object.assign(char, data);
+      return char;
+    }
+  }
+  return { Character: MockCharacter };
+});
 // Mock SkillRegistry to avoid import issues or side effects during GameState usage
 vi.mock("./SkillRegistry", () => ({
   getSkillDefinition: vi.fn(),
@@ -69,7 +84,7 @@ describe("GameState", () => {
         map: { seed: 999 },
       };
       SaveManager.load.mockReturnValue(mockSaveData);
-      Character.fromData.mockImplementation((data) => data); // Mock hydration
+      // Character.fromData is already mocked via MockCharacter.fromData
 
       gameState.initialize();
 
@@ -98,7 +113,7 @@ describe("GameState", () => {
 
   describe("Save/Load", () => {
     it("should save game data correctly", () => {
-      gameState.addCharacter({ name: "TestChar" });
+      gameState.addCharacter(new Character(1, "TestChar", "WARRIOR"));
       gameState.inventory.items = { gold: 50 };
 
       gameState.saveGame();
