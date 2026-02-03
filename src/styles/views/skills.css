@@ -2,6 +2,7 @@
 .skill-section {
   margin-bottom: 24px;
 }
+
 .skill-section h3 {
   margin: 0 0 12px 0;
   font-weight: 400;
@@ -133,7 +134,8 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  cursor: default; /* Changed from pointer to default */
+  cursor: default;
+  /* Changed from pointer to default */
   transition: all 0.2s;
   position: relative;
   overflow: hidden;
@@ -178,10 +180,13 @@
 }
 
 .action-req {
-  color: #ef4444; /* Warning color if low? Or just neutral */
+  color: #ef4444;
+  /* Warning color if low? Or just neutral */
 }
+
 .skill-action-card:not(.locked) .action-req {
-  color: #4ade80; /* Green if unlocked */
+  color: #4ade80;
+  /* Green if unlocked */
 }
 
 .lock-overlay {
@@ -202,6 +207,44 @@
   background: rgba(0, 0, 0, 0.2);
 }
 
-.skill-action-card .action-icon {
-  font-size: 2rem;
+
+/* --- FORAGING THEME --- */
+/* Dark theme reverted per user request */
+/* .skills-modal-layout.skill-foraging { ... } */
+
+
+.skill-foraging .skills-options-header {
+  border-bottom-color: #4ade80;
+}
+
+.skill-foraging .skill-action-card {
+  background: rgba(46, 204, 113, 0.05);
+  /* Slight green tint */
+  border-radius: 16px;
+  /* softer */
+  border: 1px solid rgba(74, 222, 128, 0.15);
+}
+
+.skill-foraging .skill-action-card:hover:not(.locked) {
+  background: rgba(46, 204, 113, 0.1);
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+/* --- MINING THEME --- */
+.skill-mining .skill-action-card {
+  border-radius: 4px;
+  /* Harder edges */
+  background: rgba(230, 126, 34, 0.05);
+  border: 1px solid rgba(230, 126, 34, 0.15);
+}
+
+.skill-mining .skill-action-card:hover:not(.locked) {
+  background: rgba(230, 126, 34, 0.1);
+  border-color: rgba(230, 126, 34, 0.4);
+}
+
+/* --- WOODCUTTING THEME --- */
+.skill-woodcutting .skill-action-card {
+  background: rgba(139, 69, 19, 0.05);
+  border: 1px solid rgba(139, 69, 19, 0.2);
 }

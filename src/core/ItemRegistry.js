@@ -33,6 +33,19 @@ export const ITEM_DEFINITIONS = {
   bones: { name: "Bones", icon: "☠️", value: 1, category: "Drop" },
   demon_ashes: { name: "Demon Ashes", icon: "🌋", value: 10, category: "Drop" },
 
+  // Forageables
+  red_berries: { name: "Red Berries", icon: "🍒", value: 2, category: "Food" },
+  blueberries: { name: "Blueberries", icon: "🫐", value: 3, category: "Food" },
+  fiber: { name: "Fiber", icon: "🧵", value: 1, category: "Resource" },
+  mushroom: { name: "Mushroom", icon: "🍄", value: 5, category: "Food" },
+
+  // Gems
+  ruby: { name: "Ruby", icon: "🔴", value: 100, category: "Gem" },
+  sapphire: { name: "Sapphire", icon: "🔵", value: 100, category: "Gem" },
+  emerald: { name: "Emerald", icon: "🟢", value: 100, category: "Gem" },
+  topaz: { name: "Topaz", icon: "🟠", value: 80, category: "Gem" },
+  diamond: { name: "Diamond", icon: "💎", value: 500, category: "Gem" },
+
   // Bars
   copper_bar: { name: "Copper Bar", icon: "🟧", value: 15, category: "Bar" },
   iron_bar: { name: "Iron Bar", icon: "⬜", value: 30, category: "Bar" },

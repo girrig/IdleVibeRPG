@@ -12,6 +12,12 @@ export class SkillsView {
 
   render(container) {
     container.className = "mw-content skills-modal-layout";
+
+    // Add specific skill class for theming (e.g. "skill-foraging")
+    if (this.activeSkillTab) {
+      container.classList.add(`skill-${this.activeSkillTab.toLowerCase()}`);
+    }
+
     const char = gameState.characters[this.uiManager.selectedCharIndex];
 
     // Skill Categories Sidebar
@@ -84,7 +90,7 @@ export class SkillsView {
       if (activeSkill.id === "EXPLORING") {
         this.renderExplorationView(contentArea, activeSkill, char);
       } else {
-        if (["MINING", "WOODCUTTING", "FISHING"].includes(activeSkill.id)) {
+        if (["MINING", "WOODCUTTING", "FISHING", "FORAGING"].includes(activeSkill.id)) {
           this.renderGatheringSkillView(contentArea, activeSkill, char);
         } else {
           this.renderGenericSkillView(contentArea, activeSkill, char);
@@ -118,17 +124,19 @@ export class SkillsView {
   }
 
   populateGatheringGrid(grid, activeSkill, char) {
-    // Detect Resource Key
-    const firstOptionKey = Object.keys(activeSkill.options)[0];
-    const firstOption = activeSkill.options[firstOptionKey];
-    const resourceKey = firstOption.resourceId;
+    // 1. collect all unique resource keys for this skill
+    const resourceKeys = new Set();
+    Object.values(activeSkill.options).forEach((opt) => {
+      if (opt.resourceId) resourceKeys.add(opt.resourceId);
+    });
 
-    if (resourceKey) {
+    // 2. Iterate each resource type
+    resourceKeys.forEach((resourceKey) => {
       const nodeConfig = RESOURCE_NODES[resourceKey];
       if (!nodeConfig) return;
 
       // Iterate over ALL allowed biomes to create an Appendix
-      nodeConfig.allowedBiomes.forEach(biomeId => {
+      nodeConfig.allowedBiomes.forEach((biomeId) => {
         const biomeDef = TERRAIN_TYPES[biomeId];
         const biomeName = biomeDef ? biomeDef.id.replace(/_/g, " ") : biomeId;
         const biomeIcon = biomeDef ? biomeDef.symbol : "❓";
@@ -139,14 +147,20 @@ export class SkillsView {
 
         // Drops & Percentages
         let dropsHtml = "";
-        const table = (nodeConfig.biome_drops && nodeConfig.biome_drops[biomeId]) || nodeConfig.default_drops;
+        const table =
+          (nodeConfig.biome_drops && nodeConfig.biome_drops[biomeId]) ||
+          nodeConfig.default_drops;
 
         if (table) {
-          const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+          const totalWeight = table.reduce(
+            (sum, entry) => sum + entry.weight,
+            0,
+          );
 
-          dropsHtml = `<div class="drop-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">`;
+          dropsHtml = `<div class="drop-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
+                        <span style="font-size:0.8em; color:#888; margin-right:4px;">Drops:</span>`;
 
-          table.forEach(entry => {
+          table.forEach((entry) => {
             const itemDef = getItemDefinition(entry.item);
             const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
             const icon = itemDef ? itemDef.icon : "📦";
@@ -156,12 +170,12 @@ export class SkillsView {
                         <span class="drop-badge" style="
                             display: inline-flex; 
                             align-items: center; 
-                            background: rgba(255, 255, 255, 0.05); 
+                            background: rgba(0, 0, 0, 0.3); 
                             border: 1px solid rgba(255, 255, 255, 0.1); 
                             border-radius: 4px; 
                             padding: 2px 6px; 
                             font-size: 0.8em;
-                            color: #ccc;
+                            color: #eee;
                         ">
                             <span style="margin-right: 4px;">${icon}</span>
                             ${name} 
@@ -186,7 +200,12 @@ export class SkillsView {
 
         card.innerHTML = `
                 <div style="display: flex; align-items: center;">
-                    <div class="action-icon">${biomeIcon}</div>
+                    <div class="action-icon" style="position: relative; display: inline-flex; justify-content: center; align-items: center;">
+                        ${biomeIcon}
+                        <span style="position: absolute; bottom: -4px; right: -4px; font-size: 0.6em; filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));">
+                             ${nodeConfig.icon}
+                        </span>
+                    </div>
                     <div class="action-details" style="flex: 1;">
                         <div class="action-name">${biomeName} ${nodeConfig.name}</div>
                         <div class="action-meta">
@@ -197,12 +216,24 @@ export class SkillsView {
                 ${dropsHtml}
              `;
 
-        // Only allow clicking if resources exist? 
+        // Only allow clicking if resources exist?
         // Or allow clicking and let the system say "None found"?
         // Typically we only want to start action if resources exist.
         if (count > 0) {
           card.addEventListener("click", () => {
-            this.uiManager.handleSkillAction(activeSkill.id, firstOptionKey);
+            // Find the OPTION KEY that matches this resource
+            // This is slightly ambiguous if multiple options target the same resource (e.g. diff levels)
+            // But usually 1:1. We pick the first matching one.
+            const matchingOptionKey = Object.keys(activeSkill.options).find(
+              (k) => activeSkill.options[k].resourceId === resourceKey,
+            );
+
+            if (matchingOptionKey) {
+              this.uiManager.handleSkillAction(
+                activeSkill.id,
+                matchingOptionKey,
+              );
+            }
           });
         } else {
           card.style.cursor = "default";
@@ -211,7 +242,7 @@ export class SkillsView {
 
         grid.appendChild(card);
       });
-    }
+    });
   }
 
   renderGenericSkillView(container, activeSkill, char) {
@@ -385,7 +416,7 @@ export class SkillsView {
     if (this.activeSkillTab === 'EXPLORING') {
       this.updateExplorationView(container);
     }
-    else if (["MINING", "WOODCUTTING", "FISHING"].includes(this.activeSkillTab)) {
+    else if (["MINING", "WOODCUTTING", "FISHING", "FORAGING"].includes(this.activeSkillTab)) {
       const grid = container.querySelector(".skills-actions-grid");
       if (grid) {
         grid.innerHTML = "";

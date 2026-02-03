@@ -184,7 +184,14 @@ export class MapGenerator {
   }
 
   generateResources(tiles, seed) {
-    Object.values(RESOURCE_NODES).forEach((config) => {
+    // Sort Configs by Priority (High to Low)
+    const sortedConfigs = Object.values(RESOURCE_NODES).sort((a, b) => {
+      const pA = a.priority || 0;
+      const pB = b.priority || 0;
+      return pB - pA;
+    });
+
+    sortedConfigs.forEach((config) => {
       let param = 0;
       for (let i = 0; i < config.id.length; i++) {
         param += config.id.charCodeAt(i);
@@ -196,15 +203,14 @@ export class MapGenerator {
       for (let y = 0; y < this.height; y++) {
         for (let x = 0; x < this.width; x++) {
           const tile = tiles[y][x];
-          if (config.allowedBiomes.includes(tile.type)) {
+          // Only attempt spawn if Biome matches AND NO RESOURCE EXISTS YET
+          if (!tile.resource && config.allowedBiomes.includes(tile.type)) {
             const val = (noise(x * config.scale, y * config.scale) + 1) / 2;
             if (val > config.threshold) {
-              if (!tile.resource) {
-                tile.resource = {
-                  type: config.id,
-                  amount: config.amount,
-                };
-              }
+              tile.resource = {
+                type: config.id,
+                amount: config.amount,
+              };
             }
           }
         }

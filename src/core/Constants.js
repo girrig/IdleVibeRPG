@@ -5,6 +5,7 @@ export const SKILL_COLORS = {
   FIGHTING: "#e74c3c", // Red
   SMITHING: "#a9a9a9", // Grey
   EXPLORING: "#8e44ad", // Purple
+  FORAGING: "#16a34a", // Green
   DEFAULT: "#ccc",
 };
 
@@ -44,6 +45,7 @@ export const RESOURCE_NODES = {
   mineral_node: {
     id: "mineral_node",
     name: "Mineral Vein",
+    priority: 0,
     icon: "⛏️",
     scale: 0.1, // Frequent but varied
     threshold: 0.65,
@@ -58,55 +60,94 @@ export const RESOURCE_NODES = {
     // Weights are relative.
     default_drops: [{ item: "stone", weight: 100 }],
     biome_drops: {
-      // Hot / Dry -> Copper, Gold
+      // Hot / Dry -> Copper, Gold, Topaz
       TEMPERATE_DESERT: [
         { item: "copper_ore", weight: 50 },
         { item: "gold_ore", weight: 20 },
-        { item: "stone", weight: 30 }
+        { item: "stone", weight: 25 },
+        { item: "topaz", weight: 5 }
       ],
       SUBTROPICAL_DESERT: [
         { item: "copper_ore", weight: 40 },
         { item: "gold_ore", weight: 30 },
-        { item: "stone", weight: 30 }
+        { item: "stone", weight: 25 },
+        { item: "topaz", weight: 5 }
       ],
-      // Mountain -> Iron, Coal
+      // Mountain -> Iron, Coal, Emerald
       ALPINE: [
         { item: "iron_ore", weight: 45 },
         { item: "coal", weight: 35 },
-        { item: "stone", weight: 20 }
+        { item: "stone", weight: 15 },
+        { item: "emerald", weight: 5 }
       ],
       ALPINE_TUNDRA: [
         { item: "iron_ore", weight: 30 },
         { item: "coal", weight: 30 },
         { item: "mithril_ore", weight: 10 },
-        { item: "stone", weight: 30 }
+        { item: "stone", weight: 25 },
+        { item: "emerald", weight: 5 }
       ],
-      // Cold -> Rare Mithril
+      // Cold -> Rare Mithril, Sapphire
       POLAR_DESERT: [
         { item: "mithril_ore", weight: 30 },
         { item: "iron_ore", weight: 30 },
-        { item: "stone", weight: 40 }
+        { item: "stone", weight: 35 },
+        { item: "sapphire", weight: 5 }
       ],
       ICE_SHEET: [
         { item: "mithril_ore", weight: 50 },
-        { item: "stone", weight: 50 }
+        { item: "stone", weight: 45 },
+        { item: "sapphire", weight: 5 }
       ],
       // Plains -> Basic Copper
       TEMPERATE_GRASSLAND: [
         { item: "copper_ore", weight: 30 },
-        { item: "stone", weight: 70 }
+        { item: "stone", weight: 69 },
+        { item: "ruby", weight: 1 } // Very Rare
       ],
       SHRUBLAND: [
         { item: "copper_ore", weight: 20 },
-        { item: "stone", weight: 80 }
+        { item: "stone", weight: 79 },
+        { item: "diamond", weight: 1 } // Ultra Rare
       ]
     }
+  },
+
+  gem_node: {
+    id: "gem_node",
+    name: "Crystal Geode",
+    priority: 10, // High priority to spawn before standard ores
+    icon: "🔮",
+    scale: 0.05, // Rare
+    threshold: 0.8, // Very specific spots
+    amount: 10,
+    allowedBiomes: ["TEMPERATE_DESERT", "SUBTROPICAL_DESERT", "ALPINE", "ICE_SHEET"],
+    default_drops: [{ item: "stone", weight: 100 }],
+    biome_drops: {
+      TEMPERATE_DESERT: [{ item: "topaz", weight: 80 }, { item: "stone", weight: 20 }],
+      SUBTROPICAL_DESERT: [{ item: "topaz", weight: 80 }, { item: "stone", weight: 20 }],
+      ALPINE: [{ item: "emerald", weight: 80 }, { item: "stone", weight: 20 }],
+      ICE_SHEET: [{ item: "sapphire", weight: 80 }, { item: "stone", weight: 20 }]
+    }
+  },
+
+  coal_vein: {
+    id: "coal_vein",
+    name: "Coal Deposit",
+    priority: 5,
+    icon: "⚫",
+    scale: 0.08,
+    threshold: 0.7,
+    amount: 50,
+    allowedBiomes: ["ALPINE", "ALPINE_TUNDRA", "BOREAL_FOREST"],
+    default_drops: [{ item: "coal", weight: 100 }]
   },
 
   // --- WOODCUTTING NODES ---
   tree_node: {
     id: "tree_node",
     name: "Forest Patch",
+    priority: 0,
     icon: "🌲",
     scale: 0.05,
     threshold: 0.6,
@@ -152,10 +193,23 @@ export const RESOURCE_NODES = {
     }
   },
 
+  ancient_tree: {
+    id: "ancient_tree",
+    name: "Ancient Tree",
+    priority: 10,
+    icon: "✨",
+    scale: 0.03, // Very Rare
+    threshold: 0.85,
+    amount: 100, // Massive amount
+    allowedBiomes: ["TROPICAL_RAINFOREST", "TEMPERATE_DECIDUOUS_FOREST"],
+    default_drops: [{ item: "magic_log", weight: 50 }, { item: "yew_log", weight: 50 }]
+  },
+
   // --- FISHING NODES ---
   fishing_spot: {
     id: "fishing_spot",
     name: "Fishing Spot",
+    priority: 0,
     icon: "🐟",
     scale: 0.08,
     threshold: 0.6,
@@ -180,6 +234,60 @@ export const RESOURCE_NODES = {
       SWAMP: [
         { item: "raw_trout", weight: 70 },
         { item: "raw_salmon", weight: 30 }
+      ]
+    }
+  },
+
+  // --- FORAGING NODES ---
+  bush_node: {
+    id: "bush_node",
+    name: "Berry Bush",
+    priority: 0,
+    icon: "🍒",
+    scale: 0.15, // Common
+    threshold: 0.6,
+    amount: 20,
+    allowedBiomes: [
+      "TEMPERATE_GRASSLAND", "SHRUBLAND", "TEMPERATE_DECIDUOUS_FOREST"
+    ],
+    default_drops: [{ item: "red_berries", weight: 100 }],
+    biome_drops: {
+      TEMPERATE_GRASSLAND: [
+        { item: "red_berries", weight: 70 },
+        { item: "fiber", weight: 30 }
+      ],
+      SHRUBLAND: [
+        { item: "blueberries", weight: 60 },
+        { item: "fiber", weight: 40 }
+      ],
+      TEMPERATE_DECIDUOUS_FOREST: [
+        { item: "blueberries", weight: 50 },
+        { item: "red_berries", weight: 50 }
+      ]
+    }
+  },
+  fungi_node: {
+    id: "fungi_node",
+    name: "Fungi Patch",
+    priority: 0,
+    icon: "🍄",
+    scale: 0.1,
+    threshold: 0.65,
+    amount: 15,
+    allowedBiomes: ["TEMPERATE_RAINFOREST", "SWAMP", "BOREAL_FOREST"],
+    default_drops: [{ item: "mushroom", weight: 100 }],
+    biome_drops: {
+      // Swamps are rich in fungi
+      SWAMP: [
+        { item: "mushroom", weight: 90 },
+        { item: "red_berries", weight: 10 } // Uncommon
+      ],
+      // Damp forests
+      TEMPERATE_RAINFOREST: [
+        { item: "mushroom", weight: 100 }
+      ],
+      BOREAL_FOREST: [
+        { item: "mushroom", weight: 100 }
       ]
     }
   }

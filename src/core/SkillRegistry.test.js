@@ -157,6 +157,32 @@ describe('SkillRegistry', () => {
     });
   });
 
+  describe('FORAGING', () => {
+    it('should forage bushes and gain XP', () => {
+      mockChar.currentActivity.target = 'forage_bush';
+      mockGameState.availableResources = { 'bush_node:SHRUBLAND': 20 };
+
+      SKILL_DEFINITIONS.FORAGING.action(mockGameState, mockChar);
+
+      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('bush_node:SHRUBLAND', 1);
+      // Default drop for bush is red_berries (or blueberries in Shrubland based on biome_drop, but mocking random is complex)
+      // Since we don't spy on Math.random here, it might pick either. But addItem should be called.
+      expect(mockGameState.inventory.addItem).toHaveBeenCalled();
+      expect(mockChar.gainXp).toHaveBeenCalledWith('foraging', 10);
+    });
+
+    it('should forage fungi and gain XP', () => {
+      mockChar.currentActivity.target = 'forage_fungi';
+      mockGameState.availableResources = { 'fungi_node:SWAMP': 15 };
+
+      SKILL_DEFINITIONS.FORAGING.action(mockGameState, mockChar);
+
+      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('fungi_node:SWAMP', 1);
+      expect(mockGameState.inventory.addItem).toHaveBeenCalled();
+      expect(mockChar.gainXp).toHaveBeenCalledWith('foraging', 15);
+    });
+  });
+
   describe('EXPLORING', () => {
     it('should initialize activity if missing phase', () => {
       mockChar.currentActivity = { target: 'find_grassland' };

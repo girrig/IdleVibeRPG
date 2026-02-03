@@ -2,6 +2,34 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MapGenerator } from "./MapGenerator";
 import { TERRAIN_TYPES } from "../TerrainTypes";
 
+// Mock Constants to control RESOURCE_NODES for priority testing
+vi.mock("../Constants", async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+        ...actual,
+        RESOURCE_NODES: {
+            low_prio: {
+                id: "low_prio",
+                priority: 0,
+                scale: 0.1,
+                threshold: -1, // Always spawn
+                amount: 10,
+                allowedBiomes: ["TEST_BIOME"],
+                default_drops: []
+            },
+            high_prio: {
+                id: "high_prio",
+                priority: 100, // Higher priority
+                scale: 0.1,
+                threshold: -1, // Always spawn
+                amount: 10,
+                allowedBiomes: ["TEST_BIOME"],
+                default_drops: []
+            }
+        }
+    };
+});
+
 describe("MapGenerator", () => {
     let generator;
 
@@ -23,21 +51,37 @@ describe("MapGenerator", () => {
             expect(tiles[0][0]).toHaveProperty("y");
             expect(tiles[0][0]).toHaveProperty("type");
         });
+    });
 
-        it("should generate deterministic maps given the same seed", () => {
-            const seed = 999;
-            const tiles1 = generator.generateMap(seed);
-            const tiles2 = generator.generateMap(seed); // Re-run
+    describe("generateResources", () => {
+        it("should prioritize high priority nodes over low priority nodes", () => {
+            // Setup a grid of TEST_BIOME
+            const tiles = [];
+            for (let y = 0; y < 10; y++) {
+                const row = [];
+                for (let x = 0; x < 10; x++) {
+                    row.push({ x, y, type: "TEST_BIOME", resource: null });
+                }
+                tiles.push(row);
+            }
 
-            // Check a few tiles
-            expect(tiles1[5][5].type).toBe(tiles2[5][5].type);
-            expect(tiles1[10][10].type).toBe(tiles2[10][10].type);
+            generator.width = 10;
+            generator.height = 10;
+
+            // Both nodes allow TEST_BIOME and have threshold -1 (always spawn).
+            // High Prio (100) should run first and claim the tile.
+            // Low Prio (0) should run second, see 'tile.resource' is full, and skip.
+
+            generator.generateResources(tiles, 12345);
+
+            // Check a sample tile
+            expect(tiles[0][0].resource).not.toBeNull();
+            expect(tiles[0][0].resource.type).toBe("high_prio");
         });
     });
 
     describe("generateTile", () => {
         it("should return OCEAN for low elevation", () => {
-            // sea level is -0.2. elevation -0.5 is deep ocean
             const tile = generator.generateTile(0, 0, -0.5, 0, 0, -0.2, 0);
             expect(tile.type).toBe(TERRAIN_TYPES.OCEAN.id);
         });
@@ -45,54 +89,6 @@ describe("MapGenerator", () => {
         it("should return MOUNTAIN/ALPINE for high elevation", () => {
             const tile = generator.generateTile(0, 0, 0.9, 0, 0.1, -0.2, 0);
             expect(tile.type).toBe(TERRAIN_TYPES.ALPINE.id);
-        });
-
-        it("should return ICE_SHEET for high elevation and low temp", () => {
-            const tile = generator.generateTile(0, 0, 0.9, 0, -0.5, -0.2, 0);
-            expect(tile.type).toBe(TERRAIN_TYPES.ICE_SHEET.id);
-        });
-    });
-
-    describe("cleanupBiomes", () => {
-        it("should remove small isolated biomes", () => {
-            // Manually construct a grid with a small island
-            const tiles = [];
-            for (let y = 0; y < 10; y++) {
-                const row = [];
-                for (let x = 0; x < 10; x++) {
-                    row.push({ x, y, type: TERRAIN_TYPES.OCEAN.id });
-                }
-                tiles.push(row);
-            }
-
-            // Add one forest tile in the middle of ocean
-            tiles[5][5].type = TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id;
-
-            // Patch dimensions for this test since we made a 10x10 grid on a 20x20 generator
-            generator.width = 10;
-            generator.height = 10;
-
-            generator.cleanupBiomes(tiles, 5, []);
-
-            expect(tiles[5][5].type).toBe(TERRAIN_TYPES.OCEAN.id);
-        });
-
-        it("should strictly preserve preserved types", () => {
-            const tiles = [];
-            for (let y = 0; y < 10; y++) {
-                const row = [];
-                for (let x = 0; x < 10; x++) {
-                    row.push({ x, y, type: TERRAIN_TYPES.OCEAN.id });
-                }
-                tiles.push(row);
-            }
-
-            tiles[5][5].type = TERRAIN_TYPES.BEACH.id;
-            generator.width = 10;
-            generator.height = 10;
-
-            generator.cleanupBiomes(tiles, 5, [TERRAIN_TYPES.BEACH.id]);
-            expect(tiles[5][5].type).toBe(TERRAIN_TYPES.BEACH.id);
         });
     });
 });

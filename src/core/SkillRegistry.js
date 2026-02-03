@@ -18,6 +18,22 @@ export const SKILL_DEFINITIONS = {
         icon: "🌑", // Replaced 🪨
         interval: 3000,
       },
+      mine_coal: {
+        resourceId: "coal_vein",
+        name: "Mine Coal",
+        level: 5,
+        xp: 25,
+        icon: "⚫",
+        interval: 3500,
+      },
+      mine_gems: {
+        resourceId: "gem_node",
+        name: "Crack Geode",
+        level: 15,
+        xp: 40,
+        icon: "🔮",
+        interval: 5000,
+      },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
@@ -115,6 +131,7 @@ export const SKILL_DEFINITIONS = {
     color: SKILL_COLORS.WOODCUTTING,
     options: {
       chop_wood: { name: "Chop Wood", resourceId: "tree_node", level: 1, xp: 20, icon: "🌲", interval: 3000 },
+      chop_ancient: { name: "Chop Ancient", resourceId: "ancient_tree", level: 25, xp: 50, icon: "✨", interval: 6000 },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
@@ -267,6 +284,93 @@ export const SKILL_DEFINITIONS = {
 
       gameState.inventory.addItem(dropItem, amount);
       char.gainXp("fishing", 20);
+    },
+  },
+  FORAGING: {
+    id: "FORAGING",
+    name: "Foraging",
+    icon: "🧺",
+    color: SKILL_COLORS.FORAGING,
+    options: {
+      forage_bush: { name: "Forage Bushes", resourceId: "bush_node", level: 1, xp: 10, icon: "🍒", interval: 2500 },
+      forage_fungi: { name: "Gather Fungi", resourceId: "fungi_node", level: 5, xp: 15, icon: "🍄", interval: 3000 },
+    },
+    interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
+    action: (gameState, char) => {
+      // Determine target resource based on option
+      const targetId = char.currentActivity.target; // e.g. "forage_bush"
+      const option = SKILL_DEFINITIONS.FORAGING.options[targetId];
+      if (!option) return;
+
+      const resourceType = option.resourceId; // "bush_node" or "fungi_node"
+
+      // Find available nodes
+      const allResources = gameState.availableResources;
+      const validKeys = Object.keys(allResources).filter((k) =>
+        k.startsWith(`${resourceType}:`)
+      );
+
+      if (validKeys.length === 0) {
+        gameState.triggerNotification(`No ${resourceType === "bush_node" ? "bushes" : "fungi"} found! Explore more.`, "error");
+        char.stopActivity();
+        return;
+      }
+
+      // Weighted Random Selection
+      let totalNodes = 0;
+      const candidates = [];
+      validKeys.forEach((key) => {
+        const count = allResources[key];
+        if (count > 0) {
+          totalNodes += count;
+          candidates.push({ key, count });
+        }
+      });
+
+      if (totalNodes === 0) {
+        char.stopActivity();
+        return;
+      }
+
+      let r = Math.random() * totalNodes;
+      let selectedKey = candidates[0].key;
+      for (const c of candidates) {
+        if (r < c.count) {
+          selectedKey = c.key;
+          break;
+        }
+        r -= c.count;
+      }
+
+      // Logic: Drop Table
+      const biome = selectedKey.split(":")[1];
+      const nodeDef = RESOURCE_NODES[resourceType];
+
+      let table = nodeDef.default_drops;
+      if (nodeDef.biome_drops && nodeDef.biome_drops[biome]) {
+        table = nodeDef.biome_drops[biome];
+      }
+
+      const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let dropItem = table[0].item;
+      for (const entry of table) {
+        if (roll < entry.weight) {
+          dropItem = entry.item;
+          break;
+        }
+        roll -= entry.weight;
+      }
+
+      // Action
+      gameState.consumeAvailableResource(selectedKey, 1);
+
+      let amount = 1;
+      // Future Talent: foraging_2 (Double Yield)
+      if (char.talents.foraging_2 && Math.random() < 0.1) amount = 2;
+
+      gameState.inventory.addItem(dropItem, amount);
+      char.gainXp("foraging", option.xp);
     },
   },
   FIGHTING: {
