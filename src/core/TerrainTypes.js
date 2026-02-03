@@ -8,12 +8,12 @@ export const TERRAIN_TYPES = {
   POLAR_DESERT: { id: "POLAR_DESERT", color: "#552200", symbol: "🌨️" }, // Formerly SCORCHED
   ICE_SHEET: { id: "ICE_SHEET", color: "#FFFAFA", symbol: "❄️" }, // Formerly SNOW
   ALPINE_TUNDRA: { id: "ALPINE_TUNDRA", color: "#a0a0a0", symbol: "🐐" }, // Formerly BARE
-  TUNDRA: { id: "TUNDRA", color: "#b0e0e6", symbol: "🧊" },
+  TUNDRA: { id: "TUNDRA", color: "#b0e0e6", symbol: "🏔️" }, // Replaced 🧊 with 🏔️
   BOREAL_FOREST: { id: "BOREAL_FOREST", color: "#5d7663", symbol: "🌲" }, // Formerly TAIGA
   ALPINE: { id: "ALPINE", color: "#808080", symbol: "⛰️" }, // Formerly MOUNTAIN
 
   // TEMPERATE BIOMES
-  TEMPERATE_DESERT: { id: "TEMPERATE_DESERT", color: "#c2b280", symbol: "🦎" },
+  TEMPERATE_DESERT: { id: "TEMPERATE_DESERT", color: "#c2b280", symbol: "🐍" }, // Replaced 🦎 with 🐍
   SHRUBLAND: { id: "SHRUBLAND", color: "#808000", symbol: "🌿" },
   TEMPERATE_GRASSLAND: {
     id: "TEMPERATE_GRASSLAND",
@@ -37,11 +37,11 @@ export const TERRAIN_TYPES = {
     color: "#F4A460",
     symbol: "🌵",
   }, // Formerly DESERT
-  TROPICAL_SAVANNA: { id: "TROPICAL_SAVANNA", color: "#9ca728", symbol: "🦁" }, // Formerly SAVANNA
+  TROPICAL_SAVANNA: { id: "TROPICAL_SAVANNA", color: "#9ca728", symbol: "🐘" }, // Replaced 🦁 with 🐘
   TROPICAL_RAINFOREST: {
     id: "TROPICAL_RAINFOREST",
     color: "#006400",
-    symbol: "🦜",
+    symbol: "🌴", // Replaced 🦜 with 🌴
   },
 
   // SPECIAL

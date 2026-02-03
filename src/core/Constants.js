@@ -113,13 +113,14 @@ export const RESOURCE_NODES = {
     amount: 50,
     allowedBiomes: [
       "TEMPERATE_DECIDUOUS_FOREST", "TEMPERATE_RAINFOREST",
-      "BOREAL_FOREST", "TROPICAL_RAINFOREST", "TROPICAL_SAVANNA"
+      "BOREAL_FOREST", "TROPICAL_RAINFOREST", "TROPICAL_SAVANNA", "SWAMP"
     ],
     default_drops: [{ item: "oak_log", weight: 100 }],
     biome_drops: {
-      // Standard Forest
+      // Standard Forest - Added Maple
       TEMPERATE_DECIDUOUS_FOREST: [
-        { item: "oak_log", weight: 90 },
+        { item: "oak_log", weight: 60 },
+        { item: "maple_log", weight: 30 },
         { item: "willow_log", weight: 10 }
       ],
       // Wet Forest -> Willow
@@ -142,6 +143,11 @@ export const RESOURCE_NODES = {
         { item: "oak_log", weight: 80 },
         { item: "magic_log", weight: 5 },
         { item: "willow_log", weight: 15 } // Acacia? (Mapped to Willow for now)
+      ],
+      // Swamp -> Willow dominant
+      SWAMP: [
+        { item: "willow_log", weight: 80 },
+        { item: "oak_log", weight: 20 }
       ]
     }
   },
@@ -154,7 +160,7 @@ export const RESOURCE_NODES = {
     scale: 0.08,
     threshold: 0.6,
     amount: 30, // 30 Fish per spot
-    allowedBiomes: ["OCEAN", "SHALLOW_OCEAN", "BEACH"],
+    allowedBiomes: ["OCEAN", "SHALLOW_OCEAN", "BEACH", "SWAMP"],
     default_drops: [{ item: "raw_trout", weight: 100 }],
     biome_drops: {
       BEACH: [
@@ -169,6 +175,11 @@ export const RESOURCE_NODES = {
         { item: "raw_tuna", weight: 50 },
         { item: "raw_lobster", weight: 30 },
         { item: "raw_swordfish", weight: 20 }
+      ],
+      // Swamp Fishing
+      SWAMP: [
+        { item: "raw_trout", weight: 70 },
+        { item: "raw_salmon", weight: 30 }
       ]
     }
   }

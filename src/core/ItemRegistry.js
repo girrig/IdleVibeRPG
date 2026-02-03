@@ -5,7 +5,7 @@ export const ITEM_DEFINITIONS = {
   coal: { name: "Coal", icon: "⚫", value: 5, category: "Ore" },
   gold_ore: { name: "Gold Ore", icon: "🟡", value: 20, category: "Ore" },
   mithril_ore: { name: "Mithril Ore", icon: "🔵", value: 30, category: "Ore" },
-  stone: { name: "Stone", icon: "🪨", value: 1, category: "Resource" },
+  stone: { name: "Stone", icon: "🌑", value: 1, category: "Resource" }, // Replaced 🪨 with 🌑 for compatibility
 
   // Logs
   oak_log: { name: "Oak Log", icon: "🌳", value: 2, category: "Log" },
@@ -18,7 +18,7 @@ export const ITEM_DEFINITIONS = {
   raw_trout: { name: "Raw Trout", icon: "🐟", value: 3, category: "Fish" },
   raw_salmon: { name: "Raw Salmon", icon: "🐠", value: 6, category: "Fish" },
   raw_tuna: { name: "Raw Tuna", icon: "🦈", value: 15, category: "Fish" },
-  raw_lobster: { name: "Raw Lobster", icon: "🦞", value: 25, category: "Fish" },
+  raw_lobster: { name: "Raw Lobster", icon: "🦀", value: 25, category: "Fish" }, // Replaced 🦞 with 🦀
   raw_swordfish: {
     name: "Raw Swordfish",
     icon: "🗡️",

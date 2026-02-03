@@ -15,7 +15,7 @@ export const SKILL_DEFINITIONS = {
         name: "Mine Minerals",
         level: 1,
         xp: 15, // Base XP, effectively varied by drop? Or constant? Constant is fine for now.
-        icon: "🪨",
+        icon: "🌑", // Replaced 🪨
         interval: 3000,
       },
     },
