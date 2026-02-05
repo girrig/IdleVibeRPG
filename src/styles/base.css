@@ -10,6 +10,7 @@ body {
   color: #eee;
   font-family: "Outfit", sans-serif;
   overflow: hidden; /* Prevent scrollbars */
+  user-select: none;
 }
 
 #app {

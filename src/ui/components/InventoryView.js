@@ -103,7 +103,7 @@ export class InventoryView {
         card.className = "inv-card";
         card.dataset.id = id;
         card.addEventListener("click", () => {
-          this.selectedItemId = id;
+          this.selectedItemId = this.selectedItemId === id ? null : id;
           this.update();
         });
         // We append initially, but sort loop below handles position
