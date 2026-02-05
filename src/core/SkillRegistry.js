@@ -379,42 +379,69 @@ export const SKILL_DEFINITIONS = {
     icon: "⚔️",
     color: "#e74c3c",
     options: {
-      rat: { name: "Rat", level: 1, xp: 10, drop: "rat_bones", icon: "🐀" },
-      goblin: {
-        name: "Goblin",
-        level: 5,
-        xp: 20,
-        drop: "goblin_mail",
-        icon: "👹",
+      rat: {
+        name: "Rat", level: 1, xp: 10, icon: "🐀",
+        drops: [
+          { item: "rat_bones", weight: 80 },
+          { item: "coins", weight: 20 },
+        ],
       },
-      wolf: { name: "Wolf", level: 10, xp: 30, drop: "wolf_fur", icon: "🐺" },
+      goblin: {
+        name: "Goblin", level: 5, xp: 20, icon: "👹",
+        drops: [
+          { item: "goblin_mail", weight: 40 },
+          { item: "coins", weight: 40 },
+          { item: "bones", weight: 20 },
+        ],
+      },
+      wolf: {
+        name: "Wolf", level: 10, xp: 30, icon: "🐺",
+        drops: [
+          { item: "wolf_fur", weight: 60 },
+          { item: "raw_trout", weight: 25 },
+          { item: "bones", weight: 15 },
+        ],
+      },
       skeleton: {
-        name: "Skeleton",
-        level: 20,
-        xp: 45,
-        drop: "bones",
-        icon: "💀",
+        name: "Skeleton", level: 20, xp: 45, icon: "💀",
+        drops: [
+          { item: "bones", weight: 50 },
+          { item: "coins", weight: 30 },
+          { item: "iron_ore", weight: 20 },
+        ],
       },
       demon: {
-        name: "Demon",
-        level: 30,
-        xp: 60,
-        drop: "demon_ashes",
-        icon: "👿",
+        name: "Demon", level: 30, xp: 60, icon: "👿",
+        drops: [
+          { item: "demon_ashes", weight: 50 },
+          { item: "coal", weight: 25 },
+          { item: "gold_ore", weight: 15 },
+          { item: "ruby", weight: 10 },
+        ],
       },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
       const targetId = char.currentActivity.target;
       const option = SKILL_DEFINITIONS.FIGHTING.options[targetId];
-      if (option) {
-        let amount = 1;
-        // fighting_2: 10% chance for double loot
-        if (char.talents.fighting_2 && Math.random() < 0.1) amount = 2;
+      if (!option) return;
 
-        gameState.inventory.addItem(option.drop, amount);
-        char.gainXp("fighting", option.xp);
+      // Weighted loot roll
+      const table = option.drops;
+      const totalWeight = table.reduce((sum, e) => sum + e.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let dropItem = table[0].item;
+      for (const entry of table) {
+        if (roll < entry.weight) { dropItem = entry.item; break; }
+        roll -= entry.weight;
       }
+
+      let amount = 1;
+      // fighting_2: 10% chance for double loot
+      if (char.talents.fighting_2 && Math.random() < 0.1) amount = 2;
+
+      gameState.inventory.addItem(dropItem, amount);
+      char.gainXp("fighting", option.xp);
     },
   },
   SMITHING: {

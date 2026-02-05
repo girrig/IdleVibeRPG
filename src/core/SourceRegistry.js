@@ -43,12 +43,24 @@ class SourceRegistry {
             return; // Done with this option
           }
 
-          // 2. Direct Drops (Fighting)
-          if (option.drop) {
+          // 2. Loot Table Drops (Fighting)
+          if (option.drops) {
+            option.drops.forEach(({ item }) => {
+              if (!this.sources[item]) {
+                this.sources[item] = {
+                  type: "SKILL",
+                  skillId: skill.id,
+                  target: targetId,
+                  reqLevel: option.level || 1,
+                };
+              }
+            });
+          } else if (option.drop) {
+            // Legacy single drop
             this.sources[option.drop] = {
               type: "SKILL",
               skillId: skill.id,
-              target: targetId, // e.g. 'rat'
+              target: targetId,
               reqLevel: option.level || 1,
             };
           } else {

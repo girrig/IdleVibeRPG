@@ -200,12 +200,7 @@ export class SkillsView {
 
         card.innerHTML = `
                 <div style="display: flex; align-items: center;">
-                    <div class="action-icon" style="position: relative; display: inline-flex; justify-content: center; align-items: center;">
-                        ${biomeIcon}
-                        <span style="position: absolute; bottom: -4px; right: -4px; font-size: 0.6em; filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));">
-                             ${nodeConfig.icon}
-                        </span>
-                    </div>
+                    <div class="action-icon">${biomeIcon}</div>
                     <div class="action-details" style="flex: 1;">
                         <div class="action-name">${biomeName} ${nodeConfig.name}</div>
                         <div class="action-meta">
@@ -383,6 +378,32 @@ export class SkillsView {
       }
     }
 
+    // Drop badges (for monsters with loot tables)
+    let dropsHtml = "";
+    if (opt.drops) {
+      const totalWeight = opt.drops.reduce((sum, e) => sum + e.weight, 0);
+      dropsHtml = `<div class="drop-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
+        <span style="font-size:0.8em; color:#888; margin-right:4px;">Drops:</span>`;
+      opt.drops.forEach((entry) => {
+        const itemDef = getItemDefinition(entry.item);
+        const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
+        const icon = itemDef ? itemDef.icon : "📦";
+        const name = itemDef ? itemDef.name : entry.item;
+        dropsHtml += `
+          <span class="drop-badge" style="
+            display: inline-flex; align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px; padding: 2px 6px; font-size: 0.8em; color: #eee;
+          ">
+            <span style="margin-right: 4px;">${icon}</span>
+            ${name}
+            <span style="margin-left: 4px; color: #666;">${percent}%</span>
+          </span>`;
+      });
+      dropsHtml += `</div>`;
+    }
+
     card.innerHTML = `
               ${iconHtml}
       <div class="action-details">
@@ -394,6 +415,7 @@ export class SkillsView {
         </div>
         ${availableHtml}
         ${costHtml}
+        ${dropsHtml}
       </div>
               ${isLocked ? '<div class="lock-overlay">🔒</div>' : ""}
       `;
