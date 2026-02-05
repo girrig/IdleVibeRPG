@@ -1,5 +1,5 @@
 import { getItemDefinition } from "./ItemRegistry.js";
-import { SKILL_COLORS, GAME_CONFIG, RESOURCE_NODES } from "./Constants.js";
+import { GAME_CONFIG, RESOURCE_NODES } from "./Constants.js";
 import { mapManager } from "./MapManager.js";
 import { TERRAIN_TYPES } from "./TerrainTypes.js";
 
@@ -8,7 +8,7 @@ export const SKILL_DEFINITIONS = {
     id: "MINING",
     name: "Mining",
     icon: "⛏️",
-    color: SKILL_COLORS.MINING,
+    color: "#e67e22",
     options: {
       mine_minerals: {
         resourceId: "mineral_node",
@@ -128,7 +128,7 @@ export const SKILL_DEFINITIONS = {
     id: "WOODCUTTING",
     name: "Woodcutting",
     icon: "🪓",
-    color: SKILL_COLORS.WOODCUTTING,
+    color: "#2ecc71",
     options: {
       chop_wood: { name: "Chop Wood", resourceId: "tree_node", level: 1, xp: 20, icon: "🌲", interval: 3000 },
       chop_ancient: { name: "Chop Ancient", resourceId: "ancient_tree", level: 25, xp: 50, icon: "✨", interval: 6000 },
@@ -209,7 +209,7 @@ export const SKILL_DEFINITIONS = {
     id: "FISHING",
     name: "Fishing",
     icon: "🎣",
-    color: SKILL_COLORS.FISHING,
+    color: "#3498db",
     options: {
       fish_spot: { name: "Catch Fish", resourceId: "fishing_spot", level: 1, xp: 15, icon: "🐟", interval: 3000 },
     },
@@ -290,7 +290,7 @@ export const SKILL_DEFINITIONS = {
     id: "FORAGING",
     name: "Foraging",
     icon: "🧺",
-    color: SKILL_COLORS.FORAGING,
+    color: "#16a34a",
     options: {
       forage_bush: { name: "Forage Bushes", resourceId: "bush_node", level: 1, xp: 10, icon: "🍒", interval: 2500 },
       forage_fungi: { name: "Gather Fungi", resourceId: "fungi_node", level: 5, xp: 15, icon: "🍄", interval: 3000 },
@@ -377,7 +377,7 @@ export const SKILL_DEFINITIONS = {
     id: "FIGHTING",
     name: "Fighting",
     icon: "⚔️",
-    color: SKILL_COLORS.FIGHTING,
+    color: "#e74c3c",
     options: {
       rat: { name: "Rat", level: 1, xp: 10, drop: "rat_bones", icon: "🐀" },
       goblin: {
@@ -421,7 +421,7 @@ export const SKILL_DEFINITIONS = {
     id: "SMITHING",
     name: "Smithing",
     icon: "🔨",
-    color: SKILL_COLORS.SMITHING,
+    color: "#a9a9a9",
     options: {
       copper_bar: {
         name: "Copper Bar",
@@ -498,7 +498,7 @@ export const SKILL_DEFINITIONS = {
     id: "EXPLORING",
     name: "Exploring",
     icon: "🧭",
-    color: SKILL_COLORS.EXPLORING,
+    color: "#8e44ad",
     continuous: true,
     options: {
       wander_expansion: {

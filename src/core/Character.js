@@ -44,14 +44,12 @@ export class Character {
       mainHand: null,
       offHand: null,
     };
-    this.skills = {
-      mining: { level: 1, xp: 0 },
-      fighting: { level: 1, xp: 0 },
-      woodcutting: { level: 1, xp: 0 },
-      fishing: { level: 1, xp: 0 },
-      smithing: { level: 1, xp: 0 },
-      exploring: { level: 1, xp: 0 },
-    };
+    this.skills = Object.fromEntries(
+      Object.keys(SKILL_DEFINITIONS).map((id) => [
+        id.toLowerCase(),
+        { level: 1, xp: 0 },
+      ]),
+    );
     this.talents = {}; // { talentId: true }
     this.talentPoints = 3; // Start with 3 for testing
     this.position = { x: 250, y: 250 }; // Default starting position
@@ -283,17 +281,9 @@ export class Character {
     const skill = this.skills[skillId];
     if (!skill) return;
 
-    // Check for XP Bonus Talents
+    // Convention: <skillId>_1 talent is always +10% XP bonus
     let multiplier = 1;
-    // Simple check for now based on convention: <skill>_1 is always XP bonus
-    // Or we can be explicit
-    if (skillId === "mining" && this.talents.mining_1) multiplier += 0.1;
-    if (skillId === "woodcutting" && this.talents.woodcutting_1)
-      multiplier += 0.1;
-    if (skillId === "fishing" && this.talents.fishing_1) multiplier += 0.1;
-    if (skillId === "fighting" && this.talents.fighting_1) multiplier += 0.1;
-    if (skillId === "smithing" && this.talents.smithing_1) multiplier += 0.1;
-    if (skillId === "exploring" && this.talents.exploring_1) multiplier += 0.1;
+    if (this.talents[`${skillId}_1`]) multiplier += 0.1;
 
     skill.xp += amount * multiplier;
 

@@ -1,14 +1,3 @@
-export const SKILL_COLORS = {
-  MINING: "#e67e22", // Orange
-  WOODCUTTING: "#2ecc71", // Emerald Green
-  FISHING: "#3498db", // Blue
-  FIGHTING: "#e74c3c", // Red
-  SMITHING: "#a9a9a9", // Grey
-  EXPLORING: "#8e44ad", // Purple
-  FORAGING: "#16a34a", // Green
-  DEFAULT: "#ccc",
-};
-
 export const UI_COLORS = {
   ATTRIBUTE_POINTS: "#fbbf24", // Gold
   LOCKED: "#ccc",
