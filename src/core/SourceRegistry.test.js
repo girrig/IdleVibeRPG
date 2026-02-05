@@ -33,7 +33,13 @@ describe('SourceRegistry', () => {
         const bone = sourceRegistry.getSource('rat_bones');
         expect(bone).toBeDefined();
         expect(bone.skillId).toBe('FIGHTING');
-        expect(bone.target).toBe('rat'); // The mob needed
+        expect(bone.target).toBe('rat');
+
+        // Secondary drops from loot tables should also be registered
+        const demonAshes = sourceRegistry.getSource('demon_ashes');
+        expect(demonAshes).toBeDefined();
+        expect(demonAshes.skillId).toBe('FIGHTING');
+        expect(demonAshes.target).toBe('demon');
     });
 
     it('should return undefined for unknown items', () => {

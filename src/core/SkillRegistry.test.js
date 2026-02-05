@@ -114,22 +114,52 @@ describe('SkillRegistry', () => {
   });
 
   describe('FIGHTING', () => {
-    it('should fight mob, drop loot, and gain XP', () => {
+    it('should fight mob, drop loot from table, and gain XP', () => {
       mockChar.currentActivity.target = 'rat';
+      // random=0 picks first item in table (rat_bones, weight 80)
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+
       SKILL_DEFINITIONS.FIGHTING.action(mockGameState, mockChar);
 
       expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('rat_bones', 1);
       expect(mockChar.gainXp).toHaveBeenCalledWith('fighting', 10);
     });
 
+    it('should roll weighted loot from drop table', () => {
+      mockChar.currentActivity.target = 'rat';
+      // Rat drops: rat_bones (weight 80), coins (weight 20). Total = 100.
+      // random=0.9 => roll=90, which exceeds rat_bones (80), falls to coins
+      vi.spyOn(Math, 'random').mockReturnValue(0.9);
+
+      SKILL_DEFINITIONS.FIGHTING.action(mockGameState, mockChar);
+
+      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('coins', 1);
+    });
+
     it('should trigger double loot talent', () => {
       mockChar.currentActivity.target = 'goblin';
       mockChar.talents.fighting_2 = true;
+      // First random call: loot roll (0.05 => picks first drop: goblin_mail)
+      // Second random call: double loot check (0.05 < 0.1 => triggers)
       vi.spyOn(Math, 'random').mockReturnValue(0.05);
 
       SKILL_DEFINITIONS.FIGHTING.action(mockGameState, mockChar);
 
       expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('goblin_mail', 2);
+    });
+
+    it('should have drops arrays on all monsters', () => {
+      const options = SKILL_DEFINITIONS.FIGHTING.options;
+      Object.entries(options).forEach(([key, opt]) => {
+        expect(opt.drops, `${key} should have drops array`).toBeDefined();
+        expect(Array.isArray(opt.drops)).toBe(true);
+        expect(opt.drops.length).toBeGreaterThan(0);
+        opt.drops.forEach((entry) => {
+          expect(entry).toHaveProperty('item');
+          expect(entry).toHaveProperty('weight');
+          expect(entry.weight).toBeGreaterThan(0);
+        });
+      });
     });
   });
 
