@@ -381,6 +381,7 @@ export const SKILL_DEFINITIONS = {
     options: {
       rat: {
         name: "Rat", level: 1, xp: 10, icon: "🐀",
+        category: "Outskirts",
         drops: [
           { item: "rat_bones", weight: 80 },
           { item: "coins", weight: 20 },
@@ -388,6 +389,7 @@ export const SKILL_DEFINITIONS = {
       },
       goblin: {
         name: "Goblin", level: 5, xp: 20, icon: "👹",
+        category: "Outskirts",
         drops: [
           { item: "goblin_mail", weight: 40 },
           { item: "coins", weight: 40 },
@@ -396,6 +398,7 @@ export const SKILL_DEFINITIONS = {
       },
       wolf: {
         name: "Wolf", level: 10, xp: 30, icon: "🐺",
+        category: "Wilderness",
         drops: [
           { item: "wolf_fur", weight: 60 },
           { item: "raw_trout", weight: 25 },
@@ -404,6 +407,7 @@ export const SKILL_DEFINITIONS = {
       },
       skeleton: {
         name: "Skeleton", level: 20, xp: 45, icon: "💀",
+        category: "Dungeon",
         drops: [
           { item: "bones", weight: 50 },
           { item: "coins", weight: 30 },
@@ -412,6 +416,7 @@ export const SKILL_DEFINITIONS = {
       },
       demon: {
         name: "Demon", level: 30, xp: 60, icon: "👿",
+        category: "Infernal Plane",
         drops: [
           { item: "demon_ashes", weight: 50 },
           { item: "coal", weight: 25 },

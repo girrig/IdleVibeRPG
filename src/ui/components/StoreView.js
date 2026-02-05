@@ -86,7 +86,7 @@ export class StoreView {
                 <div class="item-price">${item.price} Coins</div>
             </div>
         </div>
-        <button class="btn-buy" style="margin-top: auto; padding: 8px; cursor: pointer;">Buy</button>
+        <button class="btn-buy">Buy</button>
       `;
 
       card.querySelector(".btn-buy").addEventListener("click", () => {

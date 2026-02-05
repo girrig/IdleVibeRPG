@@ -8,6 +8,7 @@ export class SkillsView {
   constructor(uiManager) {
     this.uiManager = uiManager;
     this.activeSkillTab = null;
+    this.expandedCategories = new Set();
   }
 
   render(container) {
@@ -92,6 +93,8 @@ export class SkillsView {
       } else {
         if (["MINING", "WOODCUTTING", "FISHING", "FORAGING"].includes(activeSkill.id)) {
           this.renderGatheringSkillView(contentArea, activeSkill, char);
+        } else if (activeSkill.id === "FIGHTING") {
+          this.renderFightingSkillView(contentArea, activeSkill, char);
         } else {
           this.renderGenericSkillView(contentArea, activeSkill, char);
         }
@@ -240,6 +243,84 @@ export class SkillsView {
     });
   }
 
+  renderFightingSkillView(container, activeSkill, char) {
+    const currentLvl = char && char.skills[activeSkill.id.toLowerCase()] ? char.skills[activeSkill.id.toLowerCase()].level : 1;
+
+    const header = document.createElement("div");
+    header.className = "skills-options-header";
+    const colorStyle = activeSkill.color ? `style="color: ${activeSkill.color}; border-bottom-color: ${activeSkill.color}"` : "";
+    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
+    container.appendChild(header);
+
+    // Group options by category
+    const categories = {};
+    Object.entries(activeSkill.options).forEach(([key, opt]) => {
+      const cat = opt.category || "Uncategorized";
+      if (!categories[cat]) categories[cat] = [];
+      categories[cat].push({ key, opt });
+    });
+
+    // Define Category Order (Optional, or just alphabetical/keys)
+    const orderedCategories = ["Outskirts", "Wilderness", "Dungeon", "Infernal Plane", "Uncategorized"];
+    const presentCategories = Object.keys(categories);
+    const sortedCategories = orderedCategories.filter(c => presentCategories.includes(c))
+      .concat(presentCategories.filter(c => !orderedCategories.includes(c)));
+
+    const scrollContainer = document.createElement("div");
+    scrollContainer.className = "fighting-container";
+    scrollContainer.style.overflowY = "auto";
+    scrollContainer.style.flex = "1";
+    scrollContainer.style.paddingRight = "4px";
+
+    sortedCategories.forEach(catName => {
+      const isExpanded = this.expandedCategories.has(catName);
+      const categoryTitle = document.createElement("div");
+      categoryTitle.className = "exploration-section-title collapsible-header";
+      categoryTitle.style.marginTop = "16px";
+      categoryTitle.style.marginBottom = "8px";
+      categoryTitle.style.color = "#ddd";
+      categoryTitle.style.borderBottom = "1px solid #444";
+      categoryTitle.style.paddingBottom = "4px";
+      categoryTitle.style.cursor = "pointer";
+      categoryTitle.style.display = "flex";
+      categoryTitle.style.alignItems = "center";
+      categoryTitle.style.justifyContent = "space-between";
+
+      categoryTitle.innerHTML = `
+        <span>${catName}</span>
+        <span style="transform: ${isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)'}; transition: transform 0.2s;">▼</span>
+      `;
+
+      categoryTitle.addEventListener("click", () => {
+        this.toggleCategory(catName);
+      });
+
+      scrollContainer.appendChild(categoryTitle);
+
+      if (isExpanded) {
+        const grid = document.createElement("div");
+        grid.className = "skills-actions-grid";
+
+        categories[catName].forEach(({ key, opt }) => {
+          this.renderSkillCard(grid, key, opt, currentLvl, activeSkill);
+        });
+
+        scrollContainer.appendChild(grid);
+      }
+    });
+
+    container.appendChild(scrollContainer);
+  }
+
+  toggleCategory(catName) {
+    if (this.expandedCategories.has(catName)) {
+      this.expandedCategories.delete(catName);
+    } else {
+      this.expandedCategories.add(catName);
+    }
+    this.uiManager.renderMainWindow();
+  }
+
   renderGenericSkillView(container, activeSkill, char) {
     const currentLvl =
       char && char.skills[activeSkill.id.toLowerCase()]
@@ -353,6 +434,7 @@ export class SkillsView {
     const card = document.createElement("div");
     const isLocked = currentLvl < opt.level;
     card.className = `skill-action-card ${isLocked ? "locked" : ""}`;
+    card.setAttribute("data-key", key);
 
     let iconHtml = `<div class="action-icon">${opt.icon || "❓"}</div>`;
 
@@ -463,10 +545,16 @@ export class SkillsView {
         if (headerLvl) headerLvl.innerText = `Lvl ${currentLvl} `;
 
         const cards = container.querySelectorAll(".skill-action-card");
-        let cardIndex = 0;
+        // Create a map for faster lookup if strict ordering isn't guaranteed
+        const cardMap = {};
+        cards.forEach(c => {
+          const k = c.getAttribute("data-key");
+          if (k) cardMap[k] = c;
+        });
+
         Object.entries(activeSkill.options).forEach(([key, opt]) => {
-          if (cardIndex >= cards.length) return;
-          const card = cards[cardIndex];
+          const card = cardMap[key];
+          if (!card) return;
 
           // Update Available Count & Details
           const availDiv = card.querySelector(".action-available");
@@ -496,12 +584,11 @@ export class SkillsView {
             const overlay = card.querySelector(".lock-overlay");
             if (overlay) overlay.remove();
           }
-
-          cardIndex++;
         });
       }
     }
   }
+
 
   updateExplorationView(container) {
     const char = gameState.characters[this.uiManager.selectedCharIndex];
