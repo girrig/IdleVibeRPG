@@ -24,21 +24,82 @@ function getLatestReleaseCommit() {
 
 function determineBump(commits) {
     let type = "patch";
+    const changes = {
+        features: [],
+        fixes: [],
+        others: [],
+        breaking: []
+    };
 
     for (const commit of commits) {
-        const msg = commit.message.toLowerCase();
-        const body = commit.body.toLowerCase();
+        const rawMsg = commit.message.trim();
+        const msgLower = rawMsg.toLowerCase();
+        const bodyLower = commit.body.toLowerCase();
 
-        if (body.includes("breaking change") || msg.includes("breaking change")) {
-            return "major";
+        // Check for breaking changes
+        if (bodyLower.includes("breaking change") || msgLower.includes("breaking change")) {
+            changes.breaking.push(rawMsg);
+            // We return 'major' but keep collecting for the log
         }
 
-        if (msg.startsWith("feat")) {
-            type = "minor";
+        if (msgLower.startsWith("feat")) {
+            changes.features.push(rawMsg);
+            if (type === "patch") type = "minor";
+        } else if (msgLower.startsWith("fix")) {
+            changes.fixes.push(rawMsg);
+        } else {
+            changes.others.push(rawMsg);
         }
     }
 
-    return type;
+    if (changes.breaking.length > 0) return { type: "major", changes };
+    return { type, changes };
+}
+
+function generateReleaseMessage(version, bumpResult) {
+    const { type, changes } = bumpResult;
+    const date = new Date().toISOString().split('T')[0];
+
+    // Title generation
+    let title = `chore: release v${version}`;
+    if (changes.features.length > 0) {
+        // Use the first feature as part of title if it fits
+        const firstFeat = changes.features[0].replace(/^feat:\s*/i, '').trim();
+        title += ` - ${firstFeat}`;
+        if (changes.features.length > 1) title += ` (+${changes.features.length - 1} features)`;
+    } else if (changes.fixes.length > 0) {
+        const firstFix = changes.fixes[0].replace(/^fix:\s*/i, '').trim();
+        title += ` - ${firstFix}`;
+        if (changes.fixes.length > 1) title += ` (+${changes.fixes.length - 1} fixes)`;
+    }
+
+    let body = `${title}\n\n`;
+
+    if (changes.breaking.length > 0) {
+        body += `## 🚨 Breaking Changes\n`;
+        changes.breaking.forEach(m => body += `- ${m}\n`);
+        body += `\n`;
+    }
+
+    if (changes.features.length > 0) {
+        body += `## ✨ Features\n`;
+        changes.features.forEach(m => body += `- ${m}\n`);
+        body += `\n`;
+    }
+
+    if (changes.fixes.length > 0) {
+        body += `## 🐛 Bug Fixes\n`;
+        changes.fixes.forEach(m => body += `- ${m}\n`);
+        body += `\n`;
+    }
+
+    // Only add 'Other' if it's substantial or empty other categories
+    if (changes.others.length > 0 && (changes.features.length + changes.fixes.length < 3)) {
+        body += `## 🔧 Maintenance & Other\n`;
+        changes.others.forEach(m => body += `- ${m}\n`);
+    }
+
+    return body.trim();
 }
 
 function getCommitsSince(hash) {
@@ -68,22 +129,40 @@ function main() {
 
     console.log(`Found ${commits.length} commits since last release.`);
 
-    const bumpType = determineBump(commits);
-    console.log(`Recommended bump: ${bumpType.toUpperCase()}`);
+    const bumpResult = determineBump(commits);
+    console.log(`Recommended bump: ${bumpResult.type.toUpperCase()}`);
 
     const args = process.argv.slice(2);
     const isDryRun = args.includes("--dry-run");
 
     if (isDryRun) {
         console.log("[Dry Run] Would run:");
-        console.log(`> npm version ${bumpType} --no-git-tag-version`);
+        console.log(`> npm version ${bumpResult.type} --no-git-tag-version`);
+        // Simulate next version for dry run message
+        const currentVer = JSON.parse(fs.readFileSync("package.json")).version;
+        const msg = generateReleaseMessage(currentVer + "-next", bumpResult);
+        console.log("\n--- Generated Message Preview ---");
+        console.log(msg);
+
     } else {
         // Run the npm version command
         try {
-            console.log(`Executing: npm version ${bumpType} --no-git-tag-version`);
-            execSync(`npm version ${bumpType} --no-git-tag-version`, { stdio: 'inherit' });
+            // Output bump info for parsing
+            console.log(`BUMP_TYPE:${bumpResult.type}`);
+
+            // bump version
+            const newVersionRaw = execSync(`npm version ${bumpResult.type} --no-git-tag-version`, { encoding: 'utf8' }).trim();
+            const newVersion = newVersionRaw.replace(/^v/, '');
+
+            const msg = generateReleaseMessage(newVersion, bumpResult);
+
+            // Output special tokens to help parsing the message
+            console.log("RELEASE_MESSAGE_START");
+            console.log(msg);
+            console.log("RELEASE_MESSAGE_END");
+
         } catch (e) {
-            console.error("Failed to bump version.");
+            console.error("Failed to bump version.", e);
             process.exit(1);
         }
     }
