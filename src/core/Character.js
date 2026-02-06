@@ -56,7 +56,12 @@ export class Character {
     this.currentActivity = null; // e.g. { type: 'MINING', target: 'copper_ore', startTime: 12345, quantity: 10, progress: 0 }
     this.activityQueue = []; // Array of { type, target, quantity }
     this.activeGoalGroup = null; // Current GoalGroup being executed
-    this.gameContext = null; // Injected reference for notifications/saving (avoids circular imports)
+    // Non-enumerable so JSON.stringify skips it (avoids circular reference)
+    Object.defineProperty(this, "gameContext", {
+      value: null,
+      writable: true,
+      enumerable: false,
+    });
   }
 
   setGameContext(ctx) {

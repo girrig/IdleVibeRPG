@@ -90,9 +90,13 @@ class GameState {
     if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
     this.nextAutoSaveTime = Date.now() + this.autoSaveInterval;
     this.autoSaveTimer = setInterval(() => {
-      this.saveGame();
+      const success = this.saveGame();
       this.nextAutoSaveTime = Date.now() + this.autoSaveInterval;
-      this.triggerNotification("Game Auto-Saved", "autoSave");
+      if (success) {
+        this.triggerNotification("Game Auto-Saved", "autoSave");
+      } else {
+        this.triggerNotification("Auto-save failed!", "error");
+      }
     }, this.autoSaveInterval);
   }
 
@@ -122,6 +126,8 @@ class GameState {
         this.startAutoSave(); // Resets timer
       }
       this.triggerNotification("Game Saved Manually", "success");
+    } else {
+      this.triggerNotification("Save failed! Check console for details.", "error");
     }
   }
 

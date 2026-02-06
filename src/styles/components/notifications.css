@@ -24,11 +24,9 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
   animation:
-    slideUp 0.3s ease-out forwards,
-    fadeOut 0.5s ease-in 1s forwards;
+    slideUp 0.3s ease-out both,
+    fadeOut 0.5s ease-in 2.5s forwards;
   pointer-events: auto; /* Allow closing if we add close btn */
-  opacity: 0;
-  transform: translateY(20px);
 }
 
 .game-notification.error {

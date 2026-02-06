@@ -396,6 +396,32 @@ describe("GameState", () => {
 
       expect(spy).not.toHaveBeenCalled();
     });
+
+    it("should show error notification when manual save fails", () => {
+      SaveManager.save.mockReturnValue(false);
+      const notifSpy = vi.fn();
+      gameState.addNotificationListener(notifSpy);
+
+      gameState.manualSave();
+
+      expect(notifSpy).toHaveBeenCalledWith(
+        "Save failed! Check console for details.",
+        "error",
+      );
+    });
+
+    it("should show error notification when auto-save fails", () => {
+      vi.useFakeTimers();
+      SaveManager.save.mockReturnValue(false);
+      const notifSpy = vi.fn();
+      gameState.addNotificationListener(notifSpy);
+
+      gameState.startAutoSave();
+      vi.advanceTimersByTime(gameState.autoSaveInterval);
+
+      expect(notifSpy).toHaveBeenCalledWith("Auto-save failed!", "error");
+      vi.useRealTimers();
+    });
   });
 
   describe("Toggle Notifications", () => {

@@ -2,11 +2,12 @@ export class NotificationDisplay {
   static show(container, message, type = "info") {
     if (!container) return;
 
-    let notifContainer = container.querySelector(".notification-container");
+    // Append notification container to document.body for guaranteed z-index stacking
+    let notifContainer = document.querySelector(".notification-container");
     if (!notifContainer) {
       notifContainer = document.createElement("div");
       notifContainer.className = "notification-container";
-      container.appendChild(notifContainer);
+      document.body.appendChild(notifContainer);
     }
 
     const notif = document.createElement("div");
@@ -31,7 +32,7 @@ export class NotificationDisplay {
 
     setTimeout(() => {
       if (notif.parentNode) notif.parentNode.removeChild(notif);
-    }, 1500);
+    }, 3500);
   }
 
   static hexToRgb(hex) {
