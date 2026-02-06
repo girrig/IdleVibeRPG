@@ -546,16 +546,14 @@ export const SKILL_DEFINITIONS = {
 
       // Level 1-2: Easy / Common
       find_grassland: {
-        // ...
-
-        name: "Find Grassland",
+        name: `Find ${TERRAIN_TYPES.TEMPERATE_GRASSLAND.name}`,
         level: 1,
         xp: 20,
         icon: TERRAIN_TYPES.TEMPERATE_GRASSLAND.symbol,
         biomeId: TERRAIN_TYPES.TEMPERATE_GRASSLAND.id,
       },
       find_beach: {
-        name: "Find Beach",
+        name: `Find ${TERRAIN_TYPES.BEACH.name}`,
         level: 2,
         xp: 22,
         icon: TERRAIN_TYPES.BEACH.symbol,
@@ -564,14 +562,14 @@ export const SKILL_DEFINITIONS = {
       // Level 3-5
 
       find_forest: {
-        name: "Find Forest",
+        name: `Find ${TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.name}`,
         level: 5,
         xp: 30,
         icon: TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.symbol,
         biomeId: TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id,
       },
       find_shrubland: {
-        name: "Find Shrubland",
+        name: `Find ${TERRAIN_TYPES.SHRUBLAND.name}`,
         level: 5,
         xp: 30,
         icon: TERRAIN_TYPES.SHRUBLAND.symbol,
@@ -579,21 +577,21 @@ export const SKILL_DEFINITIONS = {
       },
       // Level 10
       find_desert: {
-        name: "Find Desert",
+        name: `Find ${TERRAIN_TYPES.SUBTROPICAL_DESERT.name}`,
         level: 10,
         xp: 40,
         icon: TERRAIN_TYPES.SUBTROPICAL_DESERT.symbol,
         biomeId: TERRAIN_TYPES.SUBTROPICAL_DESERT.id,
       },
       find_boreal_forest: {
-        name: "Find Boreal Forest",
+        name: `Find ${TERRAIN_TYPES.BOREAL_FOREST.name}`,
         level: 10,
         xp: 40,
         icon: TERRAIN_TYPES.BOREAL_FOREST.symbol,
         biomeId: TERRAIN_TYPES.BOREAL_FOREST.id,
       },
       find_swamp: {
-        name: "Find Swamp",
+        name: `Find ${TERRAIN_TYPES.SWAMP.name}`,
         level: 10,
         xp: 45,
         icon: TERRAIN_TYPES.SWAMP.symbol,
@@ -601,14 +599,14 @@ export const SKILL_DEFINITIONS = {
       },
       // Level 15
       find_temperate_rainforest: {
-        name: "Find Temp. Rainforest",
+        name: `Find ${TERRAIN_TYPES.TEMPERATE_RAINFOREST.name}`,
         level: 15,
         xp: 50,
         icon: TERRAIN_TYPES.TEMPERATE_RAINFOREST.symbol,
         biomeId: TERRAIN_TYPES.TEMPERATE_RAINFOREST.id,
       },
       find_tropical_savanna: {
-        name: "Find Savanna",
+        name: `Find ${TERRAIN_TYPES.TROPICAL_SAVANNA.name}`,
         level: 15,
         xp: 50,
         icon: TERRAIN_TYPES.TROPICAL_SAVANNA.symbol,
@@ -616,21 +614,21 @@ export const SKILL_DEFINITIONS = {
       },
       // Level 20
       find_mountain: {
-        name: "Find Mountain",
+        name: `Find ${TERRAIN_TYPES.ALPINE.name}`,
         level: 20,
         xp: 60,
         icon: TERRAIN_TYPES.ALPINE.symbol,
         biomeId: TERRAIN_TYPES.ALPINE.id,
       },
       find_temperate_desert: {
-        name: "Find Temp. Desert",
+        name: `Find ${TERRAIN_TYPES.TEMPERATE_DESERT.name}`,
         level: 20,
         xp: 60,
         icon: TERRAIN_TYPES.TEMPERATE_DESERT.symbol,
         biomeId: TERRAIN_TYPES.TEMPERATE_DESERT.id,
       },
       find_tropical_rainforest: {
-        name: "Find Jungle",
+        name: `Find ${TERRAIN_TYPES.TROPICAL_RAINFOREST.name}`,
         level: 20,
         xp: 65,
         icon: TERRAIN_TYPES.TROPICAL_RAINFOREST.symbol,
@@ -638,7 +636,7 @@ export const SKILL_DEFINITIONS = {
       },
       // Level 25
       find_tundra: {
-        name: "Find Tundra",
+        name: `Find ${TERRAIN_TYPES.TUNDRA.name}`,
         level: 25,
         xp: 70,
         icon: TERRAIN_TYPES.TUNDRA.symbol,
@@ -647,7 +645,7 @@ export const SKILL_DEFINITIONS = {
       // Level 30
 
       find_alpine_tundra: {
-        name: "Find Alpine Tundra",
+        name: `Find ${TERRAIN_TYPES.ALPINE_TUNDRA.name}`,
         level: 30,
         xp: 80,
         icon: TERRAIN_TYPES.ALPINE_TUNDRA.symbol,
@@ -655,14 +653,14 @@ export const SKILL_DEFINITIONS = {
       },
       // Level 35
       find_polar_desert: {
-        name: "Find Polar Desert",
+        name: `Find ${TERRAIN_TYPES.POLAR_DESERT.name}`,
         level: 35,
         xp: 90,
         icon: TERRAIN_TYPES.POLAR_DESERT.symbol,
         biomeId: TERRAIN_TYPES.POLAR_DESERT.id,
       },
       find_ice_sheet: {
-        name: "Find Ice Sheet",
+        name: `Find ${TERRAIN_TYPES.ICE_SHEET.name}`,
         level: 35,
         xp: 95,
         icon: TERRAIN_TYPES.ICE_SHEET.symbol,

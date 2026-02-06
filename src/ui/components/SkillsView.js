@@ -203,7 +203,7 @@ export class SkillsView {
       if (!exploreOpt) return;
 
       const isLocked = !gameState.discoveries.has(`biome:${biomeId}`);
-      const displayName = biomeDef.id.replace(/_/g, " ");
+      const displayName = biomeDef.name;
       const card = this.createTile(biomeDef.symbol, displayName, isLocked);
 
       if (!isLocked) {
@@ -498,7 +498,7 @@ export class SkillsView {
       data.allowedBiomes.forEach(biomeId => {
         const biomeDef = TERRAIN_TYPES[biomeId];
         if (biomeDef) {
-          biomesHtml += `<span class="biome-tag">${biomeDef.symbol} ${biomeDef.id.replace(/_/g, " ")}</span>`;
+          biomesHtml += `<span class="biome-tag">${biomeDef.symbol} ${biomeDef.name}</span>`;
         }
       });
       biomesHtml += `</div>`;

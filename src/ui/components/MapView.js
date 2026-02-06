@@ -817,7 +817,7 @@ export class MapView {
     const text = document.createElement("span");
     text.className = "sidebar-item-text";
 
-    const readableName = (labelOverride || type.id).toLowerCase().replace(/_/g, " ");
+    const readableName = labelOverride || type.name || type.id;
     const symbol = (showSymbol && type.symbol) ? type.symbol : "";
 
     const content = symbol ? `${symbol}  ${readableName}` : readableName;

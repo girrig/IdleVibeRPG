@@ -15,6 +15,7 @@ describe("TerrainTypes", () => {
   it("should have required fields on each terrain type", () => {
     for (const terrain of Object.values(TERRAIN_TYPES)) {
       expect(typeof terrain.id).toBe("string");
+      expect(typeof terrain.name).toBe("string");
       expect(typeof terrain.color).toBe("string");
       expect(typeof terrain.symbol).toBe("string");
     }

@@ -25,9 +25,9 @@ vi.mock("../../core/MapManager", () => {
       getTile: vi.fn((x, y) => rows[y] && rows[y][x]),
     },
     TERRAIN_TYPES: {
-      OCEAN: { id: "OCEAN", color: "#0000FF", symbol: "~" },
-      HOME: { id: "HOME", color: "#FFD700", symbol: "H" },
-      FOREST: { id: "FOREST", color: "#008000", symbol: "T" }
+      OCEAN: { id: "OCEAN", name: "Ocean", color: "#0000FF", symbol: "~" },
+      HOME: { id: "HOME", name: "Home", color: "#FFD700", symbol: "H" },
+      FOREST: { id: "FOREST", name: "Forest", color: "#008000", symbol: "T" }
     },
   };
 });
@@ -298,17 +298,15 @@ describe("MapView Zoom Logic", () => {
       // Check Biome (Mocked as FOREST with symbol 'T')
       // Note: MapView now lowercases text in DOM and uses CSS to capitalize.
       // So checking innerText requires "forest".
-      const forestItem = items.find(el => el.innerText.includes("forest") && !el.innerText.includes("patch"));
-      // Added !patch just to be extra sure we don't hit resource "forest patch" if order flips, 
-      // looking for exact "forest" match would be better but "forest" matches "forest patch".
+      const forestItem = items.find(el => el.innerText.includes("Forest") && !el.innerText.includes("Patch"));
 
       expect(forestItem).toBeDefined();
       expect(forestItem.innerText).not.toContain("T");
-      expect(forestItem.innerText.trim()).toBe("forest");
+      expect(forestItem.innerText.trim()).toBe("Forest");
 
       // Check Resource (Real constant: Mineral Vein with icon 🪨)
       // Note: renderSidebar iterates RESOURCE_NODES.
-      const mineralItem = items.find(el => el.innerText.includes("mineral vein"));
+      const mineralItem = items.find(el => el.innerText.includes("Mineral Vein"));
       if (mineralItem) {
         expect(mineralItem.innerText).toContain("⛏️");
       } else {

@@ -210,9 +210,9 @@ vi.mock("../../core/Constants", () => ({
 
 vi.mock("../../core/TerrainTypes", () => ({
   TERRAIN_TYPES: {
-    DESERT: { id: "DESERT", symbol: "🏜️", color: "#c2b280" },
-    FOREST: { id: "FOREST", symbol: "🌳", color: "#228b22" },
-    OCEAN: { id: "OCEAN", symbol: "🌊", color: "#0077be" },
+    DESERT: { id: "DESERT", name: "Desert", symbol: "🏜️", color: "#c2b280" },
+    FOREST: { id: "FOREST", name: "Forest", symbol: "🌳", color: "#228b22" },
+    OCEAN: { id: "OCEAN", name: "Ocean", symbol: "🌊", color: "#0077be" },
   },
 }));
 
