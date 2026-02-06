@@ -21,6 +21,12 @@ vi.mock("../../core/GameState", () => ({
   },
 }));
 
+vi.mock("../../core/MapManager", () => ({
+  mapManager: {
+    generateMap: vi.fn(),
+  },
+}));
+
 vi.mock("./ConfirmationModal", () => ({
   ConfirmationModal: {
     show: vi.fn(),
@@ -153,6 +159,19 @@ describe("SettingsView", () => {
 
     const subDiv = container.querySelector("#notif-sub-settings");
     expect(subDiv.style.opacity).toBe("0.5");
+  });
+
+  it("should show confirmation modal on regenerate world", () => {
+    SettingsView.render(container);
+    vi.advanceTimersByTime(0);
+
+    container.querySelector("#btn-regen-world").click();
+
+    expect(ConfirmationModal.show).toHaveBeenCalledWith(
+      "Regenerate World",
+      expect.any(String),
+      expect.any(Function),
+    );
   });
 
   it("should show confirmation modal on reset", () => {

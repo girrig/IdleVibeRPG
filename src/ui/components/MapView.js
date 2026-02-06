@@ -81,16 +81,18 @@ export class MapView {
     this.resourceOverlayOpen = true;
     this.viewWrapper.appendChild(this.resourceOverlay);
 
-    // Actions overlay (bottom-left)
-    this.actionsMenu = document.createElement("div");
-    this.actionsMenu.className = "map-overlay-panel map-overlay-bottom-left";
-    this.actionsMenuOpen = true;
-    this.viewWrapper.appendChild(this.actionsMenu);
+    // Home button (bottom-left)
+    this.homeButton = document.createElement("div");
+    this.homeButton.className = "map-home-btn";
+    this.homeButton.innerText = "\u{1F3E0}";
+    this.homeButton.title = "Center on Home";
+    this.homeButton.onclick = () => this.centerOnHome();
+    this.viewWrapper.appendChild(this.homeButton);
 
     // Legend overlay (bottom-right)
     this.mapMenu = document.createElement("div");
     this.mapMenu.className = "map-overlay-panel map-overlay-bottom-right";
-    this.mapMenuOpen = true;
+    this.mapMenuOpen = false;
     this.viewWrapper.appendChild(this.mapMenu);
 
     this.element.appendChild(this.viewWrapper);
@@ -263,9 +265,6 @@ export class MapView {
     container.appendChild(this.element);
 
     // Ensure overlays are rendered (idempotent check)
-    if (this.actionsMenu.childElementCount === 0) {
-      this.renderActionsMenu();
-    }
     if (this.mapMenu.childElementCount === 0) {
       this.renderMapMenu();
     }
@@ -658,83 +657,6 @@ export class MapView {
           }
         }
       }
-    }
-  }
-
-  renderActionsMenu() {
-    try {
-      this.actionsMenu.innerHTML = "";
-
-      // Header with toggle
-      const header = document.createElement("div");
-      header.className = "map-menu-header";
-      header.innerHTML = `<span>Actions</span><svg viewBox="0 0 24 24" class="map-menu-chevron${this.actionsMenuOpen ? "" : " collapsed"}"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg>`;
-      header.addEventListener("click", () => {
-        this.actionsMenuOpen = !this.actionsMenuOpen;
-        this.renderActionsMenu();
-      });
-      this.actionsMenu.appendChild(header);
-
-      if (!this.actionsMenuOpen) return;
-
-      // Body
-      const body = document.createElement("div");
-      body.className = "map-menu-body";
-
-      // Regen Button
-      const regenBtn = document.createElement("button");
-      regenBtn.innerText = "Regenerate World";
-      regenBtn.className = "map-sidebar-btn";
-      regenBtn.onclick = () => {
-        if (confirm("Regenerate world?")) {
-          // Show loading state
-          this.loadingOverlay.style.display = "flex";
-
-          // Yield to render thread so overlay appears
-          setTimeout(() => {
-            try {
-              mapManager.generateMap({ newSeed: true });
-              this.mapDataDirty = true; // Mark dirty
-              if (window.gameState) window.gameState.saveGame();
-              this.update();
-
-              // Force center on home after regeneration
-              setTimeout(() => this.centerOnHome(), 0);
-            } catch (err) {
-              console.error("Failed to generate map:", err);
-            } finally {
-              // Hide loading state
-              this.loadingOverlay.style.display = "none";
-            }
-          }, 100);
-        }
-      };
-      body.appendChild(regenBtn);
-
-      // Home / Specials
-      const homeType = TERRAIN_TYPES.HOME;
-      if (homeType) {
-        const item = document.createElement("div");
-        item.className = "sidebar-item-row interactive";
-        item.onclick = () => this.centerOnHome();
-
-        const box = document.createElement("div");
-        box.className = "terrain-color-box";
-        box.style.backgroundColor = homeType.color;
-
-        const text = document.createElement("span");
-        text.className = "sidebar-item-text";
-        text.innerText = `Home (Click to Center)`;
-
-        item.appendChild(box);
-        item.appendChild(text);
-        body.appendChild(item);
-      }
-
-      this.actionsMenu.appendChild(body);
-    } catch (e) {
-      console.error("Actions Menu Render Error:", e);
-      this.actionsMenu.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
     }
   }
 

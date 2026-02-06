@@ -1,4 +1,5 @@
 import { gameState } from "../../core/GameState";
+import { mapManager } from "../../core/MapManager";
 import { ConfirmationModal } from "./ConfirmationModal";
 
 export class SettingsView {
@@ -43,7 +44,10 @@ export class SettingsView {
         <div class="setting-category">
             <h3>Account</h3>
             <!-- Save Game button removed -->
-            <div class="setting-row">
+            <div class="setting-row" style="justify-content: center;">
+               <button class="btn-setting danger" id="btn-regen-world">Regenerate World</button>
+            </div>
+            <div class="setting-row" style="justify-content: center;">
                <button class="btn-setting danger" id="btn-reset-game">Reset Progress</button>
             </div>
         </div>
@@ -171,6 +175,24 @@ export class SettingsView {
     }
 
     // btnSave listener removed
+
+    const btnRegen = container.querySelector("#btn-regen-world");
+    if (btnRegen) {
+      btnRegen.addEventListener("click", () => {
+        ConfirmationModal.show(
+          "Regenerate World",
+          "Are you sure you want to regenerate the world? Your current map will be replaced with a new one.",
+          () => {
+            try {
+              mapManager.generateMap({ newSeed: true });
+              if (window.gameState) window.gameState.saveGame();
+            } catch (err) {
+              console.error("Failed to generate map:", err);
+            }
+          },
+        );
+      });
+    }
 
     if (btnReset) {
       btnReset.addEventListener("click", () => {

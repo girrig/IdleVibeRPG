@@ -255,26 +255,14 @@ describe("MapView Zoom Logic", () => {
   });
 
   describe("Sidebar & UI", () => {
-    it("should render actions menu with Regen and Home", () => {
-      mapView.renderActionsMenu();
-
-      // Check Regen button
-      const regenBtn = mapView.actionsMenu.querySelector("button.map-sidebar-btn");
-      expect(regenBtn).toBeDefined();
-      expect(regenBtn.innerText).toContain("Regenerate");
-
-      // Check Home item
-      const homeItem = mapView.actionsMenu.querySelector(".sidebar-item-row");
-      expect(homeItem).toBeDefined();
-      expect(homeItem.innerText).toContain("Home");
-
-      // Check click on Home
+    it("should have home button that centers on home", () => {
       const centerSpy = vi.spyOn(mapView, 'centerOnHome');
-      homeItem.click();
+      mapView.homeButton.click();
       expect(centerSpy).toHaveBeenCalled();
     });
 
     it("should render terrain menu with header", () => {
+      mapView.mapMenuOpen = true;
       mapView.renderMapMenu();
 
       const header = mapView.mapMenu.querySelector(".map-menu-header");
@@ -286,6 +274,7 @@ describe("MapView Zoom Logic", () => {
     });
 
     it("should hide symbols for Biomes in terrain menu", () => {
+      mapView.mapMenuOpen = true;
       mapView.renderMapMenu();
 
       const items = Array.from(mapView.mapMenu.querySelectorAll(".sidebar-item-row"));
@@ -341,39 +330,21 @@ describe("MapView Zoom Logic", () => {
       expect(mapView.resourceOverlay.querySelector(".resource-overlay-list")).not.toBeNull();
     });
 
-    it("should toggle actions menu open/closed", () => {
-      mapView.renderActionsMenu();
-
-      // Should have body when open
-      expect(mapView.actionsMenu.querySelector(".map-menu-body")).not.toBeNull();
-      expect(mapView.actionsMenu.querySelector("button.map-sidebar-btn")).not.toBeNull();
-
-      // Click header to close
-      mapView.actionsMenu.querySelector(".map-menu-header").click();
-      expect(mapView.actionsMenuOpen).toBe(false);
-      expect(mapView.actionsMenu.querySelector(".map-menu-body")).toBeNull();
-
-      // Click header to reopen
-      mapView.actionsMenu.querySelector(".map-menu-header").click();
-      expect(mapView.actionsMenuOpen).toBe(true);
-      expect(mapView.actionsMenu.querySelector(".map-menu-body")).not.toBeNull();
-    });
-
     it("should toggle terrain menu open/closed", () => {
       mapView.renderMapMenu();
 
-      // Should have body when open
+      // Should start closed (no body)
+      expect(mapView.mapMenu.querySelector(".map-menu-body")).toBeNull();
+
+      // Click header to open
+      mapView.mapMenu.querySelector(".map-menu-header").click();
+      expect(mapView.mapMenuOpen).toBe(true);
       expect(mapView.mapMenu.querySelector(".map-menu-body")).not.toBeNull();
 
       // Click header to close
       mapView.mapMenu.querySelector(".map-menu-header").click();
       expect(mapView.mapMenuOpen).toBe(false);
       expect(mapView.mapMenu.querySelector(".map-menu-body")).toBeNull();
-
-      // Click header to reopen
-      mapView.mapMenu.querySelector(".map-menu-header").click();
-      expect(mapView.mapMenuOpen).toBe(true);
-      expect(mapView.mapMenu.querySelector(".map-menu-body")).not.toBeNull();
     });
   });
 });
