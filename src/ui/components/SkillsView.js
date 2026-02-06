@@ -1,595 +1,391 @@
 import { gameState } from "../../core/GameState";
 import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
-import { getItemDefinition } from "../../core/ItemRegistry";
+import { ITEM_DEFINITIONS, getItemDefinition } from "../../core/ItemRegistry";
 import { GAME_CONFIG, RESOURCE_NODES } from "../../core/Constants";
 import { TERRAIN_TYPES } from "../../core/TerrainTypes";
+import { sourceRegistry } from "../../core/SourceRegistry";
+
+const CODEX_CATEGORIES = [
+  { id: "MONSTERS",  name: "Monsters",  icon: "\u2694\uFE0F",  color: "#e74c3c" },
+  { id: "NODES",     name: "Nodes",     icon: "\u26CF\uFE0F",  color: "#2ecc71" },
+  { id: "RECIPES",   name: "Recipes",   icon: "\uD83D\uDD28",  color: "#ff8800" },
+  { id: "BIOMES",    name: "Biomes",    icon: "\uD83C\uDF0D",  color: "#8e44ad" },
+  { id: "ITEMS",     name: "Items",     icon: "\uD83D\uDCE6",  color: "#3498db" },
+];
 
 export class SkillsView {
   constructor(uiManager) {
     this.uiManager = uiManager;
-    this.activeSkillTab = null;
-    this.expandedCategories = new Set();
+    this.activeCategory = null;
   }
 
   render(container) {
     container.className = "mw-content skills-modal-layout";
 
-    // Add specific skill class for theming (e.g. "skill-foraging")
-    if (this.activeSkillTab) {
-      container.classList.add(`skill-${this.activeSkillTab.toLowerCase()}`);
-    }
-
     const char = gameState.characters[this.uiManager.selectedCharIndex];
 
-    // Skill Categories Sidebar
+    if (!this.activeCategory) {
+      this.activeCategory = CODEX_CATEGORIES[0].id;
+    }
+
+    // Sidebar
     const sidebar = document.createElement("div");
     sidebar.className = "skills-category-sidebar";
 
-    // Main Content Area
+    CODEX_CATEGORIES.forEach((cat) => {
+      const tabBtn = document.createElement("div");
+      const isActive = this.activeCategory === cat.id;
+      tabBtn.className = `skill-category-tab ${isActive ? "active" : ""}`;
+
+      if (isActive) {
+        tabBtn.style.borderColor = cat.color;
+        tabBtn.style.color = cat.color;
+        tabBtn.style.background = `rgba(${this.hexToRgb(cat.color)}, 0.15)`;
+      }
+
+      const { discovered, total } = this.getCategoryCompletion(cat.id, char);
+      tabBtn.innerHTML = `
+        <span class="tab-icon">${cat.icon}</span>
+        <span class="tab-name">${cat.name}</span>
+        <span class="codex-completion">${discovered}/${total}</span>
+      `;
+
+      tabBtn.addEventListener("click", () => {
+        this.activeCategory = cat.id;
+        this.uiManager.renderMainWindow();
+      });
+
+      sidebar.appendChild(tabBtn);
+    });
+
+    // Content Area
     const contentArea = document.createElement("div");
     contentArea.className = "skills-options-area";
 
     container.appendChild(sidebar);
     container.appendChild(contentArea);
 
-    const sortedSkills = Object.values(SKILL_DEFINITIONS).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-
-    // Ensure active tab defaults to the first skill in the sorted list if not set
-    if (!this.activeSkillTab && sortedSkills.length > 0) {
-      this.activeSkillTab = sortedSkills[0].id;
-    }
-
-    sortedSkills.forEach((skill) => {
-      // Create Sidebar Item
-      const tabBtn = document.createElement("div");
-      const isActive = this.activeSkillTab === skill.id;
-      tabBtn.className = `skill-category-tab ${isActive ? "active" : ""}`;
-      // Apply color if active
-      if (isActive && skill.color) {
-        tabBtn.style.borderColor = skill.color;
-        tabBtn.style.color = skill.color;
-        // Background handled by CSS class, or we can tint it too
-        tabBtn.style.background = `rgba(${this.hexToRgb(skill.color)}, 0.15)`;
-      } else {
-        // Reset styles for inactive
-        tabBtn.style.borderColor = "";
-        tabBtn.style.color = "";
-        tabBtn.style.background = "";
-      }
-
-      const { discovered, total } = this.getSkillCompletion(skill, char);
-      tabBtn.innerHTML = `
-            <span class="tab-icon">${skill.icon}</span>
-            <span class="tab-name">${skill.name}</span>
-            <span class="codex-completion">${discovered}/${total}</span>
-        `;
-
-      tabBtn.addEventListener("click", () => {
-        this.activeSkillTab = skill.id;
-        this.uiManager.renderMainWindow(); // Full re-render to update UI
-      });
-
-      sidebar.appendChild(tabBtn);
-    });
-
-    const activeSkill = SKILL_DEFINITIONS[this.activeSkillTab];
-
-    if (!activeSkill) {
-      console.error("Active skill not found:", this.activeSkillTab);
-      // Fallback or just Reset
-      if (sortedSkills.length > 0) {
-        this.activeSkillTab = sortedSkills[0].id;
-        // Retry once immediately or just let next render handle it? 
-        // Let's just return and hope next click fixes or recursive call?
-        // Safer to just show error.
-        container.innerHTML = `<div class="error">Skill not found: ${this.activeSkillTab}</div>`;
-        return;
-      }
-    }
+    const activeCat = CODEX_CATEGORIES.find(c => c.id === this.activeCategory);
 
     try {
-      if (activeSkill.id === "EXPLORING") {
-        this.renderExplorationView(contentArea, activeSkill, char);
-      } else {
-        if (["MINING", "WOODCUTTING", "FISHING", "FORAGING"].includes(activeSkill.id)) {
-          this.renderGatheringSkillView(contentArea, activeSkill, char);
-        } else if (activeSkill.id === "FIGHTING") {
-          this.renderFightingSkillView(contentArea, activeSkill, char);
-        } else {
-          this.renderGenericSkillView(contentArea, activeSkill, char);
-        }
+      switch (this.activeCategory) {
+        case "MONSTERS":  this.renderMonstersView(contentArea, activeCat, char); break;
+        case "NODES":     this.renderNodesView(contentArea, activeCat, char); break;
+        case "RECIPES":   this.renderRecipesView(contentArea, activeCat, char); break;
+        case "BIOMES":    this.renderBiomesView(contentArea, activeCat, char); break;
+        case "ITEMS":     this.renderItemsView(contentArea, activeCat, char); break;
       }
     } catch (err) {
-      console.error("Error rendering skill view:", err);
-      // Fallback
+      console.error("Error rendering codex view:", err);
       contentArea.innerHTML = `<div class="error" style="color:red; padding:20px;">
-        <h3>Error Rendering Skill</h3>
+        <h3>Error Rendering Codex</h3>
         <pre>${err.message}</pre>
       </div>`;
     }
   }
 
-  renderGatheringSkillView(container, activeSkill, char) {
-    const currentLvl = char && char.skills[activeSkill.id.toLowerCase()] ? char.skills[activeSkill.id.toLowerCase()].level : 1;
-    const { discovered, total } = this.getSkillCompletion(activeSkill, char);
+  // --- Category Renderers ---
 
-    const header = document.createElement("div");
-    header.className = "skills-options-header";
-    const colorStyle = activeSkill.color ? `style="color: ${activeSkill.color}; border-bottom-color: ${activeSkill.color}"` : "";
-    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="codex-section-completion">${discovered}/${total} discovered</span> <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
-    container.appendChild(header);
+  renderMonstersView(container, cat, char) {
+    const fightingSkill = SKILL_DEFINITIONS.FIGHTING;
+    const charLevel = char?.skills?.fighting?.level || 0;
+    const { discovered, total } = this.getCategoryCompletion("MONSTERS", char);
 
-    const list = document.createElement("div");
-    list.className = "codex-entry-list";
+    this.renderHeader(container, cat, `${discovered}/${total} discovered`);
 
-    this.populateGatheringGrid(list, activeSkill, char);
+    const grid = document.createElement("div");
+    grid.className = "codex-entry-list";
 
-    container.appendChild(list);
-  }
+    Object.entries(fightingSkill.options).forEach(([key, opt]) => {
+      const isLocked = charLevel < opt.level;
+      const card = this.createTile(opt.icon, opt.name, isLocked);
 
-  populateGatheringGrid(grid, activeSkill, char) {
-    // 1. collect all unique resource keys for this skill
-    const resourceKeys = new Set();
-    Object.values(activeSkill.options).forEach((opt) => {
-      if (opt.resourceId) resourceKeys.add(opt.resourceId);
-    });
-
-    // 2. Iterate each resource type
-    resourceKeys.forEach((resourceKey) => {
-      const nodeConfig = RESOURCE_NODES[resourceKey];
-      if (!nodeConfig) return;
-
-      // Iterate over ALL allowed biomes to create an Appendix
-      nodeConfig.allowedBiomes.forEach((biomeId) => {
-        const biomeDef = TERRAIN_TYPES[biomeId];
-        const biomeName = biomeDef ? biomeDef.id.replace(/_/g, " ") : biomeId;
-        const biomeIcon = biomeDef ? biomeDef.symbol : "❓";
-
-        // Check Availability
-        const fullKey = `${resourceKey}:${biomeId}`;
-        const count = gameState.availableResources[fullKey] || 0;
-
-        // Find the matching option for this resource
-        const matchingOptionKey = Object.keys(activeSkill.options).find(
-          (k) => activeSkill.options[k].resourceId === resourceKey,
-        );
-        const matchingOpt = matchingOptionKey ? activeSkill.options[matchingOptionKey] : {};
-
-        const charLevel = char && char.skills[activeSkill.id.toLowerCase()] ? char.skills[activeSkill.id.toLowerCase()].level : 0;
-        const isLocked = charLevel < (matchingOpt.level || 1);
-
-        // Render Card
-        const card = document.createElement("div");
-        card.className = `skill-action-card ${isLocked ? "locked" : ""}`;
-
-        const displayName = isLocked ? "???" : `${biomeName} ${nodeConfig.name}`;
-        const displayIcon = isLocked ? "❓" : biomeIcon;
-
-        card.innerHTML = `
-            <div class="action-icon">${displayIcon}</div>
-            <div class="action-name">${displayName}</div>
-        `;
-
-        // Click opens detail popup
+      if (!isLocked) {
         card.addEventListener("click", () => {
           this.showDetailPopup({
-            name: `${biomeName} ${nodeConfig.name}`,
-            icon: biomeIcon,
-            level: matchingOpt.level || 1,
-            xp: matchingOpt.xp || 0,
-            interval: matchingOpt.interval || activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
-            skillColor: activeSkill.color,
-            resourceKey,
-            biomeId,
-            biomeName,
-            biomeIcon,
-            availableCount: count,
+            name: opt.name,
+            icon: opt.icon,
+            level: opt.level,
+            xp: opt.xp,
+            interval: opt.interval || fightingSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
+            skillColor: cat.color,
+            category: opt.category,
+            drops: opt.drops,
           });
         });
-
-        grid.appendChild(card);
-      });
-    });
-  }
-
-  renderFightingSkillView(container, activeSkill, char) {
-    const currentLvl = char && char.skills[activeSkill.id.toLowerCase()] ? char.skills[activeSkill.id.toLowerCase()].level : 1;
-    const { discovered, total } = this.getSkillCompletion(activeSkill, char);
-
-    const header = document.createElement("div");
-    header.className = "skills-options-header";
-    const colorStyle = activeSkill.color ? `style="color: ${activeSkill.color}; border-bottom-color: ${activeSkill.color}"` : "";
-    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="codex-section-completion">${discovered}/${total} discovered</span> <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
-    container.appendChild(header);
-
-    // Group options by category
-    const categories = {};
-    Object.entries(activeSkill.options).forEach(([key, opt]) => {
-      const cat = opt.category || "Uncategorized";
-      if (!categories[cat]) categories[cat] = [];
-      categories[cat].push({ key, opt });
-    });
-
-    // Define Category Order (Optional, or just alphabetical/keys)
-    const orderedCategories = ["Outskirts", "Wilderness", "Dungeon", "Infernal Plane", "Uncategorized"];
-    const presentCategories = Object.keys(categories);
-    const sortedCategories = orderedCategories.filter(c => presentCategories.includes(c))
-      .concat(presentCategories.filter(c => !orderedCategories.includes(c)));
-
-    const scrollContainer = document.createElement("div");
-    scrollContainer.className = "fighting-container";
-    scrollContainer.style.overflowY = "auto";
-    scrollContainer.style.flex = "1";
-    scrollContainer.style.paddingRight = "4px";
-
-    sortedCategories.forEach(catName => {
-      const isExpanded = this.expandedCategories.has(catName);
-      const categoryTitle = document.createElement("div");
-      categoryTitle.className = "exploration-section-title collapsible-header";
-      categoryTitle.style.marginTop = "16px";
-      categoryTitle.style.marginBottom = "8px";
-      categoryTitle.style.color = "#ddd";
-      categoryTitle.style.borderBottom = "1px solid #444";
-      categoryTitle.style.paddingBottom = "4px";
-      categoryTitle.style.cursor = "pointer";
-      categoryTitle.style.display = "flex";
-      categoryTitle.style.alignItems = "center";
-      categoryTitle.style.justifyContent = "space-between";
-
-      categoryTitle.innerHTML = `
-        <span>${catName}</span>
-        <span style="transform: ${isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)'}; transition: transform 0.2s;">▼</span>
-      `;
-
-      categoryTitle.addEventListener("click", () => {
-        this.toggleCategory(catName);
-      });
-
-      scrollContainer.appendChild(categoryTitle);
-
-      if (isExpanded) {
-        const list = document.createElement("div");
-        list.className = "codex-entry-list";
-
-        categories[catName].forEach(({ key, opt }) => {
-          this.renderSkillCard(list, key, opt, currentLvl, activeSkill);
-        });
-
-        scrollContainer.appendChild(list);
       }
+
+      grid.appendChild(card);
     });
 
-    container.appendChild(scrollContainer);
+    container.appendChild(grid);
   }
 
-  toggleCategory(catName) {
-    if (this.expandedCategories.has(catName)) {
-      this.expandedCategories.delete(catName);
-    } else {
-      this.expandedCategories.add(catName);
-    }
-    this.uiManager.renderMainWindow();
+  renderNodesView(container, cat, char) {
+    const { discovered, total } = this.getCategoryCompletion("NODES", char);
+
+    this.renderHeader(container, cat, `${discovered}/${total} discovered`);
+
+    const grid = document.createElement("div");
+    grid.className = "codex-entry-list";
+
+    Object.entries(RESOURCE_NODES).forEach(([nodeKey, node]) => {
+      const match = this.findResourceOption(nodeKey);
+      const charLevel = match ? (char?.skills?.[match.skillId.toLowerCase()]?.level || 0) : 0;
+      const isLocked = match ? charLevel < (match.option.level || 1) : true;
+
+      const card = this.createTile(node.icon, node.name, isLocked);
+
+      if (!isLocked) {
+        card.addEventListener("click", () => {
+          this.showDetailPopup({
+            name: node.name,
+            icon: node.icon,
+            level: match ? match.option.level : 1,
+            xp: match ? match.option.xp : 0,
+            interval: match ? (match.option.interval || SKILL_DEFINITIONS[match.skillId]?.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL) : undefined,
+            skillColor: cat.color,
+            capacity: node.amount,
+            allowedBiomes: node.allowedBiomes,
+            resourceKey: nodeKey,
+          });
+        });
+      }
+
+      grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
   }
 
-  renderGenericSkillView(container, activeSkill, char) {
-    const currentLvl =
-      char && char.skills[activeSkill.id.toLowerCase()]
-        ? char.skills[activeSkill.id.toLowerCase()].level
-        : 1;
-    const { discovered, total } = this.getSkillCompletion(activeSkill, char);
+  renderRecipesView(container, cat, char) {
+    const smithingSkill = SKILL_DEFINITIONS.SMITHING;
+    const charLevel = char?.skills?.smithing?.level || 0;
+    const { discovered, total } = this.getCategoryCompletion("RECIPES", char);
 
+    this.renderHeader(container, cat, `${discovered}/${total} discovered`);
+
+    const grid = document.createElement("div");
+    grid.className = "codex-entry-list";
+
+    Object.entries(smithingSkill.options).forEach(([key, opt]) => {
+      const isLocked = charLevel < opt.level;
+      const card = this.createTile(opt.icon, opt.name, isLocked);
+
+      if (!isLocked) {
+        card.addEventListener("click", () => {
+          this.showDetailPopup({
+            name: opt.name,
+            icon: opt.icon,
+            level: opt.level,
+            xp: opt.xp,
+            interval: opt.interval || smithingSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
+            skillColor: cat.color,
+            cost: opt.cost,
+          });
+        });
+      }
+
+      grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
+  }
+
+  renderBiomesView(container, cat, char) {
+    const charLevel = char?.skills?.exploring?.level || 0;
+    const { discovered, total } = this.getCategoryCompletion("BIOMES", char);
+
+    this.renderHeader(container, cat, `${discovered}/${total} discovered`);
+
+    const grid = document.createElement("div");
+    grid.className = "codex-entry-list";
+
+    // Only show biomes that have a find_ exploring option
+    Object.entries(TERRAIN_TYPES).forEach(([biomeId, biomeDef]) => {
+      const exploreOpt = this.findBiomeOption(biomeId);
+      if (!exploreOpt) return;
+
+      const isLocked = charLevel < exploreOpt.level;
+      const displayName = biomeDef.id.replace(/_/g, " ");
+      const card = this.createTile(biomeDef.symbol, displayName, isLocked);
+
+      if (!isLocked) {
+        card.addEventListener("click", () => {
+          this.showDetailPopup({
+            name: displayName,
+            icon: biomeDef.symbol,
+            level: exploreOpt.level,
+            xp: exploreOpt.xp,
+            interval: SKILL_DEFINITIONS.EXPLORING?.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
+            skillColor: cat.color,
+            biomeId: biomeId,
+            resourcesFound: this.getResourcesInBiome(biomeId),
+          });
+        });
+      }
+
+      grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
+  }
+
+  renderItemsView(container, cat, char) {
+    const { discovered, total } = this.getCategoryCompletion("ITEMS", char);
+
+    this.renderHeader(container, cat, `${discovered}/${total} discovered`);
+
+    const grid = document.createElement("div");
+    grid.className = "codex-entry-list";
+
+    Object.entries(ITEM_DEFINITIONS).forEach(([itemId, itemDef]) => {
+      if (itemDef.category === "Currency") return;
+
+      const isLocked = !this.isItemDiscovered(itemId, char);
+      const card = this.createTile(itemDef.icon, itemDef.name, isLocked);
+
+      if (!isLocked) {
+        card.addEventListener("click", () => {
+          const source = sourceRegistry.getSource(itemId);
+          this.showDetailPopup({
+            name: itemDef.name,
+            icon: itemDef.icon,
+            level: source ? source.reqLevel : undefined,
+            skillColor: cat.color,
+            value: itemDef.value,
+            itemCategory: itemDef.category,
+            sourceInfo: source ? {
+              skill: SKILL_DEFINITIONS[source.skillId]?.name || source.skillId,
+              detail: source.detail,
+            } : null,
+          });
+        });
+      }
+
+      grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
+  }
+
+  // --- Shared Helpers ---
+
+  renderHeader(container, cat, completionText) {
     const header = document.createElement("div");
     header.className = "skills-options-header";
-
-    // Header Style
-    const colorStyle = activeSkill.color
-      ? `style="color: ${activeSkill.color}; border-bottom-color: ${activeSkill.color}"`
-      : "";
-
-    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="codex-section-completion">${discovered}/${total} discovered</span> <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
+    header.innerHTML = `<h2 style="color: ${cat.color}; border-bottom-color: ${cat.color}">
+      ${cat.icon} ${cat.name}
+      <span class="codex-section-completion">${completionText}</span>
+    </h2>`;
     container.appendChild(header);
-
-    // Entry list
-    const list = document.createElement("div");
-    list.className = "codex-entry-list";
-
-    Object.entries(activeSkill.options).forEach(([key, opt]) => {
-      this.renderSkillCard(list, key, opt, currentLvl, activeSkill);
-    });
-
-    container.appendChild(list);
   }
 
-  renderExplorationView(container, activeSkill, char) {
-    const currentLvl = char && char.skills.exploring ? char.skills.exploring.level : 1;
-    const { discovered, total } = this.getSkillCompletion(activeSkill, char);
-
-    // --- Header ---
-    const header = document.createElement("div");
-    header.className = "skills-options-header";
-    header.style.color = activeSkill.color;
-    header.style.borderBottomColor = activeSkill.color;
-    header.innerHTML = `<h2>${activeSkill.icon} ${activeSkill.name} <span class="codex-section-completion">${discovered}/${total} discovered</span> <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
-    container.appendChild(header);
-
-    const scrollContainer = document.createElement("div");
-    scrollContainer.className = "exploration-container";
-
-    // --- 1. Wander Section (Expansion) ---
-    const wanderTitle = document.createElement("div");
-    wanderTitle.className = "exploration-section-title";
-    wanderTitle.innerText = "Map Expansion";
-    scrollContainer.appendChild(wanderTitle);
-
-    const wanderContainer = document.createElement("div");
-    wanderContainer.className = "wander-options-container";
-
-    // Expansion Card
-    const expOpt = activeSkill.options.wander_expansion;
-    if (expOpt) {
-      const card = document.createElement("div");
-      card.className = "wander-card safe"; // Expansion is generally safe/low risk
-      card.innerHTML = `
-        <div class="wander-icon">${expOpt.icon}</div>
-        <div class="wander-content">
-            <div class="wander-title">${expOpt.name}</div>
-            <div class="wander-desc">${expOpt.description}</div>
-        </div>
-        <div class="wander-stats">
-            <span>XP: ${expOpt.xp}</span>
-        </div>
-      `;
-      card.style.cursor = "pointer";
-      card.addEventListener("click", () => {
-        this.showDetailPopup({
-          name: expOpt.name,
-          icon: expOpt.icon,
-          level: expOpt.level,
-          xp: expOpt.xp,
-          interval: activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
-          skillColor: activeSkill.color,
-          description: expOpt.description,
-        });
-      });
-      wanderContainer.appendChild(card);
-    }
-    scrollContainer.appendChild(wanderContainer);
-
-
-    // --- 2. Biome Discovery Section ---
-    const discoveryTitle = document.createElement("div");
-    discoveryTitle.className = "exploration-section-title";
-    discoveryTitle.innerText = "Biome Discovery";
-    discoveryTitle.style.marginTop = "20px";
-    scrollContainer.appendChild(discoveryTitle);
-
-    const biomeList = document.createElement("div");
-    biomeList.className = "codex-entry-list";
-
-    // Filter only "find_" options
-    Object.entries(activeSkill.options).forEach(([key, opt]) => {
-      if (!key.startsWith("find_")) return;
-
-      const isLocked = currentLvl < opt.level;
-      const card = document.createElement("div");
-      card.className = `skill-action-card biome-card ${isLocked ? "locked locked-overlay" : ""}`;
-
-      const displayName = isLocked ? "???" : opt.name;
-      const displayIcon = isLocked ? "❓" : opt.icon;
-
-      card.innerHTML = `
-        <div class="action-icon">${displayIcon}</div>
-        <div class="action-name">${displayName}</div>
-      `;
-
-      card.addEventListener("click", () => {
-        this.showDetailPopup({
-          name: isLocked ? "???" : opt.name,
-          icon: isLocked ? "❓" : opt.icon,
-          level: opt.level,
-          xp: opt.xp,
-          interval: activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
-          skillColor: activeSkill.color,
-          biomeId: isLocked ? undefined : opt.biomeId,
-        });
-      });
-
-      biomeList.appendChild(card);
-    });
-
-    scrollContainer.appendChild(biomeList);
-    container.appendChild(scrollContainer);
-  }
-
-  // Refactored helper to prevent duplication in Generic View
-  renderSkillCard(container, key, opt, currentLvl, activeSkill) {
+  createTile(icon, name, isLocked) {
     const card = document.createElement("div");
-    const isLocked = currentLvl < opt.level;
     card.className = `skill-action-card ${isLocked ? "locked" : ""}`;
-    card.setAttribute("data-key", key);
-
-    const displayName = isLocked ? "???" : opt.name;
-    const displayIcon = isLocked ? "❓" : (opt.icon || "❓");
-
+    const displayIcon = isLocked ? "\u2753" : icon;
+    const displayName = isLocked ? "???" : name;
     card.innerHTML = `
       <div class="action-icon">${displayIcon}</div>
       <div class="action-name">${displayName}</div>
     `;
-
-    // Click opens detail popup
-    card.addEventListener("click", () => {
-      this.showDetailPopup({
-        name: opt.name,
-        icon: opt.icon || "❓",
-        level: opt.level,
-        xp: opt.xp,
-        interval: opt.interval || activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
-        skillColor: activeSkill.color,
-        drops: opt.drops,
-        cost: opt.cost,
-        category: opt.category,
-        resourceId: opt.resourceId,
-      });
-    });
-
-    container.appendChild(card);
+    return card;
   }
 
-  update(container) {
-    if (!this.activeSkillTab) return;
+  // --- Completion ---
 
-    if (this.activeSkillTab === 'EXPLORING') {
-      this.updateExplorationView(container);
-    }
-    else if (["MINING", "WOODCUTTING", "FISHING", "FORAGING"].includes(this.activeSkillTab)) {
-      const list = container.querySelector(".codex-entry-list");
-      if (list) {
-        list.innerHTML = "";
-        const activeSkill = SKILL_DEFINITIONS[this.activeSkillTab];
-        const char = gameState.characters[this.uiManager.selectedCharIndex];
-        this.populateGatheringGrid(list, activeSkill, char);
+  getCategoryCompletion(categoryId, char) {
+    switch (categoryId) {
+      case "MONSTERS": {
+        const lvl = char?.skills?.fighting?.level || 0;
+        const opts = Object.values(SKILL_DEFINITIONS.FIGHTING?.options || {});
+        return { discovered: opts.filter(o => lvl >= o.level).length, total: opts.length };
       }
-
-      const char = gameState.characters[this.uiManager.selectedCharIndex];
-      const currentLvl = char ? char.skills[this.activeSkillTab.toLowerCase()].level : 1;
-      const headerLvl = container.querySelector(".header-lvl");
-      if (headerLvl) headerLvl.innerText = `Lvl ${currentLvl} `;
-    }
-    else {
-      // Generic Update logic for smithing/fighting
-      const headerLvl = container.querySelector(".header-lvl");
-      const activeSkill = SKILL_DEFINITIONS[this.activeSkillTab];
-      const char = gameState.characters[this.uiManager.selectedCharIndex];
-
-      if (activeSkill && char) {
-        const currentLvl = char.skills[activeSkill.id.toLowerCase()]?.level || 1;
-        if (headerLvl) headerLvl.innerText = `Lvl ${currentLvl} `;
-
-        const cards = container.querySelectorAll(".skill-action-card");
-        // Create a map for faster lookup if strict ordering isn't guaranteed
-        const cardMap = {};
-        cards.forEach(c => {
-          const k = c.getAttribute("data-key");
-          if (k) cardMap[k] = c;
-        });
-
-        Object.entries(activeSkill.options).forEach(([key, opt]) => {
-          const card = cardMap[key];
-          if (!card) return;
-
-          // Update Available Count & Details
-          const availDiv = card.querySelector(".action-available");
-          if (availDiv) {
-            const availSpan = availDiv.querySelector(".avail-count");
-            if (availSpan) {
-              const resId = availSpan.getAttribute("data-res-id");
-              if (resId) {
-                const { html } = this.generateAvailableResourceHtml(resId);
-                availDiv.innerHTML = html;
-              }
-            }
-          }
-
-          // Update Locks
-          const isLocked = currentLvl < opt.level;
-          if (isLocked) {
-            card.classList.add("locked");
-          } else {
-            card.classList.remove("locked");
+      case "NODES": {
+        const nodes = Object.keys(RESOURCE_NODES);
+        let discovered = 0;
+        nodes.forEach(nodeKey => {
+          const match = this.findResourceOption(nodeKey);
+          if (match) {
+            const lvl = char?.skills?.[match.skillId.toLowerCase()]?.level || 0;
+            if (lvl >= (match.option.level || 1)) discovered++;
           }
         });
+        return { discovered, total: nodes.length };
       }
+      case "RECIPES": {
+        const lvl = char?.skills?.smithing?.level || 0;
+        const opts = Object.values(SKILL_DEFINITIONS.SMITHING?.options || {});
+        return { discovered: opts.filter(o => lvl >= o.level).length, total: opts.length };
+      }
+      case "BIOMES": {
+        const lvl = char?.skills?.exploring?.level || 0;
+        let total = 0;
+        let discovered = 0;
+        Object.keys(TERRAIN_TYPES).forEach(biomeId => {
+          const opt = this.findBiomeOption(biomeId);
+          if (!opt) return;
+          total++;
+          if (lvl >= opt.level) discovered++;
+        });
+        return { discovered, total };
+      }
+      case "ITEMS": {
+        let total = 0;
+        let discovered = 0;
+        Object.entries(ITEM_DEFINITIONS).forEach(([itemId, def]) => {
+          if (def.category === "Currency") return;
+          total++;
+          if (this.isItemDiscovered(itemId, char)) discovered++;
+        });
+        return { discovered, total };
+      }
+      default:
+        return { discovered: 0, total: 0 };
     }
   }
 
+  // --- Discovery Helpers ---
 
-  updateExplorationView(container) {
-    const char = gameState.characters[this.uiManager.selectedCharIndex];
-    const currentLvl = char ? char.skills.exploring.level : 1;
-
-    const headerLvl = container.querySelector(".header-lvl");
-    if (headerLvl) headerLvl.innerText = `Lvl ${currentLvl} `;
-
-    const activeSkill = SKILL_DEFINITIONS['EXPLORING'];
-    const cards = container.querySelectorAll(".biome-card");
-    let idx = 0;
-    Object.entries(activeSkill.options).forEach(([key, opt]) => {
-      if (!key.startsWith("find_")) return;
-      if (idx >= cards.length) return;
-
-      const card = cards[idx];
-      const isLocked = currentLvl < opt.level;
-
-      if (isLocked) {
-        if (!card.classList.contains("locked-overlay")) {
-          card.classList.add("locked-overlay");
-        }
-      } else {
-        card.classList.remove("locked-overlay");
-      }
-      idx++;
-    });
+  isItemDiscovered(itemId, char) {
+    const source = sourceRegistry.getSource(itemId);
+    if (!source) return true; // No source info = always visible
+    const lvl = char?.skills?.[source.skillId.toLowerCase()]?.level || 0;
+    return lvl >= source.reqLevel;
   }
 
-  generateAvailableResourceHtml(resourceKey) {
-    const allResources = gameState.availableResources;
-    const matchingKeys = Object.keys(allResources).filter(k => k.startsWith(resourceKey + ":"));
-    let totalCount = 0;
-    let detailsHtml = "";
-
-    if (matchingKeys.length > 0) {
-      detailsHtml = '<div class="resource-breakdown" style="font-size: 0.85em; margin-top: 5px; color: #aaa;">';
-
-      matchingKeys.forEach(fullKey => {
-        const count = allResources[fullKey];
-        if (count <= 0) return;
-        totalCount += count;
-
-        const biomeId = fullKey.split(":")[1];
-        const biomeDef = TERRAIN_TYPES[biomeId];
-        const biomeName = biomeDef ? biomeDef.id.replace(/_/g, " ") : biomeId;
-        const biomeIcon = biomeDef ? biomeDef.symbol : "❓";
-
-        // Get Drops
-        const nodeConfig = RESOURCE_NODES[resourceKey];
-        let drops = [];
-        if (nodeConfig) {
-          const table = (nodeConfig.biome_drops && nodeConfig.biome_drops[biomeId]) || nodeConfig.default_drops;
-          if (table) {
-            drops = table.map(entry => {
-              const itemDef = getItemDefinition(entry.item);
-              return itemDef ? itemDef.name : entry.item;
-            });
-          }
-        }
-        const uniqueDrops = [...new Set(drops)].slice(0, 3).join(", ");
-
-        detailsHtml += `
-           <div style="margin-left: 8px;">
-             ${biomeIcon} ${count} in ${biomeName} <span style="color:#666;">(${uniqueDrops})</span>
-           </div>
-         `;
-      });
-      detailsHtml += '</div>';
-    } else {
-      // Fallback for generic nodes without biome?
-      totalCount = gameState.getAvailableResourceCount(resourceKey);
+  findResourceOption(resourceKey) {
+    const gatheringSkills = ["MINING", "WOODCUTTING", "FISHING", "FORAGING"];
+    for (const skillId of gatheringSkills) {
+      const skill = SKILL_DEFINITIONS[skillId];
+      if (!skill?.options) continue;
+      const option = Object.values(skill.options).find(opt => opt.resourceId === resourceKey);
+      if (option) return { skillId, option };
     }
-
-    const countColor = totalCount > 0 ? "#4ade80" : "#f87171";
-    return {
-      html: `
-        World Available: <span class="avail-count" data-res-id="${resourceKey}" style="color: ${countColor}">${totalCount}</span>
-        ${totalCount > 0 ? detailsHtml : ""}
-      `,
-      totalCount
-    };
+    return null;
   }
+
+  findBiomeOption(biomeId) {
+    const exploring = SKILL_DEFINITIONS.EXPLORING;
+    if (!exploring?.options) return null;
+    const entry = Object.entries(exploring.options).find(
+      ([key, opt]) => opt.biomeId === biomeId
+    );
+    return entry ? entry[1] : null;
+  }
+
+  getResourcesInBiome(biomeId) {
+    return Object.values(RESOURCE_NODES)
+      .filter(node => node.allowedBiomes && node.allowedBiomes.includes(biomeId))
+      .map(node => ({ name: node.name, icon: node.icon }));
+  }
+
+  update() {}
+
+  // --- Detail Popup ---
 
   showDetailPopup(data) {
-    // Remove any existing popup
     const existing = document.querySelector(".game-modal.codex-popup");
     if (existing) existing.remove();
 
@@ -626,55 +422,53 @@ export class SkillsView {
           <h3>${data.name}</h3>
           ${data.description ? `<div class="codex-subtitle">${data.description}</div>` : ""}
           ${data.category ? `<div class="codex-subtitle">${data.category}</div>` : ""}
+          ${data.itemCategory ? `<div class="codex-subtitle">${data.itemCategory}</div>` : ""}
         </div>
       </div>
     `;
 
     // Stats grid
-    const statsHtml = `
-      <div class="codex-stat-grid">
-        <div class="codex-stat-row">
-          <span class="stat-label">Level</span>
-          <span class="stat-value">${data.level}</span>
-        </div>
-        <div class="codex-stat-row">
-          <span class="stat-label">XP</span>
-          <span class="stat-value">${data.xp}</span>
-        </div>
-        <div class="codex-stat-row">
-          <span class="stat-label">Time</span>
-          <span class="stat-value">${(data.interval / 1000)}s</span>
-        </div>
-        ${data.availableCount !== undefined ? `
-        <div class="codex-stat-row">
-          <span class="stat-label">Available</span>
-          <span class="stat-value" style="color: ${data.availableCount > 0 ? '#4ade80' : '#f87171'}">${data.availableCount}</span>
-        </div>` : ""}
-      </div>
-    `;
-    body.innerHTML += statsHtml;
+    const statRows = [];
+    if (data.level !== undefined) {
+      statRows.push(`<div class="codex-stat-row"><span class="stat-label">Level</span><span class="stat-value">${data.level}</span></div>`);
+    }
+    if (data.xp !== undefined) {
+      statRows.push(`<div class="codex-stat-row"><span class="stat-label">XP</span><span class="stat-value">${data.xp}</span></div>`);
+    }
+    if (data.interval !== undefined) {
+      statRows.push(`<div class="codex-stat-row"><span class="stat-label">Time</span><span class="stat-value">${(data.interval / 1000)}s</span></div>`);
+    }
+    if (data.value !== undefined) {
+      statRows.push(`<div class="codex-stat-row"><span class="stat-label">Value</span><span class="stat-value">${data.value} \uD83D\uDCB0</span></div>`);
+    }
+    if (data.capacity !== undefined) {
+      statRows.push(`<div class="codex-stat-row"><span class="stat-label">Capacity</span><span class="stat-value">${data.capacity}</span></div>`);
+    }
+    if (statRows.length > 0) {
+      body.innerHTML += `<div class="codex-stat-grid">${statRows.join("")}</div>`;
+    }
 
-    // Cost section (smithing)
+    // Cost section (recipes)
     if (data.cost) {
       let costHtml = `<div class="codex-section-title">Materials Required</div><div class="codex-cost-list">`;
       Object.entries(data.cost).forEach(([id, qty]) => {
         const iDef = getItemDefinition(id);
         const itemName = iDef ? iDef.name : id;
-        const itemIcon = iDef ? iDef.icon : "📦";
+        const itemIcon = iDef ? iDef.icon : "\uD83D\uDCE6";
         costHtml += `<div class="codex-cost-item">${itemIcon} ${qty} ${itemName}</div>`;
       });
       costHtml += `</div>`;
       body.innerHTML += costHtml;
     }
 
-    // Drops section (fighting)
+    // Drops section (monsters)
     if (data.drops) {
       const totalWeight = data.drops.reduce((sum, e) => sum + e.weight, 0);
       let dropsHtml = `<div class="codex-section-title">Drops</div><div class="codex-drop-table">`;
       data.drops.forEach((entry) => {
         const itemDef = getItemDefinition(entry.item);
         const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
-        const icon = itemDef ? itemDef.icon : "📦";
+        const icon = itemDef ? itemDef.icon : "\uD83D\uDCE6";
         const name = itemDef ? itemDef.name : entry.item;
         dropsHtml += `
           <div class="codex-drop-row">
@@ -687,47 +481,61 @@ export class SkillsView {
       body.innerHTML += dropsHtml;
     }
 
-    // Gathering drops (biome-specific from RESOURCE_NODES)
+    // Resource drops (default_drops for resource nodes)
     if (data.resourceKey) {
       const nodeConfig = RESOURCE_NODES[data.resourceKey];
-      if (nodeConfig) {
-        const table =
-          (nodeConfig.biome_drops && nodeConfig.biome_drops[data.biomeId]) ||
-          nodeConfig.default_drops;
-
-        if (table) {
-          const totalWeight = table.reduce((sum, e) => sum + e.weight, 0);
-          let dropsHtml = `<div class="codex-section-title">Drops</div><div class="codex-drop-table">`;
-          table.forEach((entry) => {
-            const itemDef = getItemDefinition(entry.item);
-            const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
-            const icon = itemDef ? itemDef.icon : "📦";
-            const name = itemDef ? itemDef.name : entry.item;
-            dropsHtml += `
-              <div class="codex-drop-row">
-                <span class="drop-icon">${icon}</span>
-                <span class="drop-name">${name}</span>
-                <span class="drop-chance">${percent}%</span>
-              </div>`;
-          });
-          dropsHtml += `</div>`;
-          body.innerHTML += dropsHtml;
-        }
+      if (nodeConfig?.default_drops) {
+        const table = nodeConfig.default_drops;
+        const totalWeight = table.reduce((sum, e) => sum + e.weight, 0);
+        let dropsHtml = `<div class="codex-section-title">Drops</div><div class="codex-drop-table">`;
+        table.forEach((entry) => {
+          const itemDef = getItemDefinition(entry.item);
+          const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
+          const icon = itemDef ? itemDef.icon : "\uD83D\uDCE6";
+          const name = itemDef ? itemDef.name : entry.item;
+          dropsHtml += `
+            <div class="codex-drop-row">
+              <span class="drop-icon">${icon}</span>
+              <span class="drop-name">${name}</span>
+              <span class="drop-chance">${percent}%</span>
+            </div>`;
+        });
+        dropsHtml += `</div>`;
+        body.innerHTML += dropsHtml;
       }
     }
 
-    // Biome info (exploring)
-    if (data.biomeId && !data.resourceKey) {
-      const biomeDef = TERRAIN_TYPES[data.biomeId];
-      if (biomeDef) {
-        body.innerHTML += `
-          <div class="codex-section-title">Biome</div>
-          <div class="codex-stat-row">
-            <span class="stat-label">Terrain</span>
-            <span class="stat-value">${biomeDef.symbol} ${biomeDef.id.replace(/_/g, " ")}</span>
-          </div>
-        `;
+    // Allowed biomes (resources)
+    if (data.allowedBiomes) {
+      let biomesHtml = `<div class="codex-section-title">Found In</div><div class="codex-biome-tags">`;
+      data.allowedBiomes.forEach(biomeId => {
+        const biomeDef = TERRAIN_TYPES[biomeId];
+        if (biomeDef) {
+          biomesHtml += `<span class="biome-tag">${biomeDef.symbol} ${biomeDef.id.replace(/_/g, " ")}</span>`;
+        }
+      });
+      biomesHtml += `</div>`;
+      body.innerHTML += biomesHtml;
+    }
+
+    // Resources found in biome
+    if (data.resourcesFound && data.resourcesFound.length > 0) {
+      let resHtml = `<div class="codex-section-title">Resources</div><div class="codex-resource-list">`;
+      data.resourcesFound.forEach(r => {
+        resHtml += `<div class="codex-resource-item">${r.icon} ${r.name}</div>`;
+      });
+      resHtml += `</div>`;
+      body.innerHTML += resHtml;
+    }
+
+    // Source info (items)
+    if (data.sourceInfo) {
+      let sourceHtml = `<div class="codex-section-title">Source</div>`;
+      sourceHtml += `<div class="codex-stat-row"><span class="stat-label">Skill</span><span class="stat-value">${data.sourceInfo.skill}</span></div>`;
+      if (data.sourceInfo.detail) {
+        sourceHtml += `<div class="codex-stat-row"><span class="stat-label">Location</span><span class="stat-value">${data.sourceInfo.detail}</span></div>`;
       }
+      body.innerHTML += sourceHtml;
     }
 
     content.appendChild(body);
@@ -742,23 +550,13 @@ export class SkillsView {
     });
   }
 
-  getSkillCompletion(skill, char) {
-    const charLevel = char && char.skills[skill.id.toLowerCase()]
-      ? char.skills[skill.id.toLowerCase()].level : 0;
-    const options = Object.values(skill.options);
-    const total = options.length;
-    const discovered = options.filter(opt => charLevel >= opt.level).length;
-    return { discovered, total };
-  }
+  // --- Utility ---
 
-  // Helper
   hexToRgb(hex) {
-    // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
     var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
     hex = hex.replace(shorthandRegex, function (m, r, g, b) {
       return r + r + g + g + b + b;
     });
-
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result
       ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)} `

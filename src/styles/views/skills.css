@@ -203,42 +203,6 @@
 }
 
 
-/* --- FORAGING THEME --- */
-/* Dark theme reverted per user request */
-/* .skills-modal-layout.skill-foraging { ... } */
-
-
-.skill-foraging .skills-options-header {
-  border-bottom-color: #4ade80;
-}
-
-.skill-foraging .skill-action-card {
-  background: rgba(46, 204, 113, 0.05);
-  border-color: rgba(74, 222, 128, 0.12);
-}
-
-.skill-foraging .skill-action-card:hover:not(.locked) {
-  background: rgba(46, 204, 113, 0.12);
-  border-color: rgba(74, 222, 128, 0.35);
-}
-
-/* --- MINING THEME --- */
-.skill-mining .skill-action-card {
-  background: rgba(230, 126, 34, 0.05);
-  border-color: rgba(230, 126, 34, 0.12);
-}
-
-.skill-mining .skill-action-card:hover:not(.locked) {
-  background: rgba(230, 126, 34, 0.12);
-  border-color: rgba(230, 126, 34, 0.35);
-}
-
-/* --- WOODCUTTING THEME --- */
-.skill-woodcutting .skill-action-card {
-  background: rgba(139, 69, 19, 0.05);
-  border-color: rgba(139, 69, 19, 0.18);
-}
-
 /* --- CODEX DETAIL POPUP --- */
 .codex-popup-body {
   display: flex;
@@ -389,4 +353,35 @@
   border-radius: 10px;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+/* --- Biome Tags (resource popup) --- */
+.codex-biome-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.biome-tag {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #ccc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* --- Resource List (biome popup) --- */
+.codex-resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.codex-resource-item {
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #e2e8f0;
 }
