@@ -255,83 +255,48 @@ describe("MapView Zoom Logic", () => {
   });
 
   describe("Sidebar & UI", () => {
-    it("should render sidebar items correctly", () => {
-      mapView.renderSidebar();
+    it("should render actions menu with Regen and Home", () => {
+      mapView.renderActionsMenu();
 
-      // Sidebar now contains Collapsible Sections (Terrain, Resources) + Regen Button
-      // Items are inside .sidebar-section-content within those sections.
+      // Check Regen button
+      const regenBtn = mapView.actionsMenu.querySelector("button.map-sidebar-btn");
+      expect(regenBtn).toBeDefined();
+      expect(regenBtn.innerText).toContain("Regenerate");
 
-      const getAllItems = () => {
-        const items = [];
-
-        // 1. Direct children items (Home)
-        Array.from(mapView.sidebar.children).forEach(child => {
-          if (child.classList.contains("sidebar-item-row")) {
-            items.push(child);
-          }
-        });
-
-        // 2. Nested section items
-        const sections = mapView.sidebar.querySelectorAll(".sidebar-section-content");
-        sections.forEach(section => {
-          Array.from(section.children).forEach(child => items.push(child));
-        });
-        return items;
-      }
-
-      const allItems = getAllItems();
-
-      // Check for Home item
-      const homeItem = allItems.find(el => el.innerText.includes("Home"));
+      // Check Home item
+      const homeItem = mapView.actionsMenu.querySelector(".sidebar-item-row");
       expect(homeItem).toBeDefined();
+      expect(homeItem.innerText).toContain("Home");
 
       // Check click on Home
       const centerSpy = vi.spyOn(mapView, 'centerOnHome');
       homeItem.click();
       expect(centerSpy).toHaveBeenCalled();
-
-      // Check Regen button (It is a direct child of sidebar usually, or check specifically)
-      const regenBtn = mapView.sidebar.querySelector("button.map-sidebar-btn");
-      expect(regenBtn).toBeDefined();
-      expect(regenBtn.innerText).toContain("Regenerate");
     });
 
-    it("should hide symbols for Biomes but show for Resources", () => {
-      // Mock RESOURCE_NODES if not already available
+    it("should render terrain menu with header", () => {
+      mapView.renderMapMenu();
 
-      mapView.renderSidebar();
+      const header = mapView.mapMenu.querySelector(".map-menu-header");
+      expect(header.innerText).toContain("Terrain");
 
-      // Helper to get all items from sections
-      const getAllItems = () => {
-        const items = [];
-        const sections = mapView.sidebar.querySelectorAll(".sidebar-section-content");
-        sections.forEach(section => {
-          Array.from(section.children).forEach(child => items.push(child));
-        });
-        return items;
-      }
+      const body = mapView.mapMenu.querySelector(".map-menu-body");
+      expect(body).not.toBeNull();
+      expect(body.querySelectorAll(".sidebar-item-row").length).toBeGreaterThan(0);
+    });
 
-      const items = getAllItems();
+    it("should hide symbols for Biomes in terrain menu", () => {
+      mapView.renderMapMenu();
 
-      // Check Biome (Mocked as FOREST with symbol 'T')
-      // Note: MapView now lowercases text in DOM and uses CSS to capitalize.
-      // So checking innerText requires "forest".
+      const items = Array.from(mapView.mapMenu.querySelectorAll(".sidebar-item-row"));
+
+      // Check Biome (Mocked as FOREST with symbol 'T') — symbol should NOT appear
       const forestItem = items.find(el => el.innerText.includes("Forest") && !el.innerText.includes("Patch"));
 
       expect(forestItem).toBeDefined();
       expect(forestItem.innerText).not.toContain("T");
       expect(forestItem.innerText.trim()).toBe("Forest");
-
-      // Check Resource (Real constant: Mineral Vein with icon 🪨)
-      // Note: renderSidebar iterates RESOURCE_NODES.
-      const mineralItem = items.find(el => el.innerText.includes("Mineral Vein"));
-      if (mineralItem) {
-        expect(mineralItem.innerText).toContain("⛏️");
-      } else {
-        // Fallback if resource rendering depends on something else or if import failed in test env
-        // But it should render if RESOURCE_NODES is valid.
-      }
-    }); // Close "should hide symbols..."
+    });
 
     it("should show resource node counts in overlay sorted by count descending", () => {
       gameState.availableResources = {
@@ -376,42 +341,39 @@ describe("MapView Zoom Logic", () => {
       expect(mapView.resourceOverlay.querySelector(".resource-overlay-list")).not.toBeNull();
     });
 
-    it("should persist collapsible section state across updates", () => {
-      mapView.renderSidebar();
+    it("should toggle actions menu open/closed", () => {
+      mapView.renderActionsMenu();
 
-      const getAllHeaders = () => Array.from(mapView.sidebar.querySelectorAll(".map-sidebar-header"));
-      const getAllContent = () => Array.from(mapView.sidebar.querySelectorAll(".sidebar-section-content"));
+      // Should have body when open
+      expect(mapView.actionsMenu.querySelector(".map-menu-body")).not.toBeNull();
+      expect(mapView.actionsMenu.querySelector("button.map-sidebar-btn")).not.toBeNull();
 
-      // Initial State: Terrain is Open
-      let headers = getAllHeaders();
-      let contents = getAllContent();
+      // Click header to close
+      mapView.actionsMenu.querySelector(".map-menu-header").click();
+      expect(mapView.actionsMenuOpen).toBe(false);
+      expect(mapView.actionsMenu.querySelector(".map-menu-body")).toBeNull();
 
-      // Find "Terrain" header (index 0 usually, or find by text)
-      const terrainHeader = headers.find(h => h.innerText.includes("Terrain"));
-      const terrainContent = contents[0]; // Assuming Terrain is first
+      // Click header to reopen
+      mapView.actionsMenu.querySelector(".map-menu-header").click();
+      expect(mapView.actionsMenuOpen).toBe(true);
+      expect(mapView.actionsMenu.querySelector(".map-menu-body")).not.toBeNull();
+    });
 
-      expect(terrainHeader).toBeDefined();
+    it("should toggle terrain menu open/closed", () => {
+      mapView.renderMapMenu();
 
-      // Default: Closed
-      expect(terrainContent.classList.contains("collapsed")).toBe(true); // Changed from false
-      expect(mapView.sectionStates["Terrain"]).toBe(false);
+      // Should have body when open
+      expect(mapView.mapMenu.querySelector(".map-menu-body")).not.toBeNull();
 
-      // Click to Open
-      terrainHeader.click();
-      expect(terrainContent.classList.contains("collapsed")).toBe(false);
-      expect(mapView.sectionStates["Terrain"]).toBe(true);
+      // Click header to close
+      mapView.mapMenu.querySelector(".map-menu-header").click();
+      expect(mapView.mapMenuOpen).toBe(false);
+      expect(mapView.mapMenu.querySelector(".map-menu-body")).toBeNull();
 
-      // Re-render (Should stay open)
-      mapView.renderSidebar();
-
-      headers = getAllHeaders();
-      contents = getAllContent();
-      const newTerrainContent = contents[0];
-      expect(newTerrainContent.classList.contains("collapsed")).toBe(false);
-
-      // Click to Close (for symmetry/completeness)
-      headers[0].click();
-      expect(contents[0].classList.contains("collapsed")).toBe(true);
+      // Click header to reopen
+      mapView.mapMenu.querySelector(".map-menu-header").click();
+      expect(mapView.mapMenuOpen).toBe(true);
+      expect(mapView.mapMenu.querySelector(".map-menu-body")).not.toBeNull();
     });
   });
 });

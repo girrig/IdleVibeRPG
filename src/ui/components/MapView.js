@@ -81,22 +81,23 @@ export class MapView {
     this.resourceOverlayOpen = true;
     this.viewWrapper.appendChild(this.resourceOverlay);
 
-    // Sidebar
-    this.sidebar = document.createElement("div");
-    this.sidebar.className = "map-view-sidebar";
+    // Actions overlay (bottom-left)
+    this.actionsMenu = document.createElement("div");
+    this.actionsMenu.className = "map-overlay-panel map-overlay-bottom-left";
+    this.actionsMenuOpen = true;
+    this.viewWrapper.appendChild(this.actionsMenu);
+
+    // Legend overlay (bottom-right)
+    this.mapMenu = document.createElement("div");
+    this.mapMenu.className = "map-overlay-panel map-overlay-bottom-right";
+    this.mapMenuOpen = true;
+    this.viewWrapper.appendChild(this.mapMenu);
 
     this.element.appendChild(this.viewWrapper);
-    this.element.appendChild(this.sidebar);
 
     // State
     this.zoomLevel = 12; // Start smaller for big map
     // this.hoverTile = null; // Removed
-
-    // Sidebar Section Persistence
-    this.sectionStates = {
-      Terrain: false,
-      Resources: false
-    };
 
     // Events
     this.bindEvents();
@@ -261,9 +262,12 @@ export class MapView {
     container.innerHTML = "";
     container.appendChild(this.element);
 
-    // Ensure sidebar is rendered (idempotent check)
-    if (this.sidebar.childElementCount === 0) {
-      this.renderSidebar();
+    // Ensure overlays are rendered (idempotent check)
+    if (this.actionsMenu.childElementCount === 0) {
+      this.renderActionsMenu();
+    }
+    if (this.mapMenu.childElementCount === 0) {
+      this.renderMapMenu();
     }
 
     // Restore Scroll Position if saved
@@ -282,7 +286,7 @@ export class MapView {
 
   // Called when map data or zoom/filters change
   update() {
-    // this.renderSidebar(); // REMOVED: Static sidebar shouldn't re-render on game tick
+    // this.renderMapMenu(); // REMOVED: Static menu shouldn't re-render on game tick
 
 
     const mapWidthTotal = mapManager.width * this.zoomLevel;
@@ -657,62 +661,25 @@ export class MapView {
     }
   }
 
-  // Helper: Create Collapsible Section
-  createCollapsibleSection(title, defaultIsOpen, contentCallback) {
-    const container = document.createElement("div");
-
-    // Resolve initial state: Use stored state if available, otherwise default
-    const isOpen = this.sectionStates[title] !== undefined ? this.sectionStates[title] : defaultIsOpen;
-
-    // Header
-    const header = document.createElement("div");
-    header.className = "map-sidebar-header";
-    // If not open by default, add collapsed class initially? (Logic below handles click)
-
-    // Chevron Icon (SVG)
-    const chevron = document.createElement("div");
-    chevron.innerHTML = `<svg viewBox="0 0 24 24" class="header-icon"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg>`;
-
-    const titleText = document.createElement("span");
-    titleText.innerText = title;
-
-    header.appendChild(titleText);
-    header.appendChild(chevron);
-
-    // Content Wrapper
-    const content = document.createElement("div");
-    content.className = "sidebar-section-content";
-    if (!isOpen) {
-      content.classList.add("collapsed");
-      header.classList.add("collapsed");
-    }
-
-    // Toggle Logic
-    header.onclick = () => {
-      const isCollapsed = content.classList.contains("collapsed");
-      if (isCollapsed) {
-        content.classList.remove("collapsed");
-        header.classList.remove("collapsed");
-        this.sectionStates[title] = true;
-      } else {
-        content.classList.add("collapsed");
-        header.classList.add("collapsed");
-        this.sectionStates[title] = false;
-      }
-    };
-
-    container.appendChild(header);
-    container.appendChild(content);
-
-    // Build Content
-    contentCallback(content);
-
-    return container;
-  }
-
-  renderSidebar() {
+  renderActionsMenu() {
     try {
-      this.sidebar.innerHTML = "";
+      this.actionsMenu.innerHTML = "";
+
+      // Header with toggle
+      const header = document.createElement("div");
+      header.className = "map-menu-header";
+      header.innerHTML = `<span>Actions</span><svg viewBox="0 0 24 24" class="map-menu-chevron${this.actionsMenuOpen ? "" : " collapsed"}"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg>`;
+      header.addEventListener("click", () => {
+        this.actionsMenuOpen = !this.actionsMenuOpen;
+        this.renderActionsMenu();
+      });
+      this.actionsMenu.appendChild(header);
+
+      if (!this.actionsMenuOpen) return;
+
+      // Body
+      const body = document.createElement("div");
+      body.className = "map-menu-body";
 
       // Regen Button
       const regenBtn = document.createElement("button");
@@ -742,9 +709,9 @@ export class MapView {
           }, 100);
         }
       };
-      this.sidebar.appendChild(regenBtn);
+      body.appendChild(regenBtn);
 
-      // 1. Home / Specials (Moved to top level)
+      // Home / Specials
       const homeType = TERRAIN_TYPES.HOME;
       if (homeType) {
         const item = document.createElement("div");
@@ -761,45 +728,49 @@ export class MapView {
 
         item.appendChild(box);
         item.appendChild(text);
-        this.sidebar.appendChild(item);
+        body.appendChild(item);
       }
 
-      // --- Terrain Section ---
-      const terrainParams = (container) => {
-        // Legend (Biomes)
-        const sortedTypes = Object.values(TERRAIN_TYPES)
-          .filter((t) => t.id !== "HOME")
-          .sort((a, b) => a.id.localeCompare(b.id));
-
-        sortedTypes.forEach((type) => {
-          const item = this.createSidebarItemElement(type, null, false, false);
-          container.appendChild(item);
-        });
-      };
-
-      this.sidebar.appendChild(this.createCollapsibleSection("Terrain", false, terrainParams));
-
-      // --- Resources Section ---
-      const resourceParams = (container) => {
-        if (!RESOURCE_NODES) return;
-
-        Object.values(RESOURCE_NODES).forEach((node) => {
-          const item = this.createSidebarItemElement(
-            {
-              id: node.id,
-              color: "transparent",
-              symbol: node.icon,
-            },
-            node.name
-          );
-          container.appendChild(item);
-        });
-      };
-
-      this.sidebar.appendChild(this.createCollapsibleSection("Resources", false, resourceParams));
+      this.actionsMenu.appendChild(body);
     } catch (e) {
-      console.error("Sidebar Render Error:", e);
-      this.sidebar.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
+      console.error("Actions Menu Render Error:", e);
+      this.actionsMenu.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
+    }
+  }
+
+  renderMapMenu() {
+    try {
+      this.mapMenu.innerHTML = "";
+
+      // Header with toggle
+      const header = document.createElement("div");
+      header.className = "map-menu-header";
+      header.innerHTML = `<span>Terrain</span><svg viewBox="0 0 24 24" class="map-menu-chevron${this.mapMenuOpen ? "" : " collapsed"}"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg>`;
+      header.addEventListener("click", () => {
+        this.mapMenuOpen = !this.mapMenuOpen;
+        this.renderMapMenu();
+      });
+      this.mapMenu.appendChild(header);
+
+      if (!this.mapMenuOpen) return;
+
+      // Body
+      const body = document.createElement("div");
+      body.className = "map-menu-body";
+
+      const sortedTypes = Object.values(TERRAIN_TYPES)
+        .filter((t) => t.id !== "HOME")
+        .sort((a, b) => a.id.localeCompare(b.id));
+
+      sortedTypes.forEach((type) => {
+        const item = this.createSidebarItemElement(type, null, false, false);
+        body.appendChild(item);
+      });
+
+      this.mapMenu.appendChild(body);
+    } catch (e) {
+      console.error("Legend Menu Render Error:", e);
+      this.mapMenu.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
     }
   }
 
@@ -840,7 +811,7 @@ export class MapView {
 
   // Legacy Adapter if needed, or just remove if unused. Keeping for safety but it wont be called internally.
   createSidebarItem(type, labelOverride = null, isHeader = false, showSymbol = true) {
-    this.sidebar.appendChild(this.createSidebarItemElement(type, labelOverride, isHeader, showSymbol));
+    this.mapMenu.appendChild(this.createSidebarItemElement(type, labelOverride, isHeader, showSymbol));
   }
 
   updateResourceOverlay() {

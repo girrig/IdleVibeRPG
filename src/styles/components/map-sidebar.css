@@ -1,17 +1,78 @@
-/* Map Sidebar Container */
-.map-view-sidebar {
-    width: 240px;
-    min-width: 240px;
-    background: rgba(20, 20, 30, 0.85);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 20px;
+/* Shared panel style for map overlays */
+.map-overlay-panel {
+    position: absolute;
+    z-index: 20;
+    background: rgba(15, 15, 25, 0.9);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    min-width: 200px;
+    max-width: 260px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+}
+
+.map-overlay-bottom-left {
+    bottom: 26px;
+    left: 10px;
+}
+
+.map-overlay-bottom-right {
+    bottom: 26px;
+    right: 22px;
+}
+
+.map-menu-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: #fbbf24;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    user-select: none;
+}
+
+.map-menu-header:hover {
+    color: #fcd34d;
+}
+
+.map-menu-chevron {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+    transition: transform 0.2s ease;
+}
+
+.map-menu-chevron.collapsed {
+    transform: rotate(-90deg);
+}
+
+.map-menu-body {
+    padding: 0 12px 12px;
+    max-height: 50vh;
     overflow-y: auto;
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
-    z-index: 10;
+}
+
+.map-menu-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.map-menu-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.map-menu-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.map-menu-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 /* Headers */
@@ -119,7 +180,7 @@
 .map-sidebar-btn {
     width: 100%;
     padding: 10px 16px;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     cursor: pointer;
     background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
     /* Indigo */
@@ -147,23 +208,6 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Scrollbar */
-.map-view-sidebar::-webkit-scrollbar {
-    width: 6px;
-}
-
-.map-view-sidebar::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.map-view-sidebar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-}
-
-.map-view-sidebar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
 
 /* Resource Overlay (top-left of map) */
 .map-resource-overlay {
