@@ -19,6 +19,7 @@ describe("Exploring Skill - Targeting", () => {
         removeItem: vi.fn(),
       },
       saveGame: vi.fn(),
+      addDiscovery: vi.fn(),
     };
     window.gameState = gameState;
 

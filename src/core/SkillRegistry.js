@@ -446,6 +446,7 @@ export const SKILL_DEFINITIONS = {
       if (char.talents.fighting_2 && Math.random() < 0.1) amount = 2;
 
       gameState.inventory.addItem(dropItem, amount);
+      gameState.addDiscovery(`monster:${targetId}`);
       char.gainXp("fighting", option.xp);
     },
   },
@@ -523,6 +524,7 @@ export const SKILL_DEFINITIONS = {
       if (char.talents.smithing_2 && Math.random() < 0.1) amount = 2;
 
       gameState.inventory.addItem(targetId, amount);
+      gameState.addDiscovery(`recipe:${targetId}`);
       char.gainXp("smithing", option.xp);
     },
   },
@@ -959,9 +961,11 @@ export const SKILL_DEFINITIONS = {
           if (tile.resource) {
             const key = `${tile.resource.type}:${tile.type}`;
             gameState.addAvailableResource(key, tile.resource.amount);
-            // Optional: Notification for big finds?
-            // gameState.triggerNotification(`Found ${tile.resource.amount} ${tile.resource.type}!`, "success");
+            gameState.addDiscovery(`node:${tile.resource.type}`);
           }
+
+          // 2. BIOME DISCOVERY
+          gameState.addDiscovery(`biome:${tile.type}`);
 
           let tileXp = wanderXp;
 

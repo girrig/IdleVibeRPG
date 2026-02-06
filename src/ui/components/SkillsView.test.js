@@ -19,6 +19,14 @@ vi.mock("../../core/GameState", () => ({
     ],
     availableResources: {},
     getAvailableResourceCount: vi.fn(() => 0),
+    discoveries: new Set([
+      "monster:fight_rat",
+      "node:mineral_node", "node:tree_node",
+      "recipe:smelt_copper",
+      "biome:FOREST",
+      "item:copper_ore", "item:iron_ore", "item:coal",
+      "item:rat_tail", "item:rat_bone", "item:oak_log",
+    ]),
   },
 }));
 
@@ -242,11 +250,15 @@ describe("SkillsView", () => {
     };
     view = new SkillsView(mockUiManager);
 
-    // Reset character levels to defaults
-    gameState.characters[0].skills.mining.level = 5;
-    gameState.characters[0].skills.fighting.level = 2;
-    gameState.characters[0].skills.smithing.level = 1;
-    gameState.characters[0].skills.exploring.level = 3;
+    // Reset discoveries to defaults
+    gameState.discoveries = new Set([
+      "monster:fight_rat",
+      "node:mineral_node", "node:tree_node",
+      "recipe:smelt_copper",
+      "biome:FOREST",
+      "item:copper_ore", "item:iron_ore", "item:coal",
+      "item:rat_tail", "item:rat_bone", "item:oak_log",
+    ]);
   });
 
   describe("hexToRgb", () => {
@@ -314,8 +326,8 @@ describe("SkillsView", () => {
       expect(cards.length).toBe(2); // rat and goblin
     });
 
-    it("should show unlocked monsters and lock high-level ones", () => {
-      // fighting level is 2: rat (lv1) unlocked, goblin (lv5) locked
+    it("should show discovered monsters and lock undiscovered ones", () => {
+      // fight_rat is discovered, fight_goblin is not
       view.activeCategory = "MONSTERS";
       view.render(container);
 
@@ -362,8 +374,8 @@ describe("SkillsView", () => {
       expect(cards.length).toBe(2); // copper and iron
     });
 
-    it("should lock recipes above character smithing level", () => {
-      // smithing level is 1: copper (lv1) unlocked, iron (lv5) locked
+    it("should lock undiscovered recipes", () => {
+      // smelt_copper is discovered, smelt_iron is not
       view.activeCategory = "RECIPES";
       view.render(container);
 
@@ -393,8 +405,8 @@ describe("SkillsView", () => {
       expect(cards.length).toBe(2);
     });
 
-    it("should lock biomes above exploring level", () => {
-      // exploring level is 3: forest (lv1) unlocked, desert (lv5) locked
+    it("should lock undiscovered biomes", () => {
+      // FOREST is discovered, DESERT is not
       view.activeCategory = "BIOMES";
       view.render(container);
 
@@ -418,10 +430,8 @@ describe("SkillsView", () => {
       expect(cards.length).toBe(7);
     });
 
-    it("should discover items based on source skill level", () => {
-      // mining lv5, fighting lv2, woodcutting lv1
-      // copper_ore (mining req 1) -> discovered
-      // goblin_mail (fighting req 5) -> locked (fighting is only 2)
+    it("should show discovered items and lock undiscovered ones", () => {
+      // copper_ore is in discoveries, goblin_mail is not
       view.activeCategory = "ITEMS";
       view.render(container);
 
@@ -540,39 +550,38 @@ describe("SkillsView", () => {
   });
 
   describe("completion counters", () => {
-    it("should count monsters by fighting level", () => {
+    it("should count monsters by discoveries", () => {
       const char = gameState.characters[0];
-      // fighting level 2, rat (lv1) discovered, goblin (lv5) not
+      // fight_rat discovered, fight_goblin not
       const result = view.getCategoryCompletion("MONSTERS", char);
       expect(result).toEqual({ discovered: 1, total: 2 });
     });
 
-    it("should count recipes by smithing level", () => {
+    it("should count recipes by discoveries", () => {
       const char = gameState.characters[0];
-      // smithing level 1, copper (lv1) discovered, iron (lv5) not
+      // smelt_copper discovered, smelt_iron not
       const result = view.getCategoryCompletion("RECIPES", char);
       expect(result).toEqual({ discovered: 1, total: 2 });
     });
 
-    it("should count biomes by exploring level", () => {
+    it("should count biomes by discoveries", () => {
       const char = gameState.characters[0];
-      // exploring level 3, forest (lv1) discovered, desert (lv5) not
+      // FOREST discovered, DESERT not
       const result = view.getCategoryCompletion("BIOMES", char);
       expect(result).toEqual({ discovered: 1, total: 2 });
     });
 
-    it("should count nodes by gathering skill levels", () => {
+    it("should count nodes by discoveries", () => {
       const char = gameState.characters[0];
-      // mining lv5 >= mineral_node req 1 -> discovered
-      // woodcutting lv1 >= tree_node req 1 -> discovered
+      // mineral_node and tree_node both discovered
       const result = view.getCategoryCompletion("NODES", char);
       expect(result).toEqual({ discovered: 2, total: 2 });
     });
 
-    it("should count items by source skill levels", () => {
+    it("should count items by discoveries", () => {
       const char = gameState.characters[0];
       const result = view.getCategoryCompletion("ITEMS", char);
-      // 7 non-currency items, goblin_mail locked (fighting 2 < req 5)
+      // 7 non-currency items, goblin_mail not discovered
       expect(result.total).toBe(7);
       expect(result.discovered).toBe(6);
     });

@@ -88,7 +88,6 @@ export class SkillsView {
 
   renderMonstersView(container, cat, char) {
     const fightingSkill = SKILL_DEFINITIONS.FIGHTING;
-    const charLevel = char?.skills?.fighting?.level || 0;
     const { discovered, total } = this.getCategoryCompletion("MONSTERS", char);
 
     this.renderHeader(container, cat, `${discovered}/${total} discovered`);
@@ -97,7 +96,7 @@ export class SkillsView {
     grid.className = "codex-entry-list";
 
     Object.entries(fightingSkill.options).forEach(([key, opt]) => {
-      const isLocked = charLevel < opt.level;
+      const isLocked = !gameState.discoveries.has(`monster:${key}`);
       const card = this.createTile(opt.icon, opt.name, isLocked);
 
       if (!isLocked) {
@@ -131,8 +130,7 @@ export class SkillsView {
 
     Object.entries(RESOURCE_NODES).forEach(([nodeKey, node]) => {
       const match = this.findResourceOption(nodeKey);
-      const charLevel = match ? (char?.skills?.[match.skillId.toLowerCase()]?.level || 0) : 0;
-      const isLocked = match ? charLevel < (match.option.level || 1) : true;
+      const isLocked = !gameState.discoveries.has(`node:${nodeKey}`);
 
       const card = this.createTile(node.icon, node.name, isLocked);
 
@@ -160,7 +158,6 @@ export class SkillsView {
 
   renderRecipesView(container, cat, char) {
     const smithingSkill = SKILL_DEFINITIONS.SMITHING;
-    const charLevel = char?.skills?.smithing?.level || 0;
     const { discovered, total } = this.getCategoryCompletion("RECIPES", char);
 
     this.renderHeader(container, cat, `${discovered}/${total} discovered`);
@@ -169,7 +166,7 @@ export class SkillsView {
     grid.className = "codex-entry-list";
 
     Object.entries(smithingSkill.options).forEach(([key, opt]) => {
-      const isLocked = charLevel < opt.level;
+      const isLocked = !gameState.discoveries.has(`recipe:${key}`);
       const card = this.createTile(opt.icon, opt.name, isLocked);
 
       if (!isLocked) {
@@ -193,7 +190,6 @@ export class SkillsView {
   }
 
   renderBiomesView(container, cat, char) {
-    const charLevel = char?.skills?.exploring?.level || 0;
     const { discovered, total } = this.getCategoryCompletion("BIOMES", char);
 
     this.renderHeader(container, cat, `${discovered}/${total} discovered`);
@@ -206,7 +202,7 @@ export class SkillsView {
       const exploreOpt = this.findBiomeOption(biomeId);
       if (!exploreOpt) return;
 
-      const isLocked = charLevel < exploreOpt.level;
+      const isLocked = !gameState.discoveries.has(`biome:${biomeId}`);
       const displayName = biomeDef.id.replace(/_/g, " ");
       const card = this.createTile(biomeDef.symbol, displayName, isLocked);
 
@@ -242,7 +238,7 @@ export class SkillsView {
     Object.entries(ITEM_DEFINITIONS).forEach(([itemId, itemDef]) => {
       if (itemDef.category === "Currency") return;
 
-      const isLocked = !this.isItemDiscovered(itemId, char);
+      const isLocked = !gameState.discoveries.has(`item:${itemId}`);
       const card = this.createTile(itemDef.icon, itemDef.name, isLocked);
 
       if (!isLocked) {
@@ -298,36 +294,34 @@ export class SkillsView {
   getCategoryCompletion(categoryId, char) {
     switch (categoryId) {
       case "MONSTERS": {
-        const lvl = char?.skills?.fighting?.level || 0;
-        const opts = Object.values(SKILL_DEFINITIONS.FIGHTING?.options || {});
-        return { discovered: opts.filter(o => lvl >= o.level).length, total: opts.length };
+        const keys = Object.keys(SKILL_DEFINITIONS.FIGHTING?.options || {});
+        return {
+          discovered: keys.filter(k => gameState.discoveries.has(`monster:${k}`)).length,
+          total: keys.length,
+        };
       }
       case "NODES": {
-        const nodes = Object.keys(RESOURCE_NODES);
-        let discovered = 0;
-        nodes.forEach(nodeKey => {
-          const match = this.findResourceOption(nodeKey);
-          if (match) {
-            const lvl = char?.skills?.[match.skillId.toLowerCase()]?.level || 0;
-            if (lvl >= (match.option.level || 1)) discovered++;
-          }
-        });
-        return { discovered, total: nodes.length };
+        const keys = Object.keys(RESOURCE_NODES);
+        return {
+          discovered: keys.filter(k => gameState.discoveries.has(`node:${k}`)).length,
+          total: keys.length,
+        };
       }
       case "RECIPES": {
-        const lvl = char?.skills?.smithing?.level || 0;
-        const opts = Object.values(SKILL_DEFINITIONS.SMITHING?.options || {});
-        return { discovered: opts.filter(o => lvl >= o.level).length, total: opts.length };
+        const keys = Object.keys(SKILL_DEFINITIONS.SMITHING?.options || {});
+        return {
+          discovered: keys.filter(k => gameState.discoveries.has(`recipe:${k}`)).length,
+          total: keys.length,
+        };
       }
       case "BIOMES": {
-        const lvl = char?.skills?.exploring?.level || 0;
         let total = 0;
         let discovered = 0;
         Object.keys(TERRAIN_TYPES).forEach(biomeId => {
           const opt = this.findBiomeOption(biomeId);
           if (!opt) return;
           total++;
-          if (lvl >= opt.level) discovered++;
+          if (gameState.discoveries.has(`biome:${biomeId}`)) discovered++;
         });
         return { discovered, total };
       }
@@ -337,7 +331,7 @@ export class SkillsView {
         Object.entries(ITEM_DEFINITIONS).forEach(([itemId, def]) => {
           if (def.category === "Currency") return;
           total++;
-          if (this.isItemDiscovered(itemId, char)) discovered++;
+          if (gameState.discoveries.has(`item:${itemId}`)) discovered++;
         });
         return { discovered, total };
       }
@@ -347,13 +341,6 @@ export class SkillsView {
   }
 
   // --- Discovery Helpers ---
-
-  isItemDiscovered(itemId, char) {
-    const source = sourceRegistry.getSource(itemId);
-    if (!source) return true; // No source info = always visible
-    const lvl = char?.skills?.[source.skillId.toLowerCase()]?.level || 0;
-    return lvl >= source.reqLevel;
-  }
 
   findResourceOption(resourceKey) {
     const gatheringSkills = ["MINING", "WOODCUTTING", "FISHING", "FORAGING"];

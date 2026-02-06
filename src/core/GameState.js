@@ -45,6 +45,7 @@ class GameState {
     }
 
     this.availableResources = {}; // Tracks globally available resources found on map
+    this.discoveries = new Set(); // Tracks codex entries discovered by the player
   }
 
   initialize() {
@@ -105,6 +106,7 @@ class GameState {
       settings: this.settings,
       map: mapManager.getSerializableMapData(),
       availableResources: this.availableResources,
+      discoveries: Array.from(this.discoveries),
     };
     return SaveManager.save(
       "idleVibeRPG_save",
@@ -147,6 +149,10 @@ class GameState {
     // This ensures compatibility with generation changes and "What you see is what you have"
     this.recalculateResources();
 
+    // Restore discoveries, backfill from map/inventory for old saves
+    this.discoveries = new Set(data.discoveries || []);
+    this.backfillDiscoveries();
+
     if (data.settings) {
       // Deep merge settings to ensure new keys exist
       this.settings = {
@@ -186,6 +192,7 @@ class GameState {
     this.characters = [];
     this.inventory.items = {};
     this.availableResources = {};
+    this.discoveries = new Set();
 
     // 3. Update UI to show empty state
     this.notifyListeners();
@@ -295,12 +302,45 @@ class GameState {
   }
 
   handleItemAdded(itemId, qty) {
+    this.addDiscovery(`item:${itemId}`);
     const def = getItemDefinition(itemId);
     const name = def ? def.name : itemId;
     const icon = def ? def.icon : "";
     // Only show +1 if qty is 1, etc.
     const sign = qty > 0 ? "+" : ""; // though usually we only add positive amounts here
     this.triggerNotification(`${sign}${qty} ${name} ${icon}`, "item");
+  }
+
+  // --- Discovery Tracking ---
+
+  addDiscovery(key) {
+    this.discoveries.add(key);
+  }
+
+  backfillDiscoveries() {
+    // Backfill biomes and nodes from explored map tiles
+    const width = mapManager.width;
+    const height = mapManager.height;
+    if (width && height) {
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const tile = mapManager.getTile(x, y);
+          if (tile && tile.explored) {
+            this.discoveries.add(`biome:${tile.type}`);
+            if (tile.resource) {
+              this.discoveries.add(`node:${tile.resource.type}`);
+            }
+          }
+        }
+      }
+    }
+
+    // Backfill items from inventory
+    Object.entries(this.inventory.items).forEach(([itemId, qty]) => {
+      if (qty > 0) {
+        this.discoveries.add(`item:${itemId}`);
+      }
+    });
   }
 
   // --- World Resource Management ---

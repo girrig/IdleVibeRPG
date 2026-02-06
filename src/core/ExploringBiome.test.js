@@ -18,6 +18,7 @@ describe("Exploring Skill - Biome Logic", () => {
         removeItem: vi.fn(),
       },
       saveGame: vi.fn(),
+      addDiscovery: vi.fn(),
     };
     window.gameState = gameState;
 

@@ -22,6 +22,7 @@ describe("Exploring Skill", () => {
       addAvailableResource: vi.fn(),
       consumeAvailableResource: vi.fn(),
       getAvailableResourceCount: vi.fn(),
+      addDiscovery: vi.fn(),
     };
     window.gameState = gameState;
 

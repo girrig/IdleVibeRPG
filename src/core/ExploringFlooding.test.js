@@ -28,6 +28,7 @@ describe("Exploring Flooding Logic", () => {
         getCount: vi.fn(() => 999),
       },
       characters: [],
+      addDiscovery: vi.fn(),
     };
 
     mapManager.width = 10;

@@ -35,6 +35,7 @@ describe('SkillRegistry', () => {
       getAvailableResourceCount: vi.fn(() => 1000), // Sufficient for tests
       consumeAvailableResource: vi.fn(),
       addAvailableResource: vi.fn(),
+      addDiscovery: vi.fn(),
     };
 
     mockChar = {
