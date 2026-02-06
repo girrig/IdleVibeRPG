@@ -285,4 +285,218 @@ describe("GameState", () => {
       expect(gameState.characters[0]).toBeInstanceOf(Character);
     });
   });
+
+  describe("Resource Management", () => {
+    it("should add available resources", () => {
+      gameState.addAvailableResource("mineral_node:DESERT", 5);
+      expect(gameState.availableResources["mineral_node:DESERT"]).toBe(5);
+
+      gameState.addAvailableResource("mineral_node:DESERT", 3);
+      expect(gameState.availableResources["mineral_node:DESERT"]).toBe(8);
+    });
+
+    it("should get resource count by exact key", () => {
+      gameState.availableResources = { "mineral_node:DESERT": 10 };
+      expect(gameState.getAvailableResourceCount("mineral_node:DESERT")).toBe(10);
+    });
+
+    it("should get resource count by prefix", () => {
+      gameState.availableResources = {
+        "mineral_node:DESERT": 5,
+        "mineral_node:FOREST": 3,
+      };
+      expect(gameState.getAvailableResourceCount("mineral_node")).toBe(8);
+    });
+
+    it("should return 0 for unknown resource", () => {
+      gameState.availableResources = {};
+      expect(gameState.getAvailableResourceCount("unknown")).toBe(0);
+    });
+
+    it("should consume available resource", () => {
+      gameState.availableResources = { "mineral_node:DESERT": 5 };
+
+      const result = gameState.consumeAvailableResource("mineral_node:DESERT", 2);
+
+      expect(result).toBe(true);
+      expect(gameState.availableResources["mineral_node:DESERT"]).toBe(3);
+    });
+
+    it("should fail to consume when insufficient", () => {
+      gameState.availableResources = { "mineral_node:DESERT": 1 };
+
+      const result = gameState.consumeAvailableResource("mineral_node:DESERT", 5);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("Listener Management", () => {
+    it("should add and remove listeners", () => {
+      const listener = vi.fn();
+      const unsub = gameState.addListener(listener);
+
+      gameState.notifyListeners();
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      unsub();
+      gameState.notifyListeners();
+      expect(listener).toHaveBeenCalledTimes(1); // Not called again
+    });
+
+    it("should add and remove notification listeners", () => {
+      const listener = vi.fn();
+      const unsub = gameState.addNotificationListener(listener);
+
+      gameState.triggerNotification("test", "info");
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      unsub();
+      gameState.triggerNotification("test2", "info");
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Notification Edge Cases", () => {
+    it("should handle object type in triggerNotification", () => {
+      const listener = vi.fn();
+      gameState.addNotificationListener(listener);
+
+      gameState.triggerNotification("Colored message", { id: "levelUp", color: "#ff0000" });
+
+      expect(listener).toHaveBeenCalledWith("Colored message", { id: "levelUp", color: "#ff0000" });
+    });
+
+    it("should block notification when specific object type is disabled", () => {
+      const listener = vi.fn();
+      gameState.addNotificationListener(listener);
+      gameState.settings.notifications.levelUp = false;
+
+      gameState.triggerNotification("Blocked", { id: "levelUp", color: "#ff0000" });
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Save Edge Cases", () => {
+    it("should not save when isResetting", () => {
+      gameState.isResetting = true;
+      const result = gameState.saveGame();
+      expect(result).toBe(false);
+      expect(SaveManager.save).not.toHaveBeenCalled();
+      gameState.isResetting = false;
+    });
+
+    it("should not restart auto-save on manual save when auto-save disabled", () => {
+      SaveManager.save.mockReturnValue(true);
+      gameState.settings.autoSave = false;
+
+      const spy = vi.spyOn(gameState, 'startAutoSave');
+      gameState.manualSave();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Toggle Notifications", () => {
+    it("should toggle specific notification type", () => {
+      gameState.toggleNotifications(false, "item");
+      expect(gameState.settings.notifications.item).toBe(false);
+
+      gameState.toggleNotifications(true, "item");
+      expect(gameState.settings.notifications.item).toBe(true);
+    });
+  });
+
+  describe("processActivities edge cases", () => {
+    it("should complete task when progress reaches quantity", () => {
+      const char = {
+        currentActivity: {
+          type: "TEST_SKILL",
+          target: "test_target",
+          lastActionTime: 0,
+          quantity: 1,
+          progress: 0,
+        },
+        completeCurrentTask: vi.fn(),
+      };
+      gameState.characters = [char];
+
+      const mockAction = vi.fn();
+      getSkillDefinition.mockReturnValue({
+        interval: 100,
+        action: mockAction,
+      });
+
+      gameState.processActivities();
+
+      expect(mockAction).toHaveBeenCalled();
+      expect(char.currentActivity.progress).toBe(1);
+      expect(char.completeCurrentTask).toHaveBeenCalled();
+    });
+
+    it("should not complete task when quantity is 0 (infinite)", () => {
+      const char = {
+        currentActivity: {
+          type: "TEST_SKILL",
+          target: "test_target",
+          lastActionTime: 0,
+          quantity: 0,
+          progress: 0,
+        },
+        completeCurrentTask: vi.fn(),
+      };
+      gameState.characters = [char];
+
+      const mockAction = vi.fn();
+      getSkillDefinition.mockReturnValue({
+        interval: 100,
+        action: mockAction,
+      });
+
+      gameState.processActivities();
+
+      expect(mockAction).toHaveBeenCalled();
+      expect(char.completeCurrentTask).not.toHaveBeenCalled();
+    });
+
+    it("should skip characters without activity", () => {
+      gameState.characters = [{ currentActivity: null }];
+      // Should not throw
+      gameState.processActivities();
+    });
+
+    it("should skip when skill definition not found", () => {
+      gameState.characters = [{
+        currentActivity: { type: "UNKNOWN", lastActionTime: 0 },
+      }];
+      getSkillDefinition.mockReturnValue(null);
+
+      // Should not throw
+      gameState.processActivities();
+    });
+
+    it("should not fire action if interval not elapsed", () => {
+      const now = Date.now();
+      const char = {
+        currentActivity: {
+          type: "TEST_SKILL",
+          lastActionTime: now, // Just acted
+          quantity: 0,
+          progress: 0,
+        },
+      };
+      gameState.characters = [char];
+
+      const mockAction = vi.fn();
+      getSkillDefinition.mockReturnValue({
+        interval: 5000,
+        action: mockAction,
+      });
+
+      gameState.processActivities();
+
+      expect(mockAction).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -6,16 +6,19 @@ import { uiManager } from "../ui/UIManager";
 
 // Mock global Phaser module to prevent it from loading real browser code
 vi.mock("phaser", () => {
+    const Scene = class Scene { constructor(key) { this.key = key; } };
+    const Game = class Game { };
+    const Scale = { RESIZE: 1, NO_CENTER: 1 };
+
     return {
+        __esModule: true,
+        Scene,
+        Game,
+        Scale,
         default: {
-            Scene: class Scene {
-                constructor(key) { this.key = key; }
-            },
-            Game: class Game { },
-            Scale: {
-                RESIZE: 1,
-                NO_CENTER: 1
-            }
+            Scene,
+            Game,
+            Scale
         }
     };
 });

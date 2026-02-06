@@ -108,4 +108,89 @@ describe("CharacterDetail UI", () => {
     expect(gameState.recruitCharacter).toHaveBeenCalled();
     expect(mockUiManager.renderMainWindow).toHaveBeenCalled();
   });
+
+  it("should not show recruit button when at max characters", () => {
+    gameState.characters = Array(8).fill(null).map((_, i) => ({
+      name: `Char${i}`,
+      type: "WARRIOR",
+      stats: { level: 1, strength: 10, dexterity: 10, intelligence: 10 },
+      currentActivity: null,
+    }));
+
+    view.render(container);
+
+    const recruitBtn = container.querySelector(".recruit");
+    expect(recruitBtn).toBeNull();
+  });
+
+  it("should show activity badge for active characters", () => {
+    view.render(container);
+
+    const badges = container.querySelectorAll(".char-list-badge");
+    expect(badges[0].textContent).toBe("Idle");
+    expect(badges[1].textContent).toBe("mining");
+  });
+
+  describe("updateContent", () => {
+    it("should update sidebar status and badges", () => {
+      view.render(container);
+
+      // Change character data
+      gameState.characters[0].stats.level = 10;
+      gameState.characters[0].currentActivity = { type: "fishing" };
+
+      CharacterDetail.updateContent(container, mockUiManager);
+
+      const status = container.querySelector("#char-list-item-0 .char-list-status");
+      expect(status.innerText).toBe("Lv 10 WARRIOR");
+
+      const badge = container.querySelector("#char-list-item-0 .char-list-badge");
+      expect(badge.innerText).toBe("fishing");
+    });
+
+    it("should update header stats", () => {
+      view.render(container);
+
+      gameState.characters[0].stats.strength = 25;
+      gameState.characters[0].stats.dexterity = 20;
+      gameState.characters[0].stats.intelligence = 15;
+
+      CharacterDetail.updateContent(container, mockUiManager);
+
+      expect(container.querySelector(".char-header-stat-str").innerText).toBe("STR 25");
+      expect(container.querySelector(".char-header-stat-dex").innerText).toBe("DEX 20");
+      expect(container.querySelector(".char-header-stat-int").innerText).toBe("INT 15");
+    });
+
+    it("should update level in detail title", () => {
+      view.render(container);
+
+      gameState.characters[0].stats.level = 99;
+
+      CharacterDetail.updateContent(container, mockUiManager);
+
+      const lvlSpan = container.querySelector(".char-detail-title span");
+      expect(lvlSpan.innerText).toBe("Level 99 WARRIOR");
+    });
+
+    it("should handle missing character gracefully", () => {
+      view.render(container);
+      mockUiManager.selectedCharIndex = 5; // Out of range
+
+      // Should not throw
+      CharacterDetail.updateContent(container, mockUiManager);
+    });
+
+    it("should update active class on character switch", () => {
+      view.render(container);
+
+      mockUiManager.selectedCharIndex = 1;
+      CharacterDetail.updateContent(container, mockUiManager);
+
+      const item0 = container.querySelector("#char-list-item-0");
+      const item1 = container.querySelector("#char-list-item-1");
+      expect(item0.classList.contains("active")).toBe(false);
+      expect(item1.classList.contains("active")).toBe(true);
+    });
+  });
 });
