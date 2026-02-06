@@ -84,7 +84,7 @@ export class UIManager {
       <div class="sidebar-item" id="nav-characters" title="Characters" style="font-size: 24px;">🦸</div>
       <div class="sidebar-item" id="nav-inv" title="Inventory" style="font-size: 24px;">🎒</div>
       <div class="sidebar-item" id="nav-equip" title="Equipment" style="font-size: 24px;">🛡️</div>
-      <div class="sidebar-item" id="nav-skills" title="Skills" style="font-size: 24px;">⭐</div>
+      <div class="sidebar-item" id="nav-skills" title="Codex" style="font-size: 24px;">📖</div>
       <div class="sidebar-item" id="nav-talents" title="Talents" style="font-size: 24px;">🌳</div>
       <div class="sidebar-item" id="nav-store" title="Store" style="font-size: 24px;">🏪</div>
       <div class="sidebar-item" id="nav-map" title="Map" style="font-size: 24px;">🗺️</div>
@@ -218,7 +218,7 @@ export class UIManager {
       titleEl.innerText = "Inventory";
       this.inventoryView.render(contentEl);
     } else if (this.currentView === "SKILLS") {
-      titleEl.innerText = "Skills";
+      titleEl.innerText = "Codex";
       this.skillsView.render(contentEl);
     } else if (this.currentView === "TALENTS") {
       titleEl.innerText = "Talents";

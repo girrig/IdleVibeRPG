@@ -1,7 +1,7 @@
 import { gameState } from "../../core/GameState";
 import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
 import { getItemDefinition } from "../../core/ItemRegistry";
-import { UI_COLORS, GAME_CONFIG, RESOURCE_NODES } from "../../core/Constants";
+import { GAME_CONFIG, RESOURCE_NODES } from "../../core/Constants";
 import { TERRAIN_TYPES } from "../../core/TerrainTypes";
 
 export class SkillsView {
@@ -59,9 +59,11 @@ export class SkillsView {
         tabBtn.style.background = "";
       }
 
+      const { discovered, total } = this.getSkillCompletion(skill, char);
       tabBtn.innerHTML = `
             <span class="tab-icon">${skill.icon}</span>
             <span class="tab-name">${skill.name}</span>
+            <span class="codex-completion">${discovered}/${total}</span>
         `;
 
       tabBtn.addEventListener("click", () => {
@@ -111,19 +113,20 @@ export class SkillsView {
 
   renderGatheringSkillView(container, activeSkill, char) {
     const currentLvl = char && char.skills[activeSkill.id.toLowerCase()] ? char.skills[activeSkill.id.toLowerCase()].level : 1;
+    const { discovered, total } = this.getSkillCompletion(activeSkill, char);
 
     const header = document.createElement("div");
     header.className = "skills-options-header";
     const colorStyle = activeSkill.color ? `style="color: ${activeSkill.color}; border-bottom-color: ${activeSkill.color}"` : "";
-    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
+    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="codex-section-completion">${discovered}/${total} discovered</span> <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
     container.appendChild(header);
 
-    const grid = document.createElement("div");
-    grid.className = "skills-actions-grid";
+    const list = document.createElement("div");
+    list.className = "codex-entry-list";
 
-    this.populateGatheringGrid(grid, activeSkill, char);
+    this.populateGatheringGrid(list, activeSkill, char);
 
-    container.appendChild(grid);
+    container.appendChild(list);
   }
 
   populateGatheringGrid(grid, activeSkill, char) {
@@ -148,95 +151,43 @@ export class SkillsView {
         const fullKey = `${resourceKey}:${biomeId}`;
         const count = gameState.availableResources[fullKey] || 0;
 
-        // Drops & Percentages
-        let dropsHtml = "";
-        const table =
-          (nodeConfig.biome_drops && nodeConfig.biome_drops[biomeId]) ||
-          nodeConfig.default_drops;
+        // Find the matching option for this resource
+        const matchingOptionKey = Object.keys(activeSkill.options).find(
+          (k) => activeSkill.options[k].resourceId === resourceKey,
+        );
+        const matchingOpt = matchingOptionKey ? activeSkill.options[matchingOptionKey] : {};
 
-        if (table) {
-          const totalWeight = table.reduce(
-            (sum, entry) => sum + entry.weight,
-            0,
-          );
-
-          dropsHtml = `<div class="drop-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
-                        <span style="font-size:0.8em; color:#888; margin-right:4px;">Drops:</span>`;
-
-          table.forEach((entry) => {
-            const itemDef = getItemDefinition(entry.item);
-            const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
-            const icon = itemDef ? itemDef.icon : "📦";
-            const name = itemDef ? itemDef.name : entry.item;
-
-            dropsHtml += `
-                        <span class="drop-badge" style="
-                            display: inline-flex; 
-                            align-items: center; 
-                            background: rgba(0, 0, 0, 0.3); 
-                            border: 1px solid rgba(255, 255, 255, 0.1); 
-                            border-radius: 4px; 
-                            padding: 2px 6px; 
-                            font-size: 0.8em;
-                            color: #eee;
-                        ">
-                            <span style="margin-right: 4px;">${icon}</span>
-                            ${name} 
-                            <span style="margin-left: 4px; color: #666;">${percent}%</span>
-                        </span>
-                    `;
-          });
-
-          dropsHtml += `</div>`;
-        }
-
-        // Visual State for 0 count
-        const opacity = count > 0 ? "1" : "0.6";
+        const charLevel = char && char.skills[activeSkill.id.toLowerCase()] ? char.skills[activeSkill.id.toLowerCase()].level : 0;
+        const isLocked = charLevel < (matchingOpt.level || 1);
 
         // Render Card
         const card = document.createElement("div");
-        card.className = "skill-action-card";
-        card.style.opacity = opacity;
-        // Allow column layout for details to accommodate drop list
-        card.style.flexDirection = "column";
-        card.style.alignItems = "stretch";
+        card.className = `skill-action-card ${isLocked ? "locked" : ""}`;
+
+        const displayName = isLocked ? "???" : `${biomeName} ${nodeConfig.name}`;
+        const displayIcon = isLocked ? "❓" : biomeIcon;
 
         card.innerHTML = `
-                <div style="display: flex; align-items: center;">
-                    <div class="action-icon">${biomeIcon}</div>
-                    <div class="action-details" style="flex: 1;">
-                        <div class="action-name">${biomeName} ${nodeConfig.name}</div>
-                        <div class="action-meta">
-                            <span class="action-time">Available: <b style="color:${count > 0 ? '#4ade80' : '#888'}">${count}</b></span>
-                        </div>
-                    </div>
-                </div>
-                ${dropsHtml}
-             `;
+            <div class="action-icon">${displayIcon}</div>
+            <div class="action-name">${displayName}</div>
+        `;
 
-        // Only allow clicking if resources exist?
-        // Or allow clicking and let the system say "None found"?
-        // Typically we only want to start action if resources exist.
-        if (count > 0) {
-          card.addEventListener("click", () => {
-            // Find the OPTION KEY that matches this resource
-            // This is slightly ambiguous if multiple options target the same resource (e.g. diff levels)
-            // But usually 1:1. We pick the first matching one.
-            const matchingOptionKey = Object.keys(activeSkill.options).find(
-              (k) => activeSkill.options[k].resourceId === resourceKey,
-            );
-
-            if (matchingOptionKey) {
-              this.uiManager.handleSkillAction(
-                activeSkill.id,
-                matchingOptionKey,
-              );
-            }
+        // Click opens detail popup
+        card.addEventListener("click", () => {
+          this.showDetailPopup({
+            name: `${biomeName} ${nodeConfig.name}`,
+            icon: biomeIcon,
+            level: matchingOpt.level || 1,
+            xp: matchingOpt.xp || 0,
+            interval: matchingOpt.interval || activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
+            skillColor: activeSkill.color,
+            resourceKey,
+            biomeId,
+            biomeName,
+            biomeIcon,
+            availableCount: count,
           });
-        } else {
-          card.style.cursor = "default";
-          // Optional: Tooltip "Explore more [Biome] to find this."
-        }
+        });
 
         grid.appendChild(card);
       });
@@ -245,11 +196,12 @@ export class SkillsView {
 
   renderFightingSkillView(container, activeSkill, char) {
     const currentLvl = char && char.skills[activeSkill.id.toLowerCase()] ? char.skills[activeSkill.id.toLowerCase()].level : 1;
+    const { discovered, total } = this.getSkillCompletion(activeSkill, char);
 
     const header = document.createElement("div");
     header.className = "skills-options-header";
     const colorStyle = activeSkill.color ? `style="color: ${activeSkill.color}; border-bottom-color: ${activeSkill.color}"` : "";
-    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
+    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="codex-section-completion">${discovered}/${total} discovered</span> <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
     container.appendChild(header);
 
     // Group options by category
@@ -298,14 +250,14 @@ export class SkillsView {
       scrollContainer.appendChild(categoryTitle);
 
       if (isExpanded) {
-        const grid = document.createElement("div");
-        grid.className = "skills-actions-grid";
+        const list = document.createElement("div");
+        list.className = "codex-entry-list";
 
         categories[catName].forEach(({ key, opt }) => {
-          this.renderSkillCard(grid, key, opt, currentLvl, activeSkill);
+          this.renderSkillCard(list, key, opt, currentLvl, activeSkill);
         });
 
-        scrollContainer.appendChild(grid);
+        scrollContainer.appendChild(list);
       }
     });
 
@@ -326,6 +278,7 @@ export class SkillsView {
       char && char.skills[activeSkill.id.toLowerCase()]
         ? char.skills[activeSkill.id.toLowerCase()].level
         : 1;
+    const { discovered, total } = this.getSkillCompletion(activeSkill, char);
 
     const header = document.createElement("div");
     header.className = "skills-options-header";
@@ -335,29 +288,30 @@ export class SkillsView {
       ? `style="color: ${activeSkill.color}; border-bottom-color: ${activeSkill.color}"`
       : "";
 
-    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
+    header.innerHTML = `<h2 ${colorStyle}>${activeSkill.icon} ${activeSkill.name} <span class="codex-section-completion">${discovered}/${total} discovered</span> <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
     container.appendChild(header);
 
-    // Grid for options
-    const grid = document.createElement("div");
-    grid.className = "skills-actions-grid";
+    // Entry list
+    const list = document.createElement("div");
+    list.className = "codex-entry-list";
 
     Object.entries(activeSkill.options).forEach(([key, opt]) => {
-      this.renderSkillCard(grid, key, opt, currentLvl, activeSkill);
+      this.renderSkillCard(list, key, opt, currentLvl, activeSkill);
     });
 
-    container.appendChild(grid);
+    container.appendChild(list);
   }
 
   renderExplorationView(container, activeSkill, char) {
     const currentLvl = char && char.skills.exploring ? char.skills.exploring.level : 1;
+    const { discovered, total } = this.getSkillCompletion(activeSkill, char);
 
     // --- Header ---
     const header = document.createElement("div");
     header.className = "skills-options-header";
     header.style.color = activeSkill.color;
     header.style.borderBottomColor = activeSkill.color;
-    header.innerHTML = `<h2>${activeSkill.icon} ${activeSkill.name} <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
+    header.innerHTML = `<h2>${activeSkill.icon} ${activeSkill.name} <span class="codex-section-completion">${discovered}/${total} discovered</span> <span class="header-lvl">Lvl ${currentLvl}</span></h2>`;
     container.appendChild(header);
 
     const scrollContainer = document.createElement("div");
@@ -387,7 +341,18 @@ export class SkillsView {
             <span>XP: ${expOpt.xp}</span>
         </div>
       `;
-      // Read-Only: No click handler
+      card.style.cursor = "pointer";
+      card.addEventListener("click", () => {
+        this.showDetailPopup({
+          name: expOpt.name,
+          icon: expOpt.icon,
+          level: expOpt.level,
+          xp: expOpt.xp,
+          interval: activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
+          skillColor: activeSkill.color,
+          description: expOpt.description,
+        });
+      });
       wanderContainer.appendChild(card);
     }
     scrollContainer.appendChild(wanderContainer);
@@ -400,8 +365,8 @@ export class SkillsView {
     discoveryTitle.style.marginTop = "20px";
     scrollContainer.appendChild(discoveryTitle);
 
-    const biomeGrid = document.createElement("div");
-    biomeGrid.className = "expeditions-grid";
+    const biomeList = document.createElement("div");
+    biomeList.className = "codex-entry-list";
 
     // Filter only "find_" options
     Object.entries(activeSkill.options).forEach(([key, opt]) => {
@@ -409,23 +374,32 @@ export class SkillsView {
 
       const isLocked = currentLvl < opt.level;
       const card = document.createElement("div");
-      card.className = `biome-card ${isLocked ? "locked-overlay" : ""}`;
+      card.className = `skill-action-card biome-card ${isLocked ? "locked locked-overlay" : ""}`;
+
+      const displayName = isLocked ? "???" : opt.name;
+      const displayIcon = isLocked ? "❓" : opt.icon;
 
       card.innerHTML = `
-        <div class="biome-icon">${opt.icon}</div>
-          <div class="biome-info">
-            <div class="biome-name">${opt.name}</div>
-            <div class="biome-level">Lvl ${opt.level} • ${opt.xp} XP</div>
-          </div>
-            ${isLocked ? '<div style="margin-left:auto;">🔒</div>' : ''}
+        <div class="action-icon">${displayIcon}</div>
+        <div class="action-name">${displayName}</div>
       `;
 
-      // Read-Only: No click handler
+      card.addEventListener("click", () => {
+        this.showDetailPopup({
+          name: isLocked ? "???" : opt.name,
+          icon: isLocked ? "❓" : opt.icon,
+          level: opt.level,
+          xp: opt.xp,
+          interval: activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
+          skillColor: activeSkill.color,
+          biomeId: isLocked ? undefined : opt.biomeId,
+        });
+      });
 
-      biomeGrid.appendChild(card);
+      biomeList.appendChild(card);
     });
 
-    scrollContainer.appendChild(biomeGrid);
+    scrollContainer.appendChild(biomeList);
     container.appendChild(scrollContainer);
   }
 
@@ -436,79 +410,28 @@ export class SkillsView {
     card.className = `skill-action-card ${isLocked ? "locked" : ""}`;
     card.setAttribute("data-key", key);
 
-    let iconHtml = `<div class="action-icon">${opt.icon || "❓"}</div>`;
-
-    let costHtml = "";
-    if (opt.cost) {
-      const costStr = Object.entries(opt.cost)
-        .map(([id, qty]) => {
-          const iDef = getItemDefinition(id);
-          return `${qty} ${iDef.name}`;
-        })
-        .join(", ");
-      costHtml = `<div class="action-cost" style="font-size: 0.8em; color: ${UI_COLORS.COST};">Requires: ${costStr}</div>`;
-    }
-
-    // Available World Resource Check
-    let availableHtml = "";
-    const targetResources = ["WOODCUTTING", "MINING", "FISHING"];
-    if (targetResources.includes(activeSkill.id)) {
-      const resourceKey = opt.resourceId || key;
-      if (resourceKey) {
-        const { html } = this.generateAvailableResourceHtml(resourceKey);
-        availableHtml = `<div class="action-available" style="font-size: 0.9em; margin-top: 4px; color: #888;">${html}</div>`;
-      }
-    }
-
-    // Drop badges (for monsters with loot tables)
-    let dropsHtml = "";
-    if (opt.drops) {
-      const totalWeight = opt.drops.reduce((sum, e) => sum + e.weight, 0);
-      dropsHtml = `<div class="drop-list" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
-        <span style="font-size:0.8em; color:#888; margin-right:4px;">Drops:</span>`;
-      opt.drops.forEach((entry) => {
-        const itemDef = getItemDefinition(entry.item);
-        const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
-        const icon = itemDef ? itemDef.icon : "📦";
-        const name = itemDef ? itemDef.name : entry.item;
-        dropsHtml += `
-          <span class="drop-badge" style="
-            display: inline-flex; align-items: center;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px; padding: 2px 6px; font-size: 0.8em; color: #eee;
-          ">
-            <span style="margin-right: 4px;">${icon}</span>
-            ${name}
-            <span style="margin-left: 4px; color: #666;">${percent}%</span>
-          </span>`;
-      });
-      dropsHtml += `</div>`;
-    }
+    const displayName = isLocked ? "???" : opt.name;
+    const displayIcon = isLocked ? "❓" : (opt.icon || "❓");
 
     card.innerHTML = `
-              ${iconHtml}
-      <div class="action-details">
-        <div class="action-name">${opt.name}</div>
-        <div class="action-meta">
-          <span class="action-req">Req: Lv ${opt.level}</span>
-          <span class="action-xp">${opt.xp} XP</span>
-          <span class="action-time">⏱️ ${(opt.interval || activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL) / 1000}s</span>
-        </div>
-        ${availableHtml}
-        ${costHtml}
-        ${dropsHtml}
-      </div>
-              ${isLocked ? '<div class="lock-overlay">🔒</div>' : ""}
-      `;
+      <div class="action-icon">${displayIcon}</div>
+      <div class="action-name">${displayName}</div>
+    `;
 
-    // Click handler for task starting
+    // Click opens detail popup
     card.addEventListener("click", () => {
-      if (!isLocked) {
-        const char = gameState.characters[this.uiManager.selectedCharIndex];
-        // start task...
-        this.uiManager.handleSkillAction(activeSkill.id, key);
-      }
+      this.showDetailPopup({
+        name: opt.name,
+        icon: opt.icon || "❓",
+        level: opt.level,
+        xp: opt.xp,
+        interval: opt.interval || activeSkill.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
+        skillColor: activeSkill.color,
+        drops: opt.drops,
+        cost: opt.cost,
+        category: opt.category,
+        resourceId: opt.resourceId,
+      });
     });
 
     container.appendChild(card);
@@ -521,12 +444,12 @@ export class SkillsView {
       this.updateExplorationView(container);
     }
     else if (["MINING", "WOODCUTTING", "FISHING", "FORAGING"].includes(this.activeSkillTab)) {
-      const grid = container.querySelector(".skills-actions-grid");
-      if (grid) {
-        grid.innerHTML = "";
+      const list = container.querySelector(".codex-entry-list");
+      if (list) {
+        list.innerHTML = "";
         const activeSkill = SKILL_DEFINITIONS[this.activeSkillTab];
         const char = gameState.characters[this.uiManager.selectedCharIndex];
-        this.populateGatheringGrid(grid, activeSkill, char);
+        this.populateGatheringGrid(list, activeSkill, char);
       }
 
       const char = gameState.characters[this.uiManager.selectedCharIndex];
@@ -573,16 +496,8 @@ export class SkillsView {
           const isLocked = currentLvl < opt.level;
           if (isLocked) {
             card.classList.add("locked");
-            if (!card.querySelector(".lock-overlay")) {
-              const overlay = document.createElement("div");
-              overlay.className = "lock-overlay";
-              overlay.innerText = "🔒";
-              card.appendChild(overlay);
-            }
           } else {
             card.classList.remove("locked");
-            const overlay = card.querySelector(".lock-overlay");
-            if (overlay) overlay.remove();
           }
         });
       }
@@ -671,6 +586,169 @@ export class SkillsView {
       `,
       totalCount
     };
+  }
+
+  showDetailPopup(data) {
+    // Remove any existing popup
+    const existing = document.querySelector(".game-modal.codex-popup");
+    if (existing) existing.remove();
+
+    const modal = document.createElement("div");
+    modal.className = "game-modal codex-popup";
+    modal.style.zIndex = "1000";
+
+    const content = document.createElement("div");
+    content.className = "modal-content";
+    content.style.width = "480px";
+    content.style.maxWidth = "90vw";
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "modal-header";
+    if (data.skillColor) {
+      header.style.borderBottomColor = data.skillColor;
+    }
+    header.innerHTML = `
+      <h2 style="${data.skillColor ? `color: ${data.skillColor}` : ""}">${data.name}</h2>
+      <button class="btn-close">&times;</button>
+    `;
+    content.appendChild(header);
+
+    // Body
+    const body = document.createElement("div");
+    body.className = "codex-popup-body";
+
+    // Icon + Title row
+    body.innerHTML = `
+      <div class="codex-popup-header-row">
+        <div class="codex-popup-icon">${data.icon}</div>
+        <div class="codex-popup-title">
+          <h3>${data.name}</h3>
+          ${data.description ? `<div class="codex-subtitle">${data.description}</div>` : ""}
+          ${data.category ? `<div class="codex-subtitle">${data.category}</div>` : ""}
+        </div>
+      </div>
+    `;
+
+    // Stats grid
+    const statsHtml = `
+      <div class="codex-stat-grid">
+        <div class="codex-stat-row">
+          <span class="stat-label">Level</span>
+          <span class="stat-value">${data.level}</span>
+        </div>
+        <div class="codex-stat-row">
+          <span class="stat-label">XP</span>
+          <span class="stat-value">${data.xp}</span>
+        </div>
+        <div class="codex-stat-row">
+          <span class="stat-label">Time</span>
+          <span class="stat-value">${(data.interval / 1000)}s</span>
+        </div>
+        ${data.availableCount !== undefined ? `
+        <div class="codex-stat-row">
+          <span class="stat-label">Available</span>
+          <span class="stat-value" style="color: ${data.availableCount > 0 ? '#4ade80' : '#f87171'}">${data.availableCount}</span>
+        </div>` : ""}
+      </div>
+    `;
+    body.innerHTML += statsHtml;
+
+    // Cost section (smithing)
+    if (data.cost) {
+      let costHtml = `<div class="codex-section-title">Materials Required</div><div class="codex-cost-list">`;
+      Object.entries(data.cost).forEach(([id, qty]) => {
+        const iDef = getItemDefinition(id);
+        const itemName = iDef ? iDef.name : id;
+        const itemIcon = iDef ? iDef.icon : "📦";
+        costHtml += `<div class="codex-cost-item">${itemIcon} ${qty} ${itemName}</div>`;
+      });
+      costHtml += `</div>`;
+      body.innerHTML += costHtml;
+    }
+
+    // Drops section (fighting)
+    if (data.drops) {
+      const totalWeight = data.drops.reduce((sum, e) => sum + e.weight, 0);
+      let dropsHtml = `<div class="codex-section-title">Drops</div><div class="codex-drop-table">`;
+      data.drops.forEach((entry) => {
+        const itemDef = getItemDefinition(entry.item);
+        const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
+        const icon = itemDef ? itemDef.icon : "📦";
+        const name = itemDef ? itemDef.name : entry.item;
+        dropsHtml += `
+          <div class="codex-drop-row">
+            <span class="drop-icon">${icon}</span>
+            <span class="drop-name">${name}</span>
+            <span class="drop-chance">${percent}%</span>
+          </div>`;
+      });
+      dropsHtml += `</div>`;
+      body.innerHTML += dropsHtml;
+    }
+
+    // Gathering drops (biome-specific from RESOURCE_NODES)
+    if (data.resourceKey) {
+      const nodeConfig = RESOURCE_NODES[data.resourceKey];
+      if (nodeConfig) {
+        const table =
+          (nodeConfig.biome_drops && nodeConfig.biome_drops[data.biomeId]) ||
+          nodeConfig.default_drops;
+
+        if (table) {
+          const totalWeight = table.reduce((sum, e) => sum + e.weight, 0);
+          let dropsHtml = `<div class="codex-section-title">Drops</div><div class="codex-drop-table">`;
+          table.forEach((entry) => {
+            const itemDef = getItemDefinition(entry.item);
+            const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
+            const icon = itemDef ? itemDef.icon : "📦";
+            const name = itemDef ? itemDef.name : entry.item;
+            dropsHtml += `
+              <div class="codex-drop-row">
+                <span class="drop-icon">${icon}</span>
+                <span class="drop-name">${name}</span>
+                <span class="drop-chance">${percent}%</span>
+              </div>`;
+          });
+          dropsHtml += `</div>`;
+          body.innerHTML += dropsHtml;
+        }
+      }
+    }
+
+    // Biome info (exploring)
+    if (data.biomeId && !data.resourceKey) {
+      const biomeDef = TERRAIN_TYPES[data.biomeId];
+      if (biomeDef) {
+        body.innerHTML += `
+          <div class="codex-section-title">Biome</div>
+          <div class="codex-stat-row">
+            <span class="stat-label">Terrain</span>
+            <span class="stat-value">${biomeDef.symbol} ${biomeDef.id.replace(/_/g, " ")}</span>
+          </div>
+        `;
+      }
+    }
+
+    content.appendChild(body);
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    // Close handlers
+    const closeModal = () => modal.remove();
+    header.querySelector(".btn-close").addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+  }
+
+  getSkillCompletion(skill, char) {
+    const charLevel = char && char.skills[skill.id.toLowerCase()]
+      ? char.skills[skill.id.toLowerCase()].level : 0;
+    const options = Object.values(skill.options);
+    const total = options.length;
+    const discovered = options.filter(opt => charLevel >= opt.level).length;
+    return { discovered, total };
   }
 
   // Helper

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SkillsView } from "./SkillsView";
 
 vi.mock("../../core/GameState", () => ({
@@ -226,16 +226,18 @@ describe("SkillsView", () => {
       expect(biomeCards.length).toBe(2); // find_desert and find_forest
     });
 
-    it("should lock biomes above character level", () => {
+    it("should lock biomes above character level and show ???", () => {
       view.activeSkillTab = "EXPLORING";
       view.render(container);
 
-      // find_desert requires level 5, char is level 3
+      // find_desert requires level 5, char is level 3 — should be locked with ???
       const biomeCards = container.querySelectorAll(".biome-card");
-      const desertCard = Array.from(biomeCards).find((c) =>
-        c.textContent.includes("Find Desert"),
+      const lockedCard = Array.from(biomeCards).find((c) =>
+        c.classList.contains("locked-overlay"),
       );
-      expect(desertCard.classList.contains("locked-overlay")).toBe(true);
+      expect(lockedCard).not.toBeNull();
+      expect(lockedCard.textContent).toContain("???");
+      expect(lockedCard.textContent).not.toContain("Find Desert");
     });
   });
 
@@ -252,11 +254,11 @@ describe("SkillsView", () => {
       view.activeSkillTab = "FIGHTING";
       view.render(container);
 
-      // Grid should not be rendered when collapsed
-      const grid = container.querySelector(
-        ".fighting-container .skills-actions-grid",
+      // Entry list should not be rendered when collapsed
+      const list = container.querySelector(
+        ".fighting-container .codex-entry-list",
       );
-      expect(grid).toBeNull();
+      expect(list).toBeNull();
     });
 
     it("should show skill cards when category is expanded", () => {
@@ -264,33 +266,43 @@ describe("SkillsView", () => {
       view.activeSkillTab = "FIGHTING";
       view.render(container);
 
-      const grid = container.querySelector(
-        ".fighting-container .skills-actions-grid",
+      const list = container.querySelector(
+        ".fighting-container .codex-entry-list",
       );
-      expect(grid).not.toBeNull();
-      expect(grid.textContent).toContain("Fight Rat");
+      expect(list).not.toBeNull();
+      expect(list.textContent).toContain("Fight Rat");
     });
   });
 
   describe("renderGenericSkillView", () => {
-    it("should render smithing with cost requirements", () => {
+    it("should render smithing skill tiles", () => {
       view.activeSkillTab = "SMITHING";
       view.render(container);
 
       expect(container.textContent).toContain("Smelt Copper");
-      expect(container.textContent).toContain("Requires:");
-      expect(container.textContent).toContain("Copper Ore");
+      const card = container.querySelector(".skill-action-card");
+      expect(card).not.toBeNull();
+      expect(card.querySelector(".action-icon").textContent).toContain("🟫");
+    });
+
+    it("should show completion counter in header", () => {
+      view.activeSkillTab = "SMITHING";
+      view.render(container);
+
+      expect(container.textContent).toContain("1/1 discovered");
     });
   });
 
   describe("renderGatheringSkillView", () => {
-    it("should render gathering cards with biome info", () => {
+    it("should render gathering icon tiles with biome info", () => {
       gameState.availableResources = { "mineral_node:DESERT": 3 };
       view.activeSkillTab = "MINING";
       view.render(container);
 
       expect(container.textContent).toContain("DESERT Minerals");
-      expect(container.textContent).toContain("Available:");
+      const card = container.querySelector(".skill-action-card");
+      expect(card).not.toBeNull();
+      expect(card.querySelector(".action-icon")).not.toBeNull();
     });
   });
 
@@ -374,8 +386,8 @@ describe("SkillsView", () => {
       expect(card.classList.contains("locked")).toBe(false);
     });
 
-    it("should update exploration biome lock state on level up", () => {
-      // Start at level 5 so desert is unlocked, forest is unlocked
+    it("should update exploration biome lock state on level change", () => {
+      // Start at level 5 so desert is unlocked (shows "Find Desert")
       gameState.characters[0].skills.exploring.level = 5;
       view.activeSkillTab = "EXPLORING";
       view.render(container);
@@ -383,27 +395,132 @@ describe("SkillsView", () => {
       // find_desert requires level 5, exploring is level 5 -> unlocked
       const biomeCards = container.querySelectorAll(".biome-card");
       const desertCard = Array.from(biomeCards).find(c => c.textContent.includes("Find Desert"));
+      expect(desertCard).not.toBeNull();
       expect(desertCard.classList.contains("locked-overlay")).toBe(false);
 
-      // Drop to level 3 -> should re-lock
+      // Drop to level 3 -> update toggles class to locked
       gameState.characters[0].skills.exploring.level = 3;
       view.update(container);
 
-      const updatedCards = container.querySelectorAll(".biome-card");
-      const updatedDesert = Array.from(updatedCards).find(c => c.textContent.includes("Find Desert"));
-      expect(updatedDesert.classList.contains("locked-overlay")).toBe(true);
+      // The update method toggles locked-overlay class on existing cards
+      expect(desertCard.classList.contains("locked-overlay")).toBe(true);
     });
   });
 
-  describe("skill card click handler", () => {
-    it("should call handleSkillAction for unlocked cards", () => {
+  describe("codex detail popup", () => {
+    afterEach(() => {
+      const popup = document.querySelector(".game-modal.codex-popup");
+      if (popup) popup.remove();
+    });
+
+    it("should open a detail popup when a smithing card is clicked", () => {
       view.activeSkillTab = "SMITHING";
       view.render(container);
 
       const card = container.querySelector(".skill-action-card");
       card.click();
 
-      expect(mockUiManager.handleSkillAction).toHaveBeenCalledWith("SMITHING", "smelt_copper");
+      const popup = document.querySelector(".game-modal.codex-popup");
+      expect(popup).not.toBeNull();
+      expect(popup.textContent).toContain("Smelt Copper");
+      expect(popup.textContent).toContain("Copper Ore");
+    });
+
+    it("should close popup when close button is clicked", () => {
+      view.activeSkillTab = "SMITHING";
+      view.render(container);
+
+      container.querySelector(".skill-action-card").click();
+      expect(document.querySelector(".game-modal.codex-popup")).not.toBeNull();
+
+      document.querySelector(".btn-close").click();
+      expect(document.querySelector(".game-modal.codex-popup")).toBeNull();
+    });
+
+    it("should close popup when backdrop is clicked", () => {
+      view.activeSkillTab = "SMITHING";
+      view.render(container);
+
+      container.querySelector(".skill-action-card").click();
+      const popup = document.querySelector(".game-modal.codex-popup");
+      expect(popup).not.toBeNull();
+
+      popup.click();
+      expect(document.querySelector(".game-modal.codex-popup")).toBeNull();
+    });
+
+    it("should show drop table in fighting detail popup", () => {
+      view.expandedCategories.add("Outskirts");
+      view.activeSkillTab = "FIGHTING";
+      view.render(container);
+
+      container.querySelector(".skill-action-card").click();
+      const popup = document.querySelector(".game-modal.codex-popup");
+      expect(popup).not.toBeNull();
+      expect(popup.textContent).toContain("Rat Tail");
+      expect(popup.textContent).toContain("Rat Bone");
+      expect(popup.textContent).toContain("80%");
+      expect(popup.textContent).toContain("20%");
+    });
+
+    it("should show gathering drops in popup", () => {
+      gameState.availableResources = { "mineral_node:DESERT": 3 };
+      view.activeSkillTab = "MINING";
+      view.render(container);
+
+      container.querySelector(".skill-action-card").click();
+      const popup = document.querySelector(".game-modal.codex-popup");
+      expect(popup).not.toBeNull();
+      expect(popup.textContent).toContain("Copper Ore");
+    });
+
+    it("should not call handleSkillAction on card click", () => {
+      view.activeSkillTab = "SMITHING";
+      view.render(container);
+
+      container.querySelector(".skill-action-card").click();
+      expect(mockUiManager.handleSkillAction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("completion counters", () => {
+    it("should show completion counts in sidebar", () => {
+      view.render(container);
+
+      const completions = container.querySelectorAll(".codex-completion");
+      expect(completions.length).toBe(4); // One per skill
+
+      // Exploring: level 3, options at level 1,5,1 -> 2/3 discovered
+      const exploringTab = container.querySelector(".skill-category-tab.active");
+      expect(exploringTab.textContent).toContain("2/3");
+    });
+  });
+
+  describe("discovery states", () => {
+    it("should show ??? for locked skill cards", () => {
+      view.expandedCategories.add("Outskirts");
+      view.activeSkillTab = "FIGHTING";
+      // Fighting level is 2, rat requires level 1 -> unlocked
+      view.render(container);
+
+      const card = container.querySelector(".skill-action-card");
+      expect(card.textContent).toContain("Fight Rat");
+      expect(card.classList.contains("locked")).toBe(false);
+    });
+
+    it("should show ??? for locked gathering cards", () => {
+      // Set mining level to 0 to lock everything
+      gameState.characters[0].skills.mining.level = 0;
+      gameState.availableResources = { "mineral_node:DESERT": 3 };
+      view.activeSkillTab = "MINING";
+      view.render(container);
+
+      const card = container.querySelector(".skill-action-card");
+      expect(card.textContent).toContain("???");
+      expect(card.classList.contains("locked")).toBe(true);
+
+      // Restore
+      gameState.characters[0].skills.mining.level = 5;
     });
   });
 

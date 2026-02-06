@@ -119,82 +119,77 @@
   border-radius: 12px;
 }
 
-.skills-actions-grid {
+/* --- CODEX ICON GRID --- */
+.codex-entry-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
 }
 
 .skill-action-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  cursor: default;
-  /* Changed from pointer to default */
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
   transition: all 0.2s;
   position: relative;
   overflow: hidden;
+  aspect-ratio: 1;
 }
 
 .skill-action-card:hover:not(.locked) {
   background: rgba(255, 255, 255, 0.1);
-  /* transform: translateY(-2px); Removed hover lift effect */
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .skill-action-card.locked {
-  opacity: 0.6;
-  cursor: not-allowed;
-  filter: grayscale(0.8);
+  opacity: 0.4;
+  cursor: default;
+  filter: grayscale(0.9);
 }
 
 .action-icon {
-  font-size: 3rem;
-  margin-bottom: 4px;
-}
-
-.action-details {
-  text-align: center;
+  font-size: 1.8rem;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #aaa;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.action-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.85rem;
+/* --- COMPLETION COUNTER --- */
+.codex-completion {
+  font-size: 0.75rem;
+  color: #666;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.codex-section-completion {
+  font-size: 0.8rem;
   color: #888;
-}
-
-.action-req {
-  color: #ef4444;
-  /* Warning color if low? Or just neutral */
-}
-
-.skill-action-card:not(.locked) .action-req {
-  color: #4ade80;
-  /* Green if unlocked */
-}
-
-.lock-overlay {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 1.5rem;
-  opacity: 0.5;
+  font-weight: normal;
+  margin-left: 8px;
 }
 
 /* Skill Action Icons */
@@ -219,32 +214,179 @@
 
 .skill-foraging .skill-action-card {
   background: rgba(46, 204, 113, 0.05);
-  /* Slight green tint */
-  border-radius: 16px;
-  /* softer */
-  border: 1px solid rgba(74, 222, 128, 0.15);
+  border-color: rgba(74, 222, 128, 0.12);
 }
 
 .skill-foraging .skill-action-card:hover:not(.locked) {
-  background: rgba(46, 204, 113, 0.1);
-  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(46, 204, 113, 0.12);
+  border-color: rgba(74, 222, 128, 0.35);
 }
 
 /* --- MINING THEME --- */
 .skill-mining .skill-action-card {
-  border-radius: 4px;
-  /* Harder edges */
   background: rgba(230, 126, 34, 0.05);
-  border: 1px solid rgba(230, 126, 34, 0.15);
+  border-color: rgba(230, 126, 34, 0.12);
 }
 
 .skill-mining .skill-action-card:hover:not(.locked) {
-  background: rgba(230, 126, 34, 0.1);
-  border-color: rgba(230, 126, 34, 0.4);
+  background: rgba(230, 126, 34, 0.12);
+  border-color: rgba(230, 126, 34, 0.35);
 }
 
 /* --- WOODCUTTING THEME --- */
 .skill-woodcutting .skill-action-card {
   background: rgba(139, 69, 19, 0.05);
-  border: 1px solid rgba(139, 69, 19, 0.2);
+  border-color: rgba(139, 69, 19, 0.18);
+}
+
+/* --- CODEX DETAIL POPUP --- */
+.codex-popup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: #e2e8f0;
+}
+
+.codex-popup-header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.codex-popup-icon {
+  font-size: 3rem;
+  background: rgba(0, 0, 0, 0.3);
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.codex-popup-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.codex-popup-title h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.codex-popup-title .codex-subtitle {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.codex-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.codex-stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.codex-stat-row .stat-label {
+  color: #888;
+}
+
+.codex-stat-row .stat-value {
+  color: #fff;
+  font-weight: 600;
+}
+
+.codex-section-title {
+  font-size: 0.85rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 4px;
+  margin-top: 4px;
+}
+
+.codex-drop-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.codex-drop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.codex-drop-row .drop-icon {
+  font-size: 1.1rem;
+}
+
+.codex-drop-row .drop-name {
+  flex: 1;
+  color: #e2e8f0;
+}
+
+.codex-drop-row .drop-chance {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+.codex-cost-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.codex-cost-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 171, 64, 0.3);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.9rem;
+  color: #ffab40;
+}
+
+.codex-biome-section {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.codex-biome-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.codex-available-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
