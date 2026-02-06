@@ -71,6 +71,12 @@ function generateReleaseMessage(version, bumpResult) {
         const firstFix = changes.fixes[0].replace(/^fix:\s*/i, '').trim();
         title += ` - ${firstFix}`;
         if (changes.fixes.length > 1) title += ` (+${changes.fixes.length - 1} fixes)`;
+    } else if (changes.others.length > 0) {
+        // Fallback: use the first 'other' change for context if no features/fixes
+        // remove common prefixes for cleaner title
+        const firstOther = changes.others[0].replace(/^(chore|refactor|style|docs|test|perf|ci|build):\s*/i, '').trim();
+        title += ` - ${firstOther}`;
+        if (changes.others.length > 1) title += ` (+${changes.others.length - 1} others)`;
     }
 
     let body = `${title}\n\n`;
