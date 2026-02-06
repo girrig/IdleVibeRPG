@@ -44,7 +44,7 @@ class GameState {
       });
     }
 
-    this.availableResources = {}; // Tracks globally available resources found on map
+    this.availableResources = {}; // Tracks visible resource node count on map (1 per tile)
     this.discoveries = new Set(); // Tracks codex entries discovered by the player
   }
 
@@ -221,10 +221,9 @@ class GameState {
       for (let x = 0; x < width; x++) {
         const tile = mapManager.getTile(x, y);
         if (tile && tile.explored && tile.resource) {
-          // Segregate resources by Biome to allow biome-specific loot tables
-          // Key format: "resource_id:biome_id"
+          // Count 1 per visible node tile, keyed by "resource_id:biome_id"
           const key = `${tile.resource.type}:${tile.type}`;
-          this.addAvailableResource(key, tile.resource.amount);
+          this.addAvailableResource(key, 1);
         }
       }
     }

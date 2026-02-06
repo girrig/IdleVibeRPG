@@ -955,10 +955,10 @@ export const SKILL_DEFINITIONS = {
 
       if (revealedTiles.length > 0) {
         revealedTiles.forEach((tile) => {
-          // 1. RESOURCE DISCOVERY
+          // 1. RESOURCE DISCOVERY (count 1 per node tile)
           if (tile.resource) {
             const key = `${tile.resource.type}:${tile.type}`;
-            gameState.addAvailableResource(key, tile.resource.amount);
+            gameState.addAvailableResource(key, 1);
             gameState.addDiscovery(`node:${tile.resource.type}`);
           }
 

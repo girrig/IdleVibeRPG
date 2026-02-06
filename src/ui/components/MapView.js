@@ -1,5 +1,6 @@
 import { mapManager, TERRAIN_TYPES } from "../../core/MapManager";
 import { RESOURCE_NODES } from "../../core/Constants";
+import { gameState } from "../../core/GameState";
 
 export class MapView {
   // ... (Constructor remains same)
@@ -73,6 +74,12 @@ export class MapView {
         </div>
     `;
     this.viewWrapper.appendChild(this.loadingOverlay);
+
+    // Resource Overlay (top-left of map)
+    this.resourceOverlay = document.createElement("div");
+    this.resourceOverlay.className = "map-resource-overlay";
+    this.resourceOverlayOpen = true;
+    this.viewWrapper.appendChild(this.resourceOverlay);
 
     // Sidebar
     this.sidebar = document.createElement("div");
@@ -326,6 +333,7 @@ export class MapView {
     }
 
     this.renderMainCanvas();
+    this.updateResourceOverlay();
 
     // Initial Center (Delayed to ensure layout)
     if (!this.hasCentered) {
@@ -833,5 +841,39 @@ export class MapView {
   // Legacy Adapter if needed, or just remove if unused. Keeping for safety but it wont be called internally.
   createSidebarItem(type, labelOverride = null, isHeader = false, showSymbol = true) {
     this.sidebar.appendChild(this.createSidebarItemElement(type, labelOverride, isHeader, showSymbol));
+  }
+
+  updateResourceOverlay() {
+    const overlay = this.resourceOverlay;
+    overlay.innerHTML = "";
+
+    // Header with toggle
+    const header = document.createElement("div");
+    header.className = "resource-overlay-header";
+    header.innerHTML = `<span>Nodes</span><svg viewBox="0 0 24 24" class="resource-overlay-chevron${this.resourceOverlayOpen ? "" : " collapsed"}"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path></svg>`;
+    header.addEventListener("click", () => {
+      this.resourceOverlayOpen = !this.resourceOverlayOpen;
+      this.updateResourceOverlay();
+    });
+    overlay.appendChild(header);
+
+    if (!this.resourceOverlayOpen) return;
+
+    // List
+    const list = document.createElement("div");
+    list.className = "resource-overlay-list";
+
+    Object.entries(RESOURCE_NODES)
+      .map(([nodeKey, node]) => ({ nodeKey, node, count: gameState.getAvailableResourceCount(nodeKey) }))
+      .filter(({ count }) => count > 0)
+      .sort((a, b) => b.count - a.count)
+      .forEach(({ node, count }) => {
+        const row = document.createElement("div");
+        row.className = "resource-overlay-row";
+        row.innerHTML = `<span class="resource-overlay-icon">${node.icon}</span><span class="resource-overlay-name">${node.name}</span><span class="resource-overlay-count">${count}</span>`;
+        list.appendChild(row);
+      });
+
+    overlay.appendChild(list);
   }
 }

@@ -143,7 +143,6 @@ export class SkillsView {
             xp: match ? match.option.xp : 0,
             interval: match ? (match.option.interval || SKILL_DEFINITIONS[match.skillId]?.interval || GAME_CONFIG.DEFAULT_SKILL_INTERVAL) : undefined,
             skillColor: cat.color,
-            capacity: node.amount,
             allowedBiomes: node.allowedBiomes,
             resourceKey: nodeKey,
           });
@@ -427,9 +426,6 @@ export class SkillsView {
     }
     if (data.value !== undefined) {
       statRows.push(`<div class="codex-stat-row"><span class="stat-label">Value</span><span class="stat-value">${data.value} \uD83D\uDCB0</span></div>`);
-    }
-    if (data.capacity !== undefined) {
-      statRows.push(`<div class="codex-stat-row"><span class="stat-label">Capacity</span><span class="stat-value">${data.capacity}</span></div>`);
     }
     if (statRows.length > 0) {
       body.innerHTML += `<div class="codex-stat-grid">${statRows.join("")}</div>`;

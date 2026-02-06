@@ -91,17 +91,21 @@ describe("MapManager", () => {
     const seed = 12345;
 
     const map1 = new MapManager();
+    map1.width = 50;
+    map1.height = 50;
     map1.seed = seed;
-    map1.initialize();
+    map1.generateMap({ allowRetry: false });
 
     const map2 = new MapManager();
+    map2.width = 50;
+    map2.height = 50;
     map2.seed = seed;
-    map2.initialize();
+    map2.generateMap({ allowRetry: false });
 
     // Check a few tiles to ensure they are identical
     expect(map1.tiles[0][0].type).toBe(map2.tiles[0][0].type);
     expect(map1.tiles[10][10].type).toBe(map2.tiles[10][10].type);
-    expect(map1.tiles[50][50].type).toBe(map2.tiles[50][50].type);
+    expect(map1.tiles[49][49].type).toBe(map2.tiles[49][49].type);
   });
 
   it("should generate diverse terrain types", () => {

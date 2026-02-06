@@ -2,6 +2,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MapView } from "./MapView";
 import { mapManager } from "../../core/MapManager";
+import { gameState } from "../../core/GameState";
+
+// Mock GameState
+vi.mock("../../core/GameState", () => ({
+  gameState: {
+    availableResources: {},
+    getAvailableResourceCount: vi.fn((resourceId) => {
+      const prefix = resourceId + ":";
+      let sum = 0;
+      Object.keys(gameState.availableResources).forEach((key) => {
+        if (key === resourceId || key.startsWith(prefix)) {
+          sum += gameState.availableResources[key];
+        }
+      });
+      return sum;
+    }),
+  },
+}));
 
 // Mock MapManager
 vi.mock("../../core/MapManager", () => {
@@ -314,6 +332,49 @@ describe("MapView Zoom Logic", () => {
         // But it should render if RESOURCE_NODES is valid.
       }
     }); // Close "should hide symbols..."
+
+    it("should show resource node counts in overlay sorted by count descending", () => {
+      gameState.availableResources = {
+        "mineral_node:DESERT": 5,
+        "mineral_node:ALPINE": 3,
+        "tree_node:FOREST": 10,
+      };
+
+      mapView.updateResourceOverlay();
+
+      const rows = mapView.resourceOverlay.querySelectorAll(".resource-overlay-row");
+      // Only nodes with count > 0 should appear
+      expect(rows.length).toBe(2); // mineral_node and tree_node
+
+      // Sorted descending: tree (10) first, mineral (8) second
+      expect(rows[0].textContent).toContain("Forest Patch");
+      expect(rows[0].querySelector(".resource-overlay-count").textContent).toBe("10");
+      expect(rows[1].textContent).toContain("Mineral Vein");
+      expect(rows[1].querySelector(".resource-overlay-count").textContent).toBe("8");
+
+      // Nodes with 0 count should not appear
+      const coalRow = Array.from(rows).find(r => r.textContent.includes("Coal Deposit"));
+      expect(coalRow).toBeUndefined();
+    });
+
+    it("should toggle resource overlay open/closed", () => {
+      gameState.availableResources = {};
+      mapView.resourceOverlayOpen = true;
+      mapView.updateResourceOverlay();
+
+      // Should have a list when open
+      expect(mapView.resourceOverlay.querySelector(".resource-overlay-list")).not.toBeNull();
+
+      // Click header to close
+      mapView.resourceOverlay.querySelector(".resource-overlay-header").click();
+      expect(mapView.resourceOverlayOpen).toBe(false);
+      expect(mapView.resourceOverlay.querySelector(".resource-overlay-list")).toBeNull();
+
+      // Click header to reopen
+      mapView.resourceOverlay.querySelector(".resource-overlay-header").click();
+      expect(mapView.resourceOverlayOpen).toBe(true);
+      expect(mapView.resourceOverlay.querySelector(".resource-overlay-list")).not.toBeNull();
+    });
 
     it("should persist collapsible section state across updates", () => {
       mapView.renderSidebar();

@@ -164,3 +164,85 @@
 .map-view-sidebar::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
 }
+
+/* Resource Overlay (top-left of map) */
+.map-resource-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    background: rgba(15, 15, 25, 0.9);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    min-width: 160px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+}
+
+.resource-overlay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: #fbbf24;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    user-select: none;
+}
+
+.resource-overlay-header:hover {
+    color: #fcd34d;
+}
+
+.resource-overlay-chevron {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+    transition: transform 0.2s ease;
+}
+
+.resource-overlay-chevron.collapsed {
+    transform: rotate(-90deg);
+}
+
+.resource-overlay-list {
+    padding: 0 8px 8px;
+}
+
+.resource-overlay-row {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #cbd5e1;
+}
+
+.resource-overlay-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.resource-overlay-icon {
+    width: 20px;
+    text-align: center;
+    margin-right: 6px;
+    font-size: 14px;
+}
+
+.resource-overlay-name {
+    flex: 1;
+    white-space: nowrap;
+}
+
+.resource-overlay-count {
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-left: 10px;
+    min-width: 24px;
+    text-align: right;
+}
