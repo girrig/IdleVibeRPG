@@ -187,6 +187,19 @@ function main() {
                 try {
                     run(`git commit -F "${tempMsgParams}"`);
                     console.log(`✅ Committed release v${newVersion}`);
+                } catch (commitError) {
+                    console.error("❌ Commit failed (likely due to pre-commit tests). Reverting version bump...");
+                    // Revert package.json and package-lock.json changes
+                    // Using checkout is safe here as we only want to discard the version change committed by npm version
+                    try {
+                        run("git checkout package.json package-lock.json");
+                        console.log("🔄 Version bump reverted. Fixed the issues and try again.");
+                    } catch (revertError) {
+                        console.error("⚠️ Failed to revert version bump:", revertError);
+                    }
+
+                    // Re-throw original error to exit validation
+                    throw commitError;
                 } finally {
                     if (fs.existsSync(tempMsgParams)) fs.unlinkSync(tempMsgParams);
                 }
