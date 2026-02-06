@@ -139,6 +139,7 @@ function main() {
     console.log(`Recommended bump: ${bumpResult.type.toUpperCase()}`);
 
     const args = process.argv.slice(2);
+    // console.log("DEBUG: args", args);
     const isDryRun = args.includes("--dry-run");
 
     if (isDryRun) {
@@ -169,36 +170,32 @@ function main() {
                 run("git add .");
 
                 console.log("💾 Committing...");
-                // We use execSync directly with input to handle potential escaping issues, 
-                // though for this simple case valid strings usually work fine. 
-                // Alternatively, we can just escape the message correctly.
-                // But since we are in node, a better way for complex messages is passing via env or temp file
-                // simpler approach: just escape quotes.
 
-                // However, the most robust way in node without external deps is usually spawning git commit -m
-                // or writing to a file if it's very long. Since we just extracted this logical from a file,
-                // let's just use the file method internally to be ultra safe, OR just use the message directly if simple.
-                // Given the context of the user complaint, we want to avoid the "file dance" in the *workflow*,
-                // but doing it strictly inside the script is fine and invisible to the user.
+                // Check if we should amend the previous commit
+                const isAmend = args.includes("--amend");
 
+                // Create temp file for commit message
                 const tempMsgParams = path.resolve(".git/RELEASE_MSG_TMP");
                 fs.writeFileSync(tempMsgParams, msg, "utf8");
 
                 try {
-                    run(`git commit -F "${tempMsgParams}"`);
-                    console.log(`✅ Committed release v${newVersion}`);
+                    if (isAmend) {
+                        // When amending, we want to update the commit message to the release message
+                        // and include the staged version bump files
+                        run(`git commit --amend -F "${tempMsgParams}" --no-edit`);
+                        console.log(`✅ Amend-committed release v${newVersion}`);
+                    } else {
+                        run(`git commit -F "${tempMsgParams}"`);
+                        console.log(`✅ Committed release v${newVersion}`);
+                    }
                 } catch (commitError) {
                     console.error("❌ Commit failed (likely due to pre-commit tests). Reverting version bump...");
-                    // Revert package.json and package-lock.json changes
-                    // Using checkout is safe here as we only want to discard the version change committed by npm version
                     try {
                         run("git checkout package.json package-lock.json");
                         console.log("🔄 Version bump reverted. Fixed the issues and try again.");
                     } catch (revertError) {
                         console.error("⚠️ Failed to revert version bump:", revertError);
                     }
-
-                    // Re-throw original error to exit validation
                     throw commitError;
                 } finally {
                     if (fs.existsSync(tempMsgParams)) fs.unlinkSync(tempMsgParams);
