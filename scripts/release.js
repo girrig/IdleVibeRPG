@@ -156,10 +156,41 @@ function main() {
 
             const msg = generateReleaseMessage(newVersion, bumpResult);
 
-            // Output special tokens to help parsing the message
-            console.log("RELEASE_MESSAGE_START");
-            console.log(msg);
-            console.log("RELEASE_MESSAGE_END");
+            const shouldCommit = args.includes("--commit");
+
+            if (shouldCommit) {
+                console.log("💾 Staging changes...");
+                run("git add .");
+
+                console.log("💾 Committing...");
+                // We use execSync directly with input to handle potential escaping issues, 
+                // though for this simple case valid strings usually work fine. 
+                // Alternatively, we can just escape the message correctly.
+                // But since we are in node, a better way for complex messages is passing via env or temp file
+                // simpler approach: just escape quotes.
+
+                // However, the most robust way in node without external deps is usually spawning git commit -m
+                // or writing to a file if it's very long. Since we just extracted this logical from a file,
+                // let's just use the file method internally to be ultra safe, OR just use the message directly if simple.
+                // Given the context of the user complaint, we want to avoid the "file dance" in the *workflow*,
+                // but doing it strictly inside the script is fine and invisible to the user.
+
+                const tempMsgParams = path.resolve(".git/RELEASE_MSG_TMP");
+                fs.writeFileSync(tempMsgParams, msg, "utf8");
+
+                try {
+                    run(`git commit -F "${tempMsgParams}"`);
+                    console.log(`✅ Committed release v${newVersion}`);
+                } finally {
+                    if (fs.existsSync(tempMsgParams)) fs.unlinkSync(tempMsgParams);
+                }
+
+            } else {
+                // Legacy output for shell parsing
+                console.log("RELEASE_MESSAGE_START");
+                console.log(msg);
+                console.log("RELEASE_MESSAGE_END");
+            }
 
         } catch (e) {
             console.error("Failed to bump version.", e);
