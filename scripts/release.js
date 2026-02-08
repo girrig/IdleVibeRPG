@@ -7,14 +7,12 @@ function run(command) {
         return execSync(command, { encoding: "utf8" }).trim();
     } catch (error) {
         console.error(`Command failed: ${command}`);
-        process.exit(1);
+        throw error;
     }
 }
 
 function getLatestReleaseCommit() {
     try {
-        // Look for the last commit starting with "chore: release"
-        // git log --grep="chore: release" -n 1 --format="%H"
         return run('git log --grep="chore: release" -n 1 --format="%H"');
     } catch (e) {
         console.warn("No previous release found. Defaulting to all history.");
@@ -36,10 +34,8 @@ function determineBump(commits) {
         const msgLower = rawMsg.toLowerCase();
         const bodyLower = commit.body.toLowerCase();
 
-        // Check for breaking changes
         if (bodyLower.includes("breaking change") || msgLower.includes("breaking change")) {
             changes.breaking.push({ message: rawMsg, body: commit.body });
-            // We return 'major' but keep collecting for the log
         }
 
         const changeObj = { message: rawMsg, body: commit.body };
@@ -59,10 +55,8 @@ function determineBump(commits) {
 }
 
 function generateReleaseMessage(version, bumpResult) {
-    const { type, changes } = bumpResult;
-    // const date = new Date().toISOString().split('T')[0];
+    const { changes } = bumpResult;
 
-    // Title generation
     let title = `chore: release v${version}`;
     if (changes.features.length > 0) {
         const firstFeat = changes.features[0].message.replace(/^feat:\s*/i, '').trim();
@@ -83,7 +77,6 @@ function generateReleaseMessage(version, bumpResult) {
     const formatChange = (change) => {
         let text = `- ${change.message}`;
         if (change.body && change.body.trim().length > 0) {
-            // Indent the body description
             const indentedBody = change.body.trim().split('\n').map(line => `  ${line}`).join('\n');
             text += `\n${indentedBody}`;
         }
@@ -91,26 +84,25 @@ function generateReleaseMessage(version, bumpResult) {
     };
 
     if (changes.breaking.length > 0) {
-        body += `## 🚨 Breaking Changes\n`;
+        body += `## Breaking Changes\n`;
         changes.breaking.forEach(change => body += formatChange(change));
         body += `\n`;
     }
 
     if (changes.features.length > 0) {
-        body += `## ✨ Features\n`;
+        body += `## Features\n`;
         changes.features.forEach(change => body += formatChange(change));
         body += `\n`;
     }
 
     if (changes.fixes.length > 0) {
-        body += `## 🐛 Bug Fixes\n`;
+        body += `## Bug Fixes\n`;
         changes.fixes.forEach(change => body += formatChange(change));
         body += `\n`;
     }
 
-    // Only add 'Other' if it's substantial or empty other categories
     if (changes.others.length > 0 && (changes.features.length + changes.fixes.length < 3)) {
-        body += `## 🔧 Maintenance & Other\n`;
+        body += `## Maintenance & Other\n`;
         changes.others.forEach(change => body += formatChange(change));
     }
 
@@ -131,8 +123,29 @@ function getCommitsSince(hash) {
         });
 }
 
+function bumpSemver(version, type) {
+    const [major, minor, patch] = version.split('.').map(Number);
+    switch (type) {
+        case 'major': return `${major + 1}.0.0`;
+        case 'minor': return `${major}.${minor + 1}.0`;
+        default: return `${major}.${minor}.${patch + 1}`;
+    }
+}
+
 function main() {
-    console.log("🔍 Analyzing semantic versioning...");
+    const args = process.argv.slice(2);
+    const isDryRun = args.includes("--dry-run");
+
+    // Ensure working tree is clean before releasing
+    if (!isDryRun) {
+        const status = run("git status --porcelain");
+        if (status.length > 0) {
+            console.error("Working tree is dirty. Commit or stash your changes before releasing.");
+            process.exit(1);
+        }
+    }
+
+    console.log("Analyzing commits...");
 
     const lastReleaseHash = getLatestReleaseCommit();
     const commits = getCommitsSince(lastReleaseHash);
@@ -145,82 +158,57 @@ function main() {
     console.log(`Found ${commits.length} commits since last release.`);
 
     const bumpResult = determineBump(commits);
-    console.log(`Recommended bump: ${bumpResult.type.toUpperCase()}`);
+    console.log(`Bump type: ${bumpResult.type.toUpperCase()}`);
 
-    const args = process.argv.slice(2);
-    // console.log("DEBUG: args", args);
-    const isDryRun = args.includes("--dry-run");
+    const currentVer = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
 
     if (isDryRun) {
-        console.log("[Dry Run] Would run:");
-        console.log(`> npm version ${bumpResult.type} --no-git-tag-version`);
-        // Simulate next version for dry run message
-        const currentVer = JSON.parse(fs.readFileSync("package.json")).version;
-        const msg = generateReleaseMessage(currentVer + "-next", bumpResult);
-        console.log("\n--- Generated Message Preview ---");
+        const nextVer = bumpSemver(currentVer, bumpResult.type);
+        const msg = generateReleaseMessage(nextVer, bumpResult);
+        console.log(`\n[Dry Run] ${currentVer} -> ${nextVer}\n`);
+        console.log("--- Commit Message Preview ---");
         console.log(msg);
+        return;
+    }
 
-    } else {
-        // Run the npm version command
-        try {
-            // Output bump info for parsing
-            console.log(`BUMP_TYPE:${bumpResult.type}`);
+    // Bump version in package.json
+    const newVersionRaw = execSync(`npm version ${bumpResult.type} --no-git-tag-version`, { encoding: 'utf8' }).trim();
+    const newVersion = newVersionRaw.replace(/^v/, '');
+    console.log(`Version bumped: ${currentVer} -> ${newVersion}`);
 
-            // bump version
-            const newVersionRaw = execSync(`npm version ${bumpResult.type} --no-git-tag-version`, { encoding: 'utf8' }).trim();
-            const newVersion = newVersionRaw.replace(/^v/, '');
+    const msg = generateReleaseMessage(newVersion, bumpResult);
 
-            const msg = generateReleaseMessage(newVersion, bumpResult);
+    // Stage only the file we changed
+    console.log("Staging package.json...");
+    run("git add package.json");
 
-            const shouldCommit = args.includes("--commit");
+    // Write commit message to temp file (handles multiline safely)
+    const tempMsgPath = path.resolve(".git/RELEASE_MSG_TMP");
+    fs.writeFileSync(tempMsgPath, msg, "utf8");
 
-            if (shouldCommit) {
-                console.log("💾 Staging changes...");
-                run("git add .");
+    try {
+        console.log("Committing (pre-commit tests will run)...");
+        run(`git commit -F "${tempMsgPath}"`);
+        console.log(`Committed release v${newVersion}`);
+    } catch (commitError) {
+        console.error("\nCommit failed — likely pre-commit tests.");
+        console.error("The version bump is preserved in package.json.");
+        console.error("Fix the failing tests, then:");
+        console.error("  git add -A && git commit -m \"chore: release v" + newVersion + "\"");
+        console.error("  git push");
+        process.exit(1);
+    } finally {
+        if (fs.existsSync(tempMsgPath)) fs.unlinkSync(tempMsgPath);
+    }
 
-                console.log("💾 Committing...");
-
-                // Check if we should amend the previous commit
-                const isAmend = args.includes("--amend");
-
-                // Create temp file for commit message
-                const tempMsgParams = path.resolve(".git/RELEASE_MSG_TMP");
-                fs.writeFileSync(tempMsgParams, msg, "utf8");
-
-                try {
-                    if (isAmend) {
-                        // When amending, we want to update the commit message to the release message
-                        // and include the staged version bump files
-                        run(`git commit --amend -F "${tempMsgParams}" --no-edit`);
-                        console.log(`✅ Amend-committed release v${newVersion}`);
-                    } else {
-                        run(`git commit -F "${tempMsgParams}"`);
-                        console.log(`✅ Committed release v${newVersion}`);
-                    }
-                } catch (commitError) {
-                    console.error("❌ Commit failed (likely due to pre-commit tests). Reverting version bump...");
-                    try {
-                        run("git checkout HEAD -- package.json package-lock.json");
-                        console.log("🔄 Version bump reverted. Fixed the issues and try again.");
-                    } catch (revertError) {
-                        console.error("⚠️ Failed to revert version bump:", revertError);
-                    }
-                    throw commitError;
-                } finally {
-                    if (fs.existsSync(tempMsgParams)) fs.unlinkSync(tempMsgParams);
-                }
-
-            } else {
-                // Legacy output for shell parsing
-                console.log("RELEASE_MESSAGE_START");
-                console.log(msg);
-                console.log("RELEASE_MESSAGE_END");
-            }
-
-        } catch (e) {
-            console.error("Failed to bump version.", e);
-            process.exit(1);
-        }
+    // Push automatically after successful commit
+    try {
+        console.log("Pushing...");
+        run("git push");
+        console.log(`Release v${newVersion} pushed.`);
+    } catch (pushError) {
+        console.error("Push failed. You can retry with: git push");
+        process.exit(1);
     }
 }
 

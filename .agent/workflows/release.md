@@ -1,16 +1,22 @@
 ---
-description: Release the game with a single commit including version bump and changes
+description: Release the game with automatic version bump, commit, and push
 ---
-1. **Check Git Status & History**:
-   - Run `git log -n 1` to see the latest commit.
-   - If the latest commit is a feature, fix, or other meaningful change (and NOT already a release commit), plan to use **Single Commit Release**.
+1. **Run Release**: `yarn release`
+   - Analyzes commits since last release to determine bump type (major/minor/patch)
+   - Bumps version in package.json
+   - Commits with a generated release message
+   - Pre-commit hook runs tests automatically
+   - On success, pushes to remote
 
-2. **Run Release Command**:
-   - **Standard Release**: `yarn release --commit`
-   - **Single Commit Release** (Preferred for clean history): `yarn release --commit --amend`
-     - Use this if you just made a commit and want to attach the version bump to it.
+2. **If Tests Fail**:
+   - The version bump is preserved in package.json — do NOT run `yarn release` again or bump the version a second time
+   - Read the test output to identify the failures
+   - Fix the failing tests (update test expectations, fix broken code, etc.)
+   - Run `yarn test` to verify all tests pass
+   - Commit and push:
+     ```
+     git add -A && git commit -m "chore: release vX.Y.Z"
+     git push
+     ```
 
-3. **Push to Remote**:
-3. **Push to Remote**:
-   - Run `git push`
-   - This triggers the pre-push hook which runs tests (`yarn test`) to ensure quality.
+3. **Dry Run** (preview without changing anything): `yarn release --dry-run`
