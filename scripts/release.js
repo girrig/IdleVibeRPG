@@ -136,15 +136,6 @@ function main() {
     const args = process.argv.slice(2);
     const isDryRun = args.includes("--dry-run");
 
-    // Ensure working tree is clean before releasing
-    if (!isDryRun) {
-        const status = run("git status --porcelain");
-        if (status.length > 0) {
-            console.error("Working tree is dirty. Commit or stash your changes before releasing.");
-            process.exit(1);
-        }
-    }
-
     console.log("Analyzing commits...");
 
     const lastReleaseHash = getLatestReleaseCommit();
@@ -178,9 +169,9 @@ function main() {
 
     const msg = generateReleaseMessage(newVersion, bumpResult);
 
-    // Stage only the file we changed
-    console.log("Staging package.json...");
-    run("git add package.json");
+    // Stage all changes (working tree + version bump)
+    console.log("Staging changes...");
+    run("git add -A");
 
     // Write commit message to temp file (handles multiline safely)
     const tempMsgPath = path.resolve(".git/RELEASE_MSG_TMP");
