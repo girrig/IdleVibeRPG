@@ -200,7 +200,7 @@ function main() {
                 } catch (commitError) {
                     console.error("❌ Commit failed (likely due to pre-commit tests). Reverting version bump...");
                     try {
-                        run("git checkout package.json package-lock.json");
+                        run("git checkout HEAD -- package.json package-lock.json");
                         console.log("🔄 Version bump reverted. Fixed the issues and try again.");
                     } catch (revertError) {
                         console.error("⚠️ Failed to revert version bump:", revertError);
