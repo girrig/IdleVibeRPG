@@ -139,9 +139,7 @@ function main() {
     console.log("Analyzing commits...");
 
     const lastReleaseHash = getLatestReleaseCommit();
-    console.log("Last release hash:", lastReleaseHash);
     const commits = getCommitsSince(lastReleaseHash);
-    console.log("Commits found:", commits);
 
     if (commits.length === 0) {
         console.log("No new commits since last release.");
