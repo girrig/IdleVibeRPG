@@ -179,7 +179,7 @@ function main() {
 
     try {
         console.log("Committing (pre-commit tests will run)...");
-        run(`git commit -F "${tempMsgPath}"`);
+        run(`git commit --amend -F "${tempMsgPath}"`);
         console.log(`Committed release v${newVersion}`);
     } catch (commitError) {
         console.error("\nCommit failed — likely pre-commit tests.");
