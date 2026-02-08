@@ -459,9 +459,6 @@ export class CharacterTasksPanel {
         currentGroupId &&
         renderedGroupId !== currentGroupId
       ) {
-        console.log(
-          `[TaskPanel] Detected Group Switch (${renderedGroupId} -> ${currentGroupId}). Re-rendering.`,
-        );
         goalSection.innerHTML = "";
         CharacterTasksPanel.renderActiveState(goalSection, char, uiManager);
         return;
@@ -474,9 +471,6 @@ export class CharacterTasksPanel {
         char.activeGoalGroup && char.activeGoalGroup.steps.length > 1;
 
       if (hasStepsUI !== needsStepsui) {
-        console.log(
-          `[TaskPanel] Structure Mismatch (Steps: ${hasStepsUI} vs ${needsStepsui}). Re-rendering.`,
-        );
         goalSection.innerHTML = "";
         CharacterTasksPanel.renderActiveState(goalSection, char, uiManager);
         return;

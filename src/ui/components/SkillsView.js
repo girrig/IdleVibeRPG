@@ -5,6 +5,7 @@ import { GAME_CONFIG, RESOURCE_NODES } from "../../core/Constants";
 import { TERRAIN_TYPES } from "../../core/TerrainTypes";
 import { sourceRegistry } from "../../core/SourceRegistry";
 import { ICONS } from "../../core/Icons";
+import { hexToRgbString } from "../../utils/formatters";
 
 const CODEX_CATEGORIES = [
   { id: "MONSTERS",  name: "Monsters",  icon: ICONS.codex.monsters,  color: "#e74c3c" },
@@ -42,7 +43,7 @@ export class SkillsView {
       if (isActive) {
         tabBtn.style.borderColor = cat.color;
         tabBtn.style.color = cat.color;
-        tabBtn.style.background = `rgba(${this.hexToRgb(cat.color)}, 0.15)`;
+        tabBtn.style.background = `rgba(${hexToRgbString(cat.color)}, 0.15)`;
       }
 
       const { discovered, total } = this.getCategoryCompletion(cat.id, char);
@@ -545,16 +546,4 @@ export class SkillsView {
     });
   }
 
-  // --- Utility ---
-
-  hexToRgb(hex) {
-    var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-    hex = hex.replace(shorthandRegex, function (m, r, g, b) {
-      return r + r + g + g + b + b;
-    });
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result
-      ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)} `
-      : "255, 255, 255";
-  }
 }

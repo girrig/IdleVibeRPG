@@ -78,10 +78,6 @@ class SourceRegistry {
     });
 
     this.initialized = true;
-    console.log(
-      "SourceRegistry initialized. Sources:",
-      Object.keys(this.sources).length,
-    );
   }
 
   getSource(itemId) {

@@ -33,6 +33,39 @@ function buildItemToNodeMap() {
 
 export const ITEM_TO_NODE_MAP = buildItemToNodeMap();
 
+// Helper: talent _2 double-loot roll
+function applyDoubleLoot(char, skillId) {
+  return (char.talents[`${skillId}_2`] && Math.random() < GAME_CONFIG.DOUBLE_LOOT_CHANCE) ? 2 : 1;
+}
+
+// --- Shared movement helpers ---
+function isValidMove(nx, ny) {
+  const width = mapManager.width || 500;
+  const height = mapManager.height || 500;
+  if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
+  const t = mapManager.getTile(nx, ny);
+  if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
+  return true;
+}
+
+/**
+ * Attempt to step one tile in direction (dx, dy) from position (x, y).
+ * Returns new position {x, y} or null if blocked.
+ */
+function tryMoveTowards(x, y, dx, dy) {
+  const tryStep = (nx, ny) => isValidMove(nx, ny) ? { x: nx, y: ny } : null;
+  if (dx !== 0 && dy !== 0) {
+    return Math.random() < 0.5
+      ? (tryStep(x + dx, y) || tryStep(x, y + dy))
+      : (tryStep(x, y + dy) || tryStep(x + dx, y));
+  } else if (dx !== 0) {
+    return tryStep(x + dx, y);
+  } else if (dy !== 0) {
+    return tryStep(x, y + dy);
+  }
+  return null;
+}
+
 // --- Shared gathering action factory ---
 // MINING, WOODCUTTING, FISHING, and FORAGING all share the same 3-phase loop:
 //   TRAVELING → GATHERING → RETURNING (deposit bag, repeat or complete)
@@ -54,7 +87,7 @@ function createGatheringAction(config) {
 
     // --- PHASE INITIALIZATION ---
     if (!char.currentActivity.phase) {
-      char.position = { x: 250, y: 250 };
+      char.position = { ...GAME_CONFIG.STARTING_POSITION };
       char.currentActivity.phase = "TRAVELING";
       char.currentActivity.targetTile = null;
       const msgs = getMessages(option);
@@ -63,39 +96,6 @@ function createGatheringAction(config) {
 
     const { x, y } = char.position;
     let nextPos = null;
-
-    const isValidMove = (nx, ny) => {
-      const width = mapManager.width || 500;
-      const height = mapManager.height || 500;
-      if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
-      const t = mapManager.getTile(nx, ny);
-      if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
-      return true;
-    };
-
-    const tryStep = (nx, ny) => {
-      if (isValidMove(nx, ny)) {
-        nextPos = { x: nx, y: ny };
-        return true;
-      }
-      return false;
-    };
-
-    const moveTowards = (tx, ty) => {
-      const dx = Math.sign(tx - x);
-      const dy = Math.sign(ty - y);
-      if (dx !== 0 && dy !== 0) {
-        if (Math.random() < 0.5) {
-          if (!tryStep(x + dx, y)) tryStep(x, y + dy);
-        } else {
-          if (!tryStep(x, y + dy)) tryStep(x + dx, y);
-        }
-      } else if (dx !== 0) {
-        tryStep(x + dx, y);
-      } else if (dy !== 0) {
-        tryStep(x, y + dy);
-      }
-    };
 
     // --- PHASE 1: TRAVELING ---
     if (char.currentActivity.phase === "TRAVELING") {
@@ -156,7 +156,7 @@ function createGatheringAction(config) {
         }
         char.currentActivity.phase = "GATHERING";
       } else {
-        moveTowards(target.x, target.y);
+        nextPos = tryMoveTowards(x, y, Math.sign(target.x - x), Math.sign(target.y - y));
       }
     }
 
@@ -189,10 +189,7 @@ function createGatheringAction(config) {
       gameState.consumeAvailableResource(resourceKey, 1);
       resourceTile.resource = null;
 
-      let amount = 1;
-      if (char.talents[`${skillId}_2`] && Math.random() < 0.1) {
-        amount = 2;
-      }
+      const amount = applyDoubleLoot(char, skillId);
 
       char.bagAddItem(dropItem, amount);
       char.gainXp(skillId, option.xp || 20);
@@ -207,14 +204,13 @@ function createGatheringAction(config) {
 
     // --- PHASE 3: RETURNING ---
     if (char.currentActivity.phase === "RETURNING") {
-      const homeX = 250;
-      const homeY = 250;
+      const { x: homeX, y: homeY } = GAME_CONFIG.STARTING_POSITION;
 
       if (x === homeX && y === homeY) {
         char.depositBag(gameState.inventory);
 
         if (char.currentActivity.stopping) {
-          char.position = { x: 250, y: 250 };
+          char.position = { ...GAME_CONFIG.STARTING_POSITION };
           char.currentActivity = null;
           char.activityQueue = [];
           gameState.triggerNotification("Returned home safely.", "success");
@@ -229,7 +225,7 @@ function createGatheringAction(config) {
         return;
       }
 
-      moveTowards(homeX, homeY);
+      nextPos = tryMoveTowards(x, y, Math.sign(homeX - x), Math.sign(homeY - y));
     }
 
     // --- MOVE + FOG REVEAL ---
@@ -434,9 +430,7 @@ export const SKILL_DEFINITIONS = {
         roll -= entry.weight;
       }
 
-      let amount = 1;
-      // fighting_2: 10% chance for double loot
-      if (char.talents.fighting_2 && Math.random() < 0.1) amount = 2;
+      const amount = applyDoubleLoot(char, "fighting");
 
       gameState.inventory.addItem(dropItem, amount);
       gameState.addDiscovery(`monster:${targetId}`);
@@ -512,9 +506,7 @@ export const SKILL_DEFINITIONS = {
         });
       }
 
-      let amount = 1;
-      // smithing_2: 10% chance for double bars
-      if (char.talents.smithing_2 && Math.random() < 0.1) amount = 2;
+      const amount = applyDoubleLoot(char, "smithing");
 
       gameState.inventory.addItem(targetId, amount);
       gameState.addDiscovery(`recipe:${targetId}`);
@@ -668,7 +660,7 @@ export const SKILL_DEFINITIONS = {
       // Initialize Phase if missing
       if (!char.currentActivity.phase) {
         // "Start from the town": Reset position to Home
-        char.position = { x: 250, y: 250 };
+        char.position = { ...GAME_CONFIG.STARTING_POSITION };
 
         char.currentActivity.phase = "SEARCHING"; // Default
         if (targetId.startsWith("wander")) char.currentActivity.phase = "WANDERING";
@@ -679,37 +671,6 @@ export const SKILL_DEFINITIONS = {
       const phase = char.currentActivity.phase;
       const { x, y } = char.position;
       let nextPos = null;
-
-      const isValidMove = (nx, ny) => {
-        const width = mapManager.width || 500;
-        const height = mapManager.height || 500;
-        if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
-        const t = mapManager.getTile(nx, ny);
-        if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
-        return true;
-      };
-
-      const tryStep = (nx, ny) => {
-        if (isValidMove(nx, ny)) {
-          nextPos = { x: nx, y: ny };
-          return true;
-        }
-        return false;
-      };
-
-      const moveTowards = (dx, dy) => {
-        if (dx !== 0 && dy !== 0) {
-          if (Math.random() < 0.5) {
-            if (!tryStep(x + dx, y)) tryStep(x, y + dy);
-          } else {
-            if (!tryStep(x, y + dy)) tryStep(x + dx, y);
-          }
-        } else if (dx !== 0) {
-          tryStep(x + dx, y);
-        } else if (dy !== 0) {
-          tryStep(x, y + dy);
-        }
-      };
 
       // --- PHASE 1: SEARCHING ---
       if (phase === "SEARCHING") {
@@ -730,9 +691,7 @@ export const SKILL_DEFINITIONS = {
             // Move towards it (Manhattan)
             const dx = Math.sign(target.x - x);
             const dy = Math.sign(target.y - y);
-            // Basic pathfinding
-            // Basic pathfinding
-            moveTowards(dx, dy);
+            nextPos = tryMoveTowards(x, y, dx, dy);
           }
 
           // If no known tile of that type, find the FRONTIER to reveal new areas
@@ -842,8 +801,7 @@ export const SKILL_DEFINITIONS = {
 
       // --- PHASE 3: RETURNING ---
       if (char.currentActivity.phase === "RETURNING") {
-        const homeX = 250;
-        const homeY = 250;
+        const { x: homeX, y: homeY } = GAME_CONFIG.STARTING_POSITION;
 
         if (x === homeX && y === homeY) {
           char.stopActivity();
@@ -865,9 +823,9 @@ export const SKILL_DEFINITIONS = {
 
         // 1. EXPANSION: Fill gaps near HOME
         if (type === "expansion") {
-          // Find nearest FRONTIER tile spanning out from Home (250, 250)
+          // Find nearest FRONTIER tile spanning out from Home
           // This prioritizes revealing the Fog of War closest to town.
-          const target = mapManager.findNearestFrontierTile(250, 250);
+          const target = mapManager.findNearestFrontierTile(GAME_CONFIG.STARTING_POSITION.x, GAME_CONFIG.STARTING_POSITION.y);
 
           if (target) {
             const dx = Math.sign(target.x - x);
@@ -903,7 +861,7 @@ export const SKILL_DEFINITIONS = {
                 }
               }
             } else {
-              moveTowards(dx, dy);
+              nextPos = tryMoveTowards(x, y, dx, dy);
             }
           }
         }
@@ -922,8 +880,6 @@ export const SKILL_DEFINITIONS = {
 
       if (!nextPos) return;
 
-      // Move
-      char.position = nextPos;
       // Move
       char.position = nextPos;
       const isNewVisit = mapManager.visitTile(nextPos.x, nextPos.y);
@@ -973,7 +929,7 @@ export const SKILL_DEFINITIONS = {
       }
 
       if (totalXp > 0) {
-        if (char.talents.exploring_2 && Math.random() < 0.1) {
+        if (char.talents.exploring_2 && Math.random() < GAME_CONFIG.DOUBLE_LOOT_CHANCE) {
           totalXp *= 2;
           // gameState.triggerNotification("Double Exploration XP!", "success");
         }

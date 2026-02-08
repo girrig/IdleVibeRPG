@@ -1,5 +1,5 @@
 import { SKILL_DEFINITIONS } from "../../../core/SkillRegistry";
-import { UI_COLORS } from "../../../core/Constants";
+import { UI_COLORS, GAME_CONFIG } from "../../../core/Constants";
 
 export class CharacterSkillsPanel {
   static render(container, char) {
@@ -16,7 +16,7 @@ export class CharacterSkillsPanel {
                }))
                .sort((a, b) => a.name.localeCompare(b.name))
                .map(({ id, skill, name }) => {
-                 const xpNeeded = skill.level * 100;
+                 const xpNeeded = skill.level * GAME_CONFIG.XP_PER_LEVEL;
                  const percent = Math.min((skill.xp / xpNeeded) * 100, 100);
                  const def = SKILL_DEFINITIONS[id.toUpperCase()];
                  const color = def ? def.color : UI_COLORS.PURCHASED; // Fallback green -> PURCHASED

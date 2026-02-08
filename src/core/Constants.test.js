@@ -45,6 +45,15 @@ describe("Constants", () => {
       expect(typeof GAME_CONFIG.STARTING_POSITION.x).toBe("number");
       expect(typeof GAME_CONFIG.STARTING_POSITION.y).toBe("number");
     });
+
+    it("should have XP_PER_LEVEL as a positive number", () => {
+      expect(GAME_CONFIG.XP_PER_LEVEL).toBeGreaterThan(0);
+    });
+
+    it("should have DOUBLE_LOOT_CHANCE between 0 and 1", () => {
+      expect(GAME_CONFIG.DOUBLE_LOOT_CHANCE).toBeGreaterThan(0);
+      expect(GAME_CONFIG.DOUBLE_LOOT_CHANCE).toBeLessThanOrEqual(1);
+    });
   });
 
   describe("RESOURCE_NODES", () => {

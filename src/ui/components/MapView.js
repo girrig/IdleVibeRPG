@@ -2,6 +2,7 @@ import { mapManager, TERRAIN_TYPES } from "../../core/MapManager";
 import { RESOURCE_NODES } from "../../core/Constants";
 import { gameState } from "../../core/GameState";
 import { ICONS } from "../../core/Icons";
+import { hexToRgb } from "../../utils/formatters";
 
 export class MapView {
   // ... (Constructor remains same)
@@ -345,18 +346,6 @@ export class MapView {
     // Create ImageData
     const imageData = this.offscreenCtx.createImageData(width, height);
     const data = imageData.data;
-
-    // Helper to parse hex color
-    const hexToRgb = (hex) => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result
-        ? {
-          r: parseInt(result[1], 16),
-          g: parseInt(result[2], 16),
-          b: parseInt(result[3], 16),
-        }
-        : { r: 0, g: 0, b: 0 };
-    };
 
     // Cache colors
     const colorCache = {};

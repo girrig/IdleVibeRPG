@@ -53,7 +53,7 @@ export class Character {
     );
     this.talents = {}; // { talentId: true }
     this.talentPoints = 3; // Start with 3 for testing
-    this.position = { x: 250, y: 250 }; // Default starting position
+    this.position = { ...GAME_CONFIG.STARTING_POSITION };
     this.currentActivity = null; // e.g. { type: 'MINING', target: 'copper_ore', startTime: 12345, quantity: 10, progress: 0 }
     this.activityQueue = []; // Array of { type, target, quantity }
     this.bag = { items: {}, capacity: GAME_CONFIG.BAG_CAPACITY };
@@ -114,7 +114,7 @@ export class Character {
     }
 
     // Position
-    char.position = data.position || { x: 250, y: 250 };
+    char.position = data.position || { ...GAME_CONFIG.STARTING_POSITION };
 
     // Resume queue
     char.activityQueue = data.activityQueue || [];
@@ -283,8 +283,7 @@ export class Character {
       isMovementSkill &&
       this.currentActivity.phase !== "RETURNING"
     ) {
-      const homeX = 250;
-      const homeY = 250;
+      const { x: homeX, y: homeY } = GAME_CONFIG.STARTING_POSITION;
       if (this.position.x !== homeX || this.position.y !== homeY) {
         this.currentActivity.phase = "RETURNING";
         this.currentActivity.stopping = true;
@@ -304,7 +303,7 @@ export class Character {
       if (Object.keys(this.bag.items).length > 0 && this.gameContext) {
         this.depositBag(this.gameContext.inventory);
       }
-      this.position = { x: 250, y: 250 };
+      this.position = { ...GAME_CONFIG.STARTING_POSITION };
     }
 
     this.currentActivity = null;
@@ -326,7 +325,7 @@ export class Character {
 
     skill.xp += amount * multiplier;
 
-    const xpNeeded = skill.level * 100;
+    const xpNeeded = skill.level * GAME_CONFIG.XP_PER_LEVEL;
     if (skill.xp >= xpNeeded) {
       skill.xp -= xpNeeded;
       skill.level++;

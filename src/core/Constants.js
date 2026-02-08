@@ -30,6 +30,8 @@ export const GAME_CONFIG = {
     ITEM: true,
   },
   STARTING_POSITION: { x: 250, y: 250 },
+  XP_PER_LEVEL: 100,
+  DOUBLE_LOOT_CHANCE: 0.1,
 };
 
 export const RESOURCE_NODES = {

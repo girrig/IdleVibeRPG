@@ -11,6 +11,7 @@ vi.mock("../../../core/SkillRegistry", () => ({
 
 vi.mock("../../../core/Constants", () => ({
   UI_COLORS: { PURCHASED: "#22c55e" },
+  GAME_CONFIG: { XP_PER_LEVEL: 100 },
 }));
 
 describe("CharacterSkillsPanel", () => {

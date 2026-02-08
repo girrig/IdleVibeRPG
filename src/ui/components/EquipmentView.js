@@ -1,11 +1,6 @@
 import { gameState } from "../../core/GameState";
-import { ITEM_DEFINITIONS } from "../../core/ItemRegistry";
 import { ICONS } from "../../core/Icons";
-import { formatNumber } from "../../utils/formatters";
-
-function getItemDefinition(id) {
-  return ITEM_DEFINITIONS[id] || { name: id, icon: ICONS.misc.locked };
-}
+import { InventoryView } from "./InventoryView";
 
 export class EquipmentView {
   constructor() {
@@ -124,66 +119,6 @@ export class EquipmentView {
   updateInventoryGrid() {
     const grid = this.container.querySelector(".inventory-grid");
     if (!grid) return;
-
-    const items = gameState.inventory.items;
-    const entries = Object.entries(items)
-      .filter(([_, count]) => count > 0)
-      .sort((a, b) => b[1] - a[1]);
-
-    if (entries.length === 0) {
-      if (!grid.querySelector(".empty-msg")) {
-        grid.innerHTML = '<div class="empty-msg">No items</div>';
-      }
-      return;
-    }
-
-    // Remove empty msg
-    const emptyMsg = grid.querySelector(".empty-msg");
-    if (emptyMsg) emptyMsg.remove();
-
-    // Reconciliation Map
-    const existingCards = Array.from(grid.children);
-    const existingMap = new Map();
-    existingCards.forEach((el) => {
-      if (el.dataset.id) existingMap.set(el.dataset.id, el);
-    });
-
-    // 1. Remove obsolete
-    existingCards.forEach((card) => {
-      const id = card.dataset.id;
-      if (!items[id] || items[id] <= 0) {
-        card.remove();
-      }
-    });
-
-    // 2. Add or Update
-    entries.forEach(([id, count], index) => {
-      let card = existingMap.get(id);
-      const def = getItemDefinition(id);
-
-      if (!card) {
-        card = document.createElement("div");
-        card.className = "inv-card"; // Reusing standard class
-        card.dataset.id = id;
-        grid.appendChild(card);
-      }
-
-      // 3. Ensure Order
-      const currentAtIndex = grid.children[index];
-      if (currentAtIndex !== card) {
-        grid.insertBefore(card, currentAtIndex);
-      }
-
-      // 4. Update Content
-      const newHtml = `
-             <div class="inv-card-icon">${def.icon}</div>
-             <div class="inv-card-name">${def.name}</div>
-             <div class="inv-card-count">${formatNumber(count)}</div>
-         `;
-
-      if (card.innerHTML !== newHtml) {
-        card.innerHTML = newHtml;
-      }
-    });
+    InventoryView.reconcileGrid(grid, gameState.inventory.items);
   }
 }

@@ -16,33 +16,6 @@ describe("NotificationDisplay", () => {
     vi.useRealTimers();
   });
 
-  describe("hexToRgb", () => {
-    it("should convert full hex to rgb string", () => {
-      expect(NotificationDisplay.hexToRgb("#ff0000")).toBe("255, 0, 0");
-      expect(NotificationDisplay.hexToRgb("#00ff00")).toBe("0, 255, 0");
-      expect(NotificationDisplay.hexToRgb("#0000ff")).toBe("0, 0, 255");
-    });
-
-    it("should convert shorthand hex to rgb string", () => {
-      expect(NotificationDisplay.hexToRgb("#f00")).toBe("255, 0, 0");
-      expect(NotificationDisplay.hexToRgb("#0f0")).toBe("0, 255, 0");
-    });
-
-    it("should handle hex without # prefix", () => {
-      expect(NotificationDisplay.hexToRgb("ff0000")).toBe("255, 0, 0");
-    });
-
-    it("should return white fallback for null/undefined", () => {
-      expect(NotificationDisplay.hexToRgb(null)).toBe("255, 255, 255");
-      expect(NotificationDisplay.hexToRgb(undefined)).toBe("255, 255, 255");
-      expect(NotificationDisplay.hexToRgb("")).toBe("255, 255, 255");
-    });
-
-    it("should return white fallback for invalid hex", () => {
-      expect(NotificationDisplay.hexToRgb("xyz")).toBe("255, 255, 255");
-    });
-  });
-
   describe("show", () => {
     it("should do nothing if container is null", () => {
       NotificationDisplay.show(null, "test");

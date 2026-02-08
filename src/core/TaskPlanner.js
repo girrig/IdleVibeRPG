@@ -149,10 +149,6 @@ export class TaskPlanner {
       // Skill Level Check
       if (character && source.type === "SKILL") {
         const charSkill = character.skills[source.skillId.toLowerCase()];
-        console.log(
-          `[TaskPlanner] Checking ${reqItem} (Req: ${source.reqLevel}) vs char ${source.skillId} (Has: ${charSkill ? charSkill.level : "undefined"})`,
-        );
-
         if (charSkill && charSkill.level < source.reqLevel) {
           throw new Error(
             `Level ${source.reqLevel} ${source.skillId} required`,

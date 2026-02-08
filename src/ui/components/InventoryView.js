@@ -63,82 +63,65 @@ export class InventoryView {
   }
 
   updateGrid(grid) {
-    const items = gameState.inventory.items;
+    InventoryView.reconcileGrid(grid, gameState.inventory.items, (id) => {
+      this.selectedItemId = this.selectedItemId === id ? null : id;
+      this.update();
+    });
+    // Handle selected state
+    grid.querySelectorAll(".inv-card").forEach((card) => {
+      card.classList.toggle("selected", card.dataset.id === this.selectedItemId);
+    });
+  }
+
+  /**
+   * Shared grid reconciliation for inventory items.
+   * Used by both InventoryView and EquipmentView.
+   */
+  static reconcileGrid(grid, items, onClickCard = null) {
     const entries = Object.entries(items)
       .filter(([_, count]) => count > 0)
-      .sort((a, b) => b[1] - a[1]); // Sort by count desc
+      .sort((a, b) => b[1] - a[1]);
 
     if (entries.length === 0) {
       grid.innerHTML = '<div class="empty-msg">No items</div>';
       return;
     }
 
-    // Remove empty message if it exists and we have items
     const emptyMsg = grid.querySelector(".empty-msg");
     if (emptyMsg) emptyMsg.remove();
 
-    // Map existing cards for reconciliation
     const existingCards = Array.from(grid.children);
     const existingMap = new Map();
     existingCards.forEach((el) => {
       if (el.dataset.id) existingMap.set(el.dataset.id, el);
     });
 
-    // 1. Remove obsolete cards
     existingCards.forEach((card) => {
       const id = card.dataset.id;
-      if (!items[id] || items[id] <= 0) {
-        card.remove();
-      }
+      if (!items[id] || items[id] <= 0) card.remove();
     });
 
-    // 2. Add or Update cards
     entries.forEach(([id, count], index) => {
       let card = existingMap.get(id);
       const def = getItemDefinition(id);
-      const isSelected = this.selectedItemId === id;
 
       if (!card) {
-        // Create new card
         card = document.createElement("div");
         card.className = "inv-card";
         card.dataset.id = id;
-        card.addEventListener("click", () => {
-          this.selectedItemId = this.selectedItemId === id ? null : id;
-          this.update();
-        });
-        // We append initially, but sort loop below handles position
+        if (onClickCard) card.addEventListener("click", () => onClickCard(id));
         grid.appendChild(card);
       }
 
-      // 3. Ensure Order (DOM Reordering)
-      // The current element at this index should be our card
       const currentAtIndex = grid.children[index];
-      if (currentAtIndex !== card) {
-        grid.insertBefore(card, currentAtIndex);
-      }
+      if (currentAtIndex !== card) grid.insertBefore(card, currentAtIndex);
 
-      // 4. Update Classes
-      if (isSelected && !card.classList.contains("selected")) {
-        card.classList.add("selected");
-      } else if (!isSelected && card.classList.contains("selected")) {
-        card.classList.remove("selected");
-      }
-
-      // 5. Update Content
-      // Construct HTML
       const newHtml = `
              <div class="inv-card-icon">${def.icon}</div>
              <div class="inv-card-name">${def.name}</div>
              <div class="inv-card-count">${formatNumber(count)}</div>
          `;
-
-      // Only write innerHTML if it changed to avoid parsing cost and potential blinking
-      // (Though browsers are fast, comparing string is safer)
-      // Normalizing whitespace might be needed if formatting differs, but usually consistent string templates match.
-      if (card.innerHTML !== newHtml) {
-        card.innerHTML = newHtml;
-      }
+      if (card.innerHTML !== newHtml) card.innerHTML = newHtml;
     });
   }
 

@@ -262,24 +262,6 @@ describe("SkillsView", () => {
     ]);
   });
 
-  describe("hexToRgb", () => {
-    it("should convert full hex to rgb string", () => {
-      expect(view.hexToRgb("#ff0000")).toContain("255, 0, 0");
-    });
-
-    it("should convert shorthand hex", () => {
-      expect(view.hexToRgb("#f00")).toContain("255, 0, 0");
-    });
-
-    it("should handle hex without #", () => {
-      expect(view.hexToRgb("00ff00")).toContain("0, 255, 0");
-    });
-
-    it("should return fallback for invalid hex", () => {
-      expect(view.hexToRgb("invalid")).toBe("255, 255, 255");
-    });
-  });
-
   describe("sidebar", () => {
     it("should render 5 category tabs", () => {
       view.render(container);

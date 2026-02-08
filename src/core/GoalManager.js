@@ -77,16 +77,6 @@ export class GoalManager {
     }
 
     const step = group.steps[group.currentStepIndex];
-    if (step) {
-      console.log(
-        `[startFlaggedGoal] Starting step ${group.currentStepIndex}: ${step.targetQuantity} ${step.targetItem}`,
-      );
-    } else {
-      console.log(
-        `[startFlaggedGoal] Starting step ${group.currentStepIndex}: INVALID STEP`,
-      );
-    }
-
     taskRunner.startTask(gameState, character, step, group);
     this.executeGoal(character);
   }
@@ -130,10 +120,6 @@ export class GoalManager {
           // As requested: "Only reevaluate their subtasks when they become the active task again"
           // We re-run the planner to account for any inventory changes (spent resources, etc.) while the task was queued.
           if (nextGroup.mainGoal) {
-            console.log(
-              `[checkQueue] Re-Planning Group ${nextGroup.id} (Resuming)`,
-            );
-
             // IGNORE existing inventory for the Main Goal item itself to ensure we plan for the full target
             // (TaskPlanner will check what is *missing* inside resolveDependencies)
             const planningInventory = { ...gameState.inventory.items };
@@ -191,9 +177,6 @@ export class GoalManager {
       }
 
       character.activeGoalGroup = nextGroup;
-      console.log(
-        `[checkQueue] Set active group: ${nextGroup.id}. Steps: ${nextGroup.steps.length}`,
-      );
 
       // gameState.triggerNotification(
       //   `${character.name} starting next group: Get ${nextGroup.mainGoal.quantity} ${nextGroup.mainGoal.itemId}`,

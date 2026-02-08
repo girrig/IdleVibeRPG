@@ -124,26 +124,6 @@
   font-size: 16px;
 }
 
-/* Main Window */
-.main-window {
-  position: absolute;
-  top: 0;
-  left: 60px;
-  /* Sidebar width */
-  right: 0;
-  bottom: 0;
-  width: auto;
-  height: auto;
-  display: flex;
-  flex-direction: column;
-  z-index: 10;
-  border-radius: 0;
-  border: none;
-  background: rgba(20, 20, 30, 0.85);
-  transform: none;
-  transition: opacity 0.2s;
-}
-
 .main-window.hidden {
   opacity: 0;
   pointer-events: none;
@@ -250,7 +230,6 @@
   flex-direction: column;
   z-index: 10;
   border-radius: 0;
-  border: none;
   border: none;
   background: rgba(20, 20, 30, 0.6);
   transform: none;

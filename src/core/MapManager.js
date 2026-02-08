@@ -106,7 +106,6 @@ export class MapManager {
 
       if (waterTypes.includes(centerType)) {
         if (options.retryCount < 50 && options.allowRetry !== false) {
-          console.log("Starting in water, regenerating map...");
           this.generateMap({
             ...options,
             newSeed: true,

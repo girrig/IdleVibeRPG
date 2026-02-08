@@ -37,7 +37,6 @@ class GameState {
     if (typeof window !== "undefined") {
       window.addEventListener("storage", (e) => {
         if (e.key === "idleVibeRPG_save" && e.newValue === null) {
-          console.log("Game reset detected in another tab. Reloading...");
           this.isResetting = true; // Prevent saving during reload
           location.reload();
         }
@@ -50,7 +49,6 @@ class GameState {
 
   initialize() {
     if (this.loadGame()) {
-      console.log("Game loaded from save.");
       this.startAutoSave();
       return;
     }
@@ -260,7 +258,6 @@ class GameState {
   }
 
   addCharacter(char) {
-    console.log("Adding Character:", char.name);
     char.setGameContext(this);
     this.characters.push(char);
     this.notifyListeners();

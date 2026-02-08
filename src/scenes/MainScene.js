@@ -12,11 +12,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   create() {
-    console.log("MainScene started");
     try {
       gameState.initialize();
       uiManager.initialize();
-      console.log("Game initialized");
 
       this.cameras.main.centerOn(512, 384);
       this.cameras.main.setBackgroundColor(0x111111);
