@@ -53,10 +53,10 @@ describe('SkillRegistry', () => {
         this.bag.items[itemId] += qty;
       },
       isBagFull() {
-        return Object.keys(this.bag.items).length >= this.bag.capacity;
+        return this.bagItemCount() >= this.bag.capacity;
       },
       bagItemCount() {
-        return Object.keys(this.bag.items).length;
+        return Object.values(this.bag.items).reduce((sum, qty) => sum + qty, 0);
       },
       depositBag: vi.fn(function(inventory) {
         for (const [id, qty] of Object.entries(this.bag.items)) {

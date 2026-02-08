@@ -560,6 +560,34 @@ describe("GameState", () => {
       expect(mockAction).not.toHaveBeenCalled();
     });
 
+    it("should skip manual progress tracking when activeGoal is present", () => {
+      const char = {
+        currentActivity: {
+          type: "TEST_SKILL",
+          target: "test_target",
+          lastActionTime: 0,
+          quantity: 3,
+          progress: 2,
+        },
+        activeGoal: { targetItem: "coal", targetQuantity: 3 },
+        completeCurrentTask: vi.fn(),
+      };
+      gameState.characters = [char];
+
+      const mockAction = vi.fn();
+      getSkillDefinition.mockReturnValue({
+        interval: 100,
+        action: mockAction,
+      });
+
+      gameState.processActivities();
+
+      expect(mockAction).toHaveBeenCalled();
+      // Progress should NOT be incremented by GameState (goal tracks its own progress)
+      expect(char.currentActivity.progress).toBe(2);
+      expect(char.completeCurrentTask).not.toHaveBeenCalled();
+    });
+
     it("should not fire action if interval not elapsed", () => {
       const now = Date.now();
       const char = {

@@ -11,5 +11,6 @@ description: Release the game with a single commit including version bump and ch
      - Use this if you just made a commit and want to attach the version bump to it.
 
 3. **Push to Remote**:
+3. **Push to Remote**:
    - Run `git push`
    - This triggers the pre-push hook which runs tests (`yarn test`) to ensure quality.

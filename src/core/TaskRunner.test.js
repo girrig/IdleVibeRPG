@@ -75,17 +75,19 @@ describe("TaskRunner", () => {
   describe("ensureActivity", () => {
     it("should start activity if idle", () => {
       const step = {
+        targetQuantity: 5,
         source: { type: "SKILL", skillId: "mining", target: "rock" },
       };
       mockChar.activeGoal = step;
 
       taskRunner.ensureActivity(mockChar);
 
-      expect(mockChar.startActivity).toHaveBeenCalledWith("mining", "rock");
+      expect(mockChar.startActivity).toHaveBeenCalledWith("mining", "rock", 5);
     });
 
     it("should switch activity if doing something else", () => {
       const step = {
+        targetQuantity: 3,
         source: { type: "SKILL", skillId: "mining", target: "rock" },
       };
       mockChar.activeGoal = step;
@@ -94,7 +96,7 @@ describe("TaskRunner", () => {
       taskRunner.ensureActivity(mockChar);
 
       expect(mockChar.stopActivity).toHaveBeenCalled();
-      expect(mockChar.startActivity).toHaveBeenCalledWith("mining", "rock");
+      expect(mockChar.startActivity).toHaveBeenCalledWith("mining", "rock", 3);
     });
 
     it("should do nothing if doing correct activity", () => {
@@ -154,6 +156,7 @@ describe("TaskRunner", () => {
       expect(mockChar.startActivity).toHaveBeenCalledWith(
         "woodcutting",
         "tree",
+        10,
       );
     });
 

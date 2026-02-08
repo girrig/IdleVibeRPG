@@ -39,6 +39,7 @@ export class ItemSelectionModal {
                 <label for="goal-quantity-input" class="quantity-label">Target Quantity:</label>
                 <div class="quantity-presets">
                     <button class="quantity-preset-btn" data-qty="1">1</button>
+                    <button class="quantity-preset-btn" data-qty="5">5</button>
                     <button class="quantity-preset-btn" data-qty="10">10</button>
                     <button class="quantity-preset-btn" data-qty="50">50</button>
                     <button class="quantity-preset-btn" data-qty="100">100</button>

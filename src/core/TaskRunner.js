@@ -57,7 +57,7 @@ export class TaskRunner {
         if (current) {
           character.stopActivity();
         }
-        character.startActivity(source.skillId, source.target);
+        character.startActivity(source.skillId, source.target, goal.targetQuantity);
       }
     }
   }

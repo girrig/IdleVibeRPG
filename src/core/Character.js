@@ -76,11 +76,11 @@ export class Character {
   }
 
   isBagFull() {
-    return Object.keys(this.bag.items).length >= this.bag.capacity;
+    return this.bagItemCount() >= this.bag.capacity;
   }
 
   bagItemCount() {
-    return Object.keys(this.bag.items).length;
+    return Object.values(this.bag.items).reduce((sum, qty) => sum + qty, 0);
   }
 
   depositBag(inventory) {

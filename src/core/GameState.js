@@ -440,10 +440,10 @@ class GameState {
 
             char.currentActivity.lastActionTime = now;
 
-            // Task Queue Logic
-            if (char.currentActivity.quantity > 0) {
+            // Task Queue Logic (manual activities only — goal-driven activities
+            // track progress inside SkillRegistry and complete via GoalManager)
+            if (char.currentActivity.quantity > 0 && !char.activeGoal) {
               char.currentActivity.progress++;
-              // console.log(`Progress: ${char.currentActivity.progress}/${char.currentActivity.quantity}`);
               if (
                 char.currentActivity.progress >= char.currentActivity.quantity
               ) {

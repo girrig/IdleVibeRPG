@@ -298,7 +298,7 @@ describe("Character Core Logic", () => {
       expect(char.bag.items.copper_ore).toBe(5);
     });
 
-    it("should report bag full when unique item types reach capacity", () => {
+    it("should report bag full when total item count reaches capacity", () => {
       expect(char.isBagFull()).toBe(false);
 
       char.bagAddItem("item_a", 1);
@@ -311,10 +311,18 @@ describe("Character Core Logic", () => {
       expect(char.isBagFull()).toBe(true);
     });
 
-    it("should not count stacking as new slot", () => {
+    it("should count total items, not unique types", () => {
+      char.bagAddItem("copper_ore", 3);
+      expect(char.bagItemCount()).toBe(3);
+
+      char.bagAddItem("copper_ore", 2);
+      expect(char.bagItemCount()).toBe(5);
+      expect(char.isBagFull()).toBe(true);
+    });
+
+    it("should stack items into the same key", () => {
       char.bagAddItem("copper_ore", 10);
       char.bagAddItem("copper_ore", 20);
-      expect(char.bagItemCount()).toBe(1);
       expect(char.bag.items.copper_ore).toBe(30);
     });
 

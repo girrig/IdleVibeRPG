@@ -204,6 +204,11 @@ export class MapView {
     this.mapContainer.addEventListener("mousedown", (e) => {
       if (e.button === 1) e.preventDefault();
     });
+
+    // Disable right-click context menu on the map
+    this.mapContainer.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
   }
 
   // updateTooltip - REMOVED

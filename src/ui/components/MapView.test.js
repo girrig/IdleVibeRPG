@@ -226,6 +226,12 @@ describe("MapView Zoom Logic", () => {
       // Left/right clicks should not be affected
       expect(mapView.isMouseDown).toBeUndefined();
     });
+
+    it("should prevent right-click context menu on the map", () => {
+      const event = new MouseEvent("contextmenu", { cancelable: true, bubbles: true });
+      const prevented = !mapView.mapContainer.dispatchEvent(event);
+      expect(prevented).toBe(true);
+    });
   });
 
   describe("Sidebar & UI", () => {
