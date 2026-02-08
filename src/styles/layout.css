@@ -1,3 +1,14 @@
+/* Map as persistent background layer */
+.map-view-background {
+  position: absolute;
+  top: 0;
+  left: 60px; /* Right of sidebar */
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: auto;
+}
+
 /* UI Overlay Layer */
 #ui-layer {
   position: absolute;
@@ -34,7 +45,7 @@
   /* Above main window content if needed */
 }
 
-#nav-map {
+#nav-settings {
   margin-top: auto;
 }
 
@@ -156,8 +167,8 @@
 
 .top-right-container {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 10px;
+  right: 22px;
   display: flex;
   align-items: center;
   gap: 15px;

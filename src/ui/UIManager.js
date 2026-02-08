@@ -78,6 +78,9 @@ export class UIManager {
     this.container.id = "ui-layer";
     app.appendChild(this.container);
 
+    // Map is the default background — always visible behind panels
+    this.mapView.mount(this.container);
+
     // Sidebar (Left Center)
     this.sidebar = document.createElement("div");
     this.sidebar.className = "hud-panel sidebar";
@@ -88,7 +91,6 @@ export class UIManager {
       <div class="sidebar-item" id="nav-skills" title="Codex" style="font-size: 24px;">${ICONS.nav.codex}</div>
       <div class="sidebar-item" id="nav-talents" title="Talents" style="font-size: 24px;">${ICONS.nav.talents}</div>
       <div class="sidebar-item" id="nav-store" title="Store" style="font-size: 24px;">${ICONS.nav.store}</div>
-      <div class="sidebar-item" id="nav-map" title="Map" style="font-size: 24px;">${ICONS.nav.map}</div>
       <div class="sidebar-item" id="nav-settings" title="Settings" style="font-size: 24px;">${ICONS.nav.settings}</div>
     `;
     this.container.appendChild(this.sidebar);
@@ -151,9 +153,6 @@ export class UIManager {
     this.sidebar
       .querySelector("#nav-talents")
       .addEventListener("click", () => this.switchView("TALENTS"));
-    this.sidebar
-      .querySelector("#nav-map")
-      .addEventListener("click", () => this.switchView("MAP"));
     this.sidebar
       .querySelector("#nav-store")
       .addEventListener("click", () => this.switchView("STORE"));
@@ -224,9 +223,6 @@ export class UIManager {
     } else if (this.currentView === "TALENTS") {
       titleEl.innerText = "Talents";
       this.talentsView.render(contentEl);
-    } else if (this.currentView === "MAP") {
-      titleEl.innerText = "World Map";
-      this.mapView.render(contentEl);
     } else if (this.currentView === "STORE") {
       titleEl.innerText = "Store";
       this.storeView.render(contentEl);
@@ -284,6 +280,9 @@ export class UIManager {
   update() {
     if (!this.container) return;
 
+    // Always refresh the map (it's the persistent background)
+    this.mapView.refreshMap();
+
     // Refresh Inv if active
     if (this.currentView === "INV") {
       const contentEl = this.mainWindow.querySelector("#mw-content");
@@ -310,10 +309,6 @@ export class UIManager {
       const invGrid = this.mainWindow.querySelector(".equip-inv-grid");
       if (invGrid) {
         invGrid.innerHTML = InventoryView.getInventoryHTML();
-      }
-    } else if (this.currentView === "MAP") {
-      if (this.mapView) {
-        this.mapView.refreshMap();
       }
     }
   }

@@ -261,6 +261,23 @@ export class MapView {
 
   // updateTooltip - REMOVED
 
+  /** Mount the map as a persistent background layer in the given parent. */
+  mount(parent) {
+    this.element.classList.add("map-view-background");
+    // Clear inline styles that conflict with the background CSS positioning
+    this.element.style.width = "";
+    this.element.style.height = "";
+    this.element.style.position = "";
+    parent.appendChild(this.element);
+
+    // Render overlays
+    if (this.mapMenu.childElementCount === 0) {
+      this.renderMapMenu();
+    }
+
+    this.update();
+  }
+
   render(container) {
     container.innerHTML = "";
     container.appendChild(this.element);

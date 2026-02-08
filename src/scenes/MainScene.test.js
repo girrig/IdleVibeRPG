@@ -58,13 +58,6 @@ describe("MainScene Integration", () => {
             on: vi.fn(),
             gameSize: { width: 800, height: 600 }
         };
-
-        scene.add = {
-            text: vi.fn().mockReturnValue({
-                setOrigin: vi.fn().mockReturnThis(),
-                setDepth: vi.fn().mockReturnThis()
-            })
-        };
     });
 
     afterEach(() => {
@@ -72,10 +65,8 @@ describe("MainScene Integration", () => {
     });
 
     it("should initialize GameState and UIManager on create", () => {
-        // Act
         scene.create();
 
-        // Assert
         expect(gameState.initialize).toHaveBeenCalled();
         expect(uiManager.initialize).toHaveBeenCalled();
         expect(scene.cameras.main.setBackgroundColor).toHaveBeenCalled();
@@ -86,5 +77,11 @@ describe("MainScene Integration", () => {
 
         expect(scene.cameras.main.setViewport).toHaveBeenCalledWith(0, 0, 1024, 768);
         expect(scene.cameras.main.centerOn).toHaveBeenCalledWith(512, 384);
+    });
+
+    it("should tick game state on update", () => {
+        scene.update(0, 16);
+
+        expect(gameState.tick).toHaveBeenCalled();
     });
 });
