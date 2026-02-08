@@ -18,6 +18,7 @@ export class SkillsView {
   constructor(uiManager) {
     this.uiManager = uiManager;
     this.activeCategory = null;
+    this.revealAll = true;
   }
 
   render(container) {
@@ -59,6 +60,16 @@ export class SkillsView {
       sidebar.appendChild(tabBtn);
     });
 
+    // Debug: Reveal All toggle
+    const toggle = document.createElement("div");
+    toggle.className = `codex-reveal-toggle ${this.revealAll ? "active" : ""}`;
+    toggle.innerHTML = `🔓 Reveal All`;
+    toggle.addEventListener("click", () => {
+      this.revealAll = !this.revealAll;
+      this.uiManager.renderMainWindow();
+    });
+    sidebar.appendChild(toggle);
+
     // Content Area
     const contentArea = document.createElement("div");
     contentArea.className = "skills-options-area";
@@ -97,7 +108,7 @@ export class SkillsView {
     grid.className = "codex-entry-list";
 
     Object.entries(fightingSkill.options).forEach(([key, opt]) => {
-      const isLocked = !gameState.discoveries.has(`monster:${key}`);
+      const isLocked = !this.revealAll && !gameState.discoveries.has(`monster:${key}`);
       const card = this.createTile(opt.icon, opt.name, isLocked);
 
       if (!isLocked) {
@@ -131,7 +142,7 @@ export class SkillsView {
 
     Object.entries(RESOURCE_NODES).forEach(([nodeKey, node]) => {
       const match = this.findResourceOption(nodeKey);
-      const isLocked = !gameState.discoveries.has(`node:${nodeKey}`);
+      const isLocked = !this.revealAll && !gameState.discoveries.has(`node:${nodeKey}`);
 
       const card = this.createTile(node.icon, node.name, isLocked);
 
@@ -166,7 +177,7 @@ export class SkillsView {
     grid.className = "codex-entry-list";
 
     Object.entries(smithingSkill.options).forEach(([key, opt]) => {
-      const isLocked = !gameState.discoveries.has(`recipe:${key}`);
+      const isLocked = !this.revealAll && !gameState.discoveries.has(`recipe:${key}`);
       const card = this.createTile(opt.icon, opt.name, isLocked);
 
       if (!isLocked) {
@@ -202,7 +213,7 @@ export class SkillsView {
       const exploreOpt = this.findBiomeOption(biomeId);
       if (!exploreOpt) return;
 
-      const isLocked = !gameState.discoveries.has(`biome:${biomeId}`);
+      const isLocked = !this.revealAll && !gameState.discoveries.has(`biome:${biomeId}`);
       const displayName = biomeDef.name;
       const card = this.createTile(biomeDef.symbol, displayName, isLocked);
 
@@ -238,7 +249,7 @@ export class SkillsView {
     Object.entries(ITEM_DEFINITIONS).forEach(([itemId, itemDef]) => {
       if (itemDef.category === "Currency") return;
 
-      const isLocked = !gameState.discoveries.has(`item:${itemId}`);
+      const isLocked = !this.revealAll && !gameState.discoveries.has(`item:${itemId}`);
       const card = this.createTile(itemDef.icon, itemDef.name, isLocked);
 
       if (!isLocked) {

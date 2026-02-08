@@ -249,6 +249,7 @@ describe("SkillsView", () => {
       renderMainWindow: vi.fn(),
     };
     view = new SkillsView(mockUiManager);
+    view.revealAll = false; // disable for tests that check locked behavior
 
     // Reset discoveries to defaults
     gameState.discoveries = new Set([
@@ -622,6 +623,96 @@ describe("SkillsView", () => {
     it("getResourcesInBiome should return empty for biome with no resources", () => {
       const resources = view.getResourcesInBiome("OCEAN");
       expect(resources.length).toBe(0);
+    });
+  });
+
+  describe("reveal all toggle", () => {
+    it("should render a reveal all button in the sidebar", () => {
+      view.render(container);
+      const toggle = container.querySelector(".codex-reveal-toggle");
+      expect(toggle).not.toBeNull();
+      expect(toggle.textContent).toContain("Reveal All");
+    });
+
+    it("should have active class by default", () => {
+      const freshView = new SkillsView(mockUiManager);
+      freshView.render(container);
+      const toggle = container.querySelector(".codex-reveal-toggle");
+      expect(toggle.classList.contains("active")).toBe(true);
+    });
+
+    it("should toggle revealAll state on click", () => {
+      view.revealAll = true;
+      view.render(container);
+
+      container.querySelector(".codex-reveal-toggle").click();
+      expect(view.revealAll).toBe(false);
+      expect(mockUiManager.renderMainWindow).toHaveBeenCalled();
+    });
+
+    it("should reveal all locked monsters when enabled", () => {
+      view.activeCategory = "MONSTERS";
+      view.revealAll = true;
+      view.render(container);
+
+      const cards = container.querySelectorAll(".skill-action-card");
+      const locked = container.querySelectorAll(".skill-action-card.locked");
+      expect(cards.length).toBe(2);
+      expect(locked.length).toBe(0);
+      expect(cards[1].textContent).toContain("Fight Goblin");
+    });
+
+    it("should reveal all locked recipes when enabled", () => {
+      view.activeCategory = "RECIPES";
+      view.revealAll = true;
+      view.render(container);
+
+      const locked = container.querySelectorAll(".skill-action-card.locked");
+      expect(locked.length).toBe(0);
+      expect(container.textContent).toContain("Smelt Iron");
+    });
+
+    it("should reveal all locked biomes when enabled", () => {
+      view.activeCategory = "BIOMES";
+      view.revealAll = true;
+      view.render(container);
+
+      const locked = container.querySelectorAll(".skill-action-card.locked");
+      expect(locked.length).toBe(0);
+      expect(container.textContent).toContain("Desert");
+    });
+
+    it("should reveal all locked items when enabled", () => {
+      view.activeCategory = "ITEMS";
+      view.revealAll = true;
+      view.render(container);
+
+      const locked = container.querySelectorAll(".skill-action-card.locked");
+      expect(locked.length).toBe(0);
+      expect(container.textContent).toContain("Goblin Mail");
+    });
+
+    it("should make revealed tiles clickable for detail popup", () => {
+      view.activeCategory = "MONSTERS";
+      view.revealAll = true;
+      view.render(container);
+
+      // Click the goblin card (normally locked)
+      const goblinCard = Array.from(container.querySelectorAll(".skill-action-card"))
+        .find(c => c.textContent.includes("Fight Goblin"));
+      goblinCard.click();
+
+      const popup = document.querySelector(".game-modal.codex-popup");
+      expect(popup).not.toBeNull();
+      expect(popup.textContent).toContain("Fight Goblin");
+      popup.remove();
+    });
+
+    it("should show active class on toggle when enabled", () => {
+      view.revealAll = true;
+      view.render(container);
+      const toggle = container.querySelector(".codex-reveal-toggle");
+      expect(toggle.classList.contains("active")).toBe(true);
     });
   });
 
