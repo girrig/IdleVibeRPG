@@ -247,8 +247,9 @@ export class Character {
   stopActivity(force = false) {
     // If movement-based skill and NOT Returning and NOT at home, trigger Return Trip first
     // UNLESS force is true
+    const movementSkills = ["EXPLORING", "WOODCUTTING", "MINING", "FISHING", "FORAGING"];
     const isMovementSkill = this.currentActivity &&
-      (this.currentActivity.type === "EXPLORING" || this.currentActivity.type === "WOODCUTTING");
+      movementSkills.includes(this.currentActivity.type);
 
     if (
       !force &&

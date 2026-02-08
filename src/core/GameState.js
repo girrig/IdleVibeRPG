@@ -432,6 +432,10 @@ class GameState {
           // Build robustness: Ensure lastActionTime exists
           if (now - lastTime >= interval) {
             skillDef.action(this, char);
+
+            // Activity may have been cleared by the action (e.g. stopActivity)
+            if (!char.currentActivity) return;
+
             char.currentActivity.lastActionTime = now;
 
             // Task Queue Logic

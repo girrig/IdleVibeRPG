@@ -223,6 +223,10 @@ export class MapManager {
     return this.pathfinder.findNearestExploredResourceTile(validSources, startX, startY);
   }
 
+  findNearestAdjacentResourceTile(validSources, startX, startY) {
+    return this.pathfinder.findNearestAdjacentResourceTile(validSources, startX, startY);
+  }
+
   findNearestExploredUnvisitedTile(typeId, startX, startY) {
     return this.pathfinder.findNearestExploredUnvisitedTile(typeId, startX, startY);
   }

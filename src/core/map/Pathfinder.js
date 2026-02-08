@@ -316,6 +316,68 @@ export class Pathfinder {
         return null;
     }
 
+    // Like findNearestExploredResourceTile but also checks non-walkable neighbors
+    // (e.g. fishing spots on OCEAN tiles reachable from adjacent BEACH)
+    findNearestAdjacentResourceTile(validSources, startX, startY) {
+        const validSet = new Set(validSources.map(s => `${s.nodeType}:${s.biome}`));
+        const visited = new Set();
+        const queue = [{ x: startX, y: startY, dist: 0 }];
+        visited.add(`${startX},${startY}`);
+        const maxDist = 500;
+
+        const directions = [
+            { x: 0, y: 1 }, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: -1, y: 0 },
+        ];
+
+        let head = 0;
+        while (head < queue.length) {
+            const curr = queue[head++];
+            if (curr.dist > maxDist) break;
+
+            const tile = this.getTile(curr.x, curr.y);
+            // Check current walkable tile for resource
+            if (tile && tile.explored && tile.resource) {
+                const key = `${tile.resource.type}:${tile.type}`;
+                if (validSet.has(key)) {
+                    return { x: curr.x, y: curr.y, resourceX: curr.x, resourceY: curr.y, dist: curr.dist, nodeType: tile.resource.type, biome: tile.type };
+                }
+            }
+
+            // Also check non-walkable neighbors for resources (shore fishing)
+            for (const dir of directions) {
+                const ax = curr.x + dir.x;
+                const ay = curr.y + dir.y;
+                if (ax >= 0 && ax < this.width && ay >= 0 && ay < this.height) {
+                    const aTile = this.getTile(ax, ay);
+                    if (aTile && aTile.explored && aTile.resource) {
+                        const key = `${aTile.resource.type}:${aTile.type}`;
+                        if (validSet.has(key)) {
+                            return { x: curr.x, y: curr.y, resourceX: ax, resourceY: ay, dist: curr.dist, nodeType: aTile.resource.type, biome: aTile.type };
+                        }
+                    }
+                }
+            }
+
+            // Expand through walkable tiles
+            for (const dir of directions) {
+                const nx = curr.x + dir.x;
+                const ny = curr.y + dir.y;
+                const key = `${nx},${ny}`;
+
+                if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height && !visited.has(key)) {
+                    const nTile = this.getTile(nx, ny);
+                    if (nTile && nTile.explored &&
+                        nTile.type !== TERRAIN_TYPES.OCEAN.id &&
+                        nTile.type !== TERRAIN_TYPES.SHALLOW_OCEAN.id) {
+                        visited.add(key);
+                        queue.push({ x: nx, y: ny, dist: curr.dist + 1 });
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     findNearestExploredUnvisitedTile(typeId, startX, startY) {
         const visited = new Set();
         const queue = [{ x: startX, y: startY, dist: 0 }];

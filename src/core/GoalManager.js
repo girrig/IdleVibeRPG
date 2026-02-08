@@ -323,8 +323,9 @@ export class GoalManager {
 
         // For movement skills away from home, let the character walk back
         // instead of teleporting. The queue will be checked once they arrive.
+        const movementSkills = ["EXPLORING", "WOODCUTTING", "MINING", "FISHING", "FORAGING"];
         const isMovementSkill = char.currentActivity &&
-          (char.currentActivity.type === "EXPLORING" || char.currentActivity.type === "WOODCUTTING");
+          movementSkills.includes(char.currentActivity.type);
         const isAwayFromHome = char.position &&
           (char.position.x !== 250 || char.position.y !== 250);
 

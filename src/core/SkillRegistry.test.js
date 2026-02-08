@@ -12,6 +12,7 @@ vi.mock('./MapManager', () => ({
     findNearestFrontierTile: vi.fn(),
     findNearestUnvisitedWalkableTile: vi.fn(),
     findNearestExploredResourceTile: vi.fn(),
+    findNearestAdjacentResourceTile: vi.fn(),
     visitTile: vi.fn(),
     exploreRadius: vi.fn(),
     width: 500,
@@ -55,37 +56,124 @@ describe('SkillRegistry', () => {
   });
 
   describe('MINING', () => {
-    it('should mine minerals and gain XP', () => {
-      mockChar.currentActivity.target = 'mine_minerals';
-      mockGameState.availableResources = { 'mineral_node:TEMPERATE_DESERT': 10 };
-
-      // Mock Math.random to deterministically select the node and the loot
-      // 1. Node selection (only 1 option)
-      // 2. Loot selection: Desert table has Copper (50), Gold (20), Stone (30).
-      // Mocking Math.random is tricky with multiple calls.
-      // Let's just expect any call to addItem
+    it('should initialize to TRAVELING phase on first tick', () => {
+      mockChar.currentActivity = { target: 'mine_minerals' };
+      mapManager.findNearestExploredResourceTile.mockReturnValue(
+        { x: 255, y: 250, nodeType: 'mineral_node', biome: 'ALPINE' }
+      );
+      mapManager.getTile.mockReturnValue({ type: 'grassland' });
+      mapManager.exploreRadius.mockReturnValue([]);
 
       SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
 
+      expect(mockChar.currentActivity.phase).toBe('TRAVELING');
+      expect(mockChar.currentActivity.targetTile).toBeDefined();
+      expect(mockChar.currentActivity.targetTile.x).toBe(255);
+    });
+
+    it('should move toward target during TRAVELING', () => {
+      mockChar.currentActivity = {
+        target: 'mine_minerals',
+        phase: 'TRAVELING',
+        targetTile: { x: 255, y: 250, nodeType: 'mineral_node', biome: 'ALPINE' }
+      };
+      mockChar.position = { x: 252, y: 250 };
+      mapManager.getTile.mockReturnValue({ type: 'grassland' });
+      mapManager.exploreRadius.mockReturnValue([]);
+
+      SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
+
+      expect(mockChar.position.x).toBe(253);
+    });
+
+    it('should mine and transition to RETURNING on arrival', () => {
+      mockChar.currentActivity = {
+        target: 'mine_minerals',
+        phase: 'TRAVELING',
+        targetTile: { x: 250, y: 250, nodeType: 'mineral_node', biome: 'ALPINE' }
+      };
+      mockChar.position = { x: 250, y: 250 };
+      const mockTile = {
+        type: 'ALPINE',
+        resource: { type: 'mineral_node' }
+      };
+      mapManager.getTile.mockReturnValue(mockTile);
+
+      SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.phase).toBe('RETURNING');
       expect(mockGameState.inventory.addItem).toHaveBeenCalled();
-      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('mineral_node:TEMPERATE_DESERT', 1);
-      expect(mockChar.gainXp).toHaveBeenCalledWith('mining', 20);
+      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('mineral_node:ALPINE', 1);
+      expect(mockChar.gainXp).toHaveBeenCalledWith('mining', 15);
+      expect(mockTile.resource).toBeNull();
+    });
+
+    it('should wait if no ore found (not stop)', () => {
+      mockChar.currentActivity = { target: 'mine_minerals', phase: 'TRAVELING' };
+      mockChar.position = { x: 250, y: 250 };
+      mapManager.findNearestExploredResourceTile.mockReturnValue(null);
+
+      SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
+
+      expect(mockChar.stopActivity).not.toHaveBeenCalled();
+      expect(mockChar.currentActivity.waitingForResources).toBe(true);
+      expect(mockGameState.triggerNotification).toHaveBeenCalledWith(
+        expect.stringContaining('No ore'),
+        'error'
+      );
+
+      // Second tick should NOT re-notify
+      mockGameState.triggerNotification.mockClear();
+      SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
+      expect(mockGameState.triggerNotification).not.toHaveBeenCalled();
+    });
+
+    it('should return home and loop to TRAVELING', () => {
+      mockChar.currentActivity = {
+        target: 'mine_minerals',
+        phase: 'RETURNING',
+        targetTile: null
+      };
+      mockChar.position = { x: 250, y: 250 };
+
+      SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.phase).toBe('TRAVELING');
     });
 
     it('should trigger double ore talent', () => {
-      mockChar.currentActivity.target = 'mine_minerals';
-      mockGameState.availableResources = { 'mineral_node:ALPINE': 10 };
+      mockChar.currentActivity = {
+        target: 'mine_minerals',
+        phase: 'TRAVELING',
+        targetTile: { x: 250, y: 250, nodeType: 'mineral_node', biome: 'ALPINE' }
+      };
+      mockChar.position = { x: 250, y: 250 };
       mockChar.talents.mining_2 = true;
-
-      // Mock RNG:
-      // 1. Node Select (0)
-      // 2. Loot Roll (0 -> Iron in Alpine)
-      // 3. Double Drop Check (< 0.1)
       vi.spyOn(Math, 'random').mockReturnValue(0.01);
+      mapManager.getTile.mockReturnValue({
+        type: 'ALPINE',
+        resource: { type: 'mineral_node' }
+      });
 
       SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
 
       expect(mockGameState.inventory.addItem).toHaveBeenCalledWith(expect.anything(), 2);
+    });
+
+    it('should fully stop when returning with stopping flag', () => {
+      mockChar.currentActivity = {
+        target: 'mine_minerals',
+        phase: 'RETURNING',
+        stopping: true,
+        targetTile: null
+      };
+      mockChar.position = { x: 250, y: 250 };
+      mockChar.activityQueue = [];
+
+      SKILL_DEFINITIONS.MINING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity).toBeNull();
+      expect(mockGameState.triggerNotification).toHaveBeenCalledWith('Returned home safely.', 'success');
     });
   });
 
@@ -146,7 +234,7 @@ describe('SkillRegistry', () => {
       expect(mockTile.resource).toBeNull(); // Resource removed from tile
     });
 
-    it('should stop if no trees found', () => {
+    it('should wait if no trees found (not stop)', () => {
       mockChar.currentActivity = { target: 'chop_wood', phase: 'TRAVELING' };
       mockChar.activeGoal = { targetItem: 'maple_log' };
       mockChar.position = { x: 250, y: 250 };
@@ -154,7 +242,8 @@ describe('SkillRegistry', () => {
 
       SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
 
-      expect(mockChar.stopActivity).toHaveBeenCalled();
+      expect(mockChar.stopActivity).not.toHaveBeenCalled();
+      expect(mockChar.currentActivity.waitingForResources).toBe(true);
       expect(mockGameState.triggerNotification).toHaveBeenCalledWith(
         expect.stringContaining('No trees found'),
         'error'
@@ -250,15 +339,88 @@ describe('SkillRegistry', () => {
   });
 
   describe('FISHING', () => {
-    it('should catch fish and gain XP', () => {
-      mockChar.currentActivity.target = 'fish_spot';
-      mockGameState.availableResources = { 'fishing_spot:OCEAN': 50 };
+    it('should initialize to TRAVELING phase on first tick', () => {
+      mockChar.currentActivity = { target: 'fish_spot' };
+      mapManager.findNearestAdjacentResourceTile.mockReturnValue(
+        { x: 255, y: 250, resourceX: 256, resourceY: 250, nodeType: 'fishing_spot', biome: 'OCEAN' }
+      );
+      mapManager.getTile.mockReturnValue({ type: 'grassland' });
+      mapManager.exploreRadius.mockReturnValue([]);
 
       SKILL_DEFINITIONS.FISHING.action(mockGameState, mockChar);
 
-      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('fishing_spot:OCEAN', 1);
+      expect(mockChar.currentActivity.phase).toBe('TRAVELING');
+      expect(mockChar.currentActivity.targetTile).toBeDefined();
+      expect(mockChar.currentActivity.targetTile.resourceX).toBe(256);
+    });
+
+    it('should fish from shore and transition to RETURNING on arrival', () => {
+      mockChar.currentActivity = {
+        target: 'fish_spot',
+        phase: 'TRAVELING',
+        targetTile: { x: 250, y: 250, resourceX: 251, resourceY: 250, nodeType: 'fishing_spot', biome: 'OCEAN' }
+      };
+      mockChar.position = { x: 250, y: 250 };
+      const oceanTile = {
+        type: 'OCEAN',
+        resource: { type: 'fishing_spot' }
+      };
+      mapManager.getTile.mockImplementation((tx, ty) => {
+        if (tx === 251 && ty === 250) return oceanTile;
+        return { type: 'BEACH' };
+      });
+
+      SKILL_DEFINITIONS.FISHING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.phase).toBe('RETURNING');
       expect(mockGameState.inventory.addItem).toHaveBeenCalled();
-      expect(mockChar.gainXp).toHaveBeenCalledWith('fishing', 20);
+      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('fishing_spot:OCEAN', 1);
+      expect(mockChar.gainXp).toHaveBeenCalledWith('fishing', 15);
+      expect(oceanTile.resource).toBeNull();
+    });
+
+    it('should wait if no fishing spots found (not stop)', () => {
+      mockChar.currentActivity = { target: 'fish_spot', phase: 'TRAVELING' };
+      mockChar.position = { x: 250, y: 250 };
+      mapManager.findNearestAdjacentResourceTile.mockReturnValue(null);
+
+      SKILL_DEFINITIONS.FISHING.action(mockGameState, mockChar);
+
+      expect(mockChar.stopActivity).not.toHaveBeenCalled();
+      expect(mockChar.currentActivity.waitingForResources).toBe(true);
+      expect(mockGameState.triggerNotification).toHaveBeenCalledWith(
+        expect.stringContaining('No fishing spots'),
+        'error'
+      );
+    });
+
+    it('should return home and loop to TRAVELING', () => {
+      mockChar.currentActivity = {
+        target: 'fish_spot',
+        phase: 'RETURNING',
+        targetTile: null
+      };
+      mockChar.position = { x: 250, y: 250 };
+
+      SKILL_DEFINITIONS.FISHING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.phase).toBe('TRAVELING');
+    });
+
+    it('should fully stop when returning with stopping flag', () => {
+      mockChar.currentActivity = {
+        target: 'fish_spot',
+        phase: 'RETURNING',
+        stopping: true,
+        targetTile: null
+      };
+      mockChar.position = { x: 250, y: 250 };
+      mockChar.activityQueue = [];
+
+      SKILL_DEFINITIONS.FISHING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity).toBeNull();
+      expect(mockGameState.triggerNotification).toHaveBeenCalledWith('Returned home safely.', 'success');
     });
   });
 
@@ -337,28 +499,105 @@ describe('SkillRegistry', () => {
   });
 
   describe('FORAGING', () => {
-    it('should forage bushes and gain XP', () => {
-      mockChar.currentActivity.target = 'forage_bush';
-      mockGameState.availableResources = { 'bush_node:SHRUBLAND': 20 };
+    it('should initialize to TRAVELING phase on first tick', () => {
+      mockChar.currentActivity = { target: 'forage_bush' };
+      mapManager.findNearestExploredResourceTile.mockReturnValue(
+        { x: 255, y: 250, nodeType: 'bush_node', biome: 'SHRUBLAND' }
+      );
+      mapManager.getTile.mockReturnValue({ type: 'grassland' });
+      mapManager.exploreRadius.mockReturnValue([]);
 
       SKILL_DEFINITIONS.FORAGING.action(mockGameState, mockChar);
 
-      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('bush_node:SHRUBLAND', 1);
-      // Default drop for bush is red_berries (or blueberries in Shrubland based on biome_drop, but mocking random is complex)
-      // Since we don't spy on Math.random here, it might pick either. But addItem should be called.
-      expect(mockGameState.inventory.addItem).toHaveBeenCalled();
-      expect(mockChar.gainXp).toHaveBeenCalledWith('foraging', 10);
+      expect(mockChar.currentActivity.phase).toBe('TRAVELING');
+      expect(mockChar.currentActivity.targetTile).toBeDefined();
+      expect(mockChar.currentActivity.targetTile.x).toBe(255);
     });
 
-    it('should forage fungi and gain XP', () => {
-      mockChar.currentActivity.target = 'forage_fungi';
-      mockGameState.availableResources = { 'fungi_node:SWAMP': 15 };
+    it('should gather bush and transition to RETURNING on arrival', () => {
+      mockChar.currentActivity = {
+        target: 'forage_bush',
+        phase: 'TRAVELING',
+        targetTile: { x: 250, y: 250, nodeType: 'bush_node', biome: 'SHRUBLAND' }
+      };
+      mockChar.position = { x: 250, y: 250 };
+      const mockTile = {
+        type: 'SHRUBLAND',
+        resource: { type: 'bush_node' }
+      };
+      mapManager.getTile.mockReturnValue(mockTile);
 
       SKILL_DEFINITIONS.FORAGING.action(mockGameState, mockChar);
 
-      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('fungi_node:SWAMP', 1);
+      expect(mockChar.currentActivity.phase).toBe('RETURNING');
       expect(mockGameState.inventory.addItem).toHaveBeenCalled();
+      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('bush_node:SHRUBLAND', 1);
+      expect(mockChar.gainXp).toHaveBeenCalledWith('foraging', 10);
+      expect(mockTile.resource).toBeNull();
+    });
+
+    it('should gather fungi and gain correct XP', () => {
+      mockChar.currentActivity = {
+        target: 'forage_fungi',
+        phase: 'TRAVELING',
+        targetTile: { x: 250, y: 250, nodeType: 'fungi_node', biome: 'SWAMP' }
+      };
+      mockChar.position = { x: 250, y: 250 };
+      const mockTile = {
+        type: 'SWAMP',
+        resource: { type: 'fungi_node' }
+      };
+      mapManager.getTile.mockReturnValue(mockTile);
+
+      SKILL_DEFINITIONS.FORAGING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.phase).toBe('RETURNING');
+      expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('fungi_node:SWAMP', 1);
       expect(mockChar.gainXp).toHaveBeenCalledWith('foraging', 15);
+    });
+
+    it('should wait if no bushes found (not stop)', () => {
+      mockChar.currentActivity = { target: 'forage_bush', phase: 'TRAVELING' };
+      mockChar.position = { x: 250, y: 250 };
+      mapManager.findNearestExploredResourceTile.mockReturnValue(null);
+
+      SKILL_DEFINITIONS.FORAGING.action(mockGameState, mockChar);
+
+      expect(mockChar.stopActivity).not.toHaveBeenCalled();
+      expect(mockChar.currentActivity.waitingForResources).toBe(true);
+      expect(mockGameState.triggerNotification).toHaveBeenCalledWith(
+        expect.stringContaining('No bushes found'),
+        'error'
+      );
+    });
+
+    it('should return home and loop to TRAVELING', () => {
+      mockChar.currentActivity = {
+        target: 'forage_bush',
+        phase: 'RETURNING',
+        targetTile: null
+      };
+      mockChar.position = { x: 250, y: 250 };
+
+      SKILL_DEFINITIONS.FORAGING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.phase).toBe('TRAVELING');
+    });
+
+    it('should fully stop when returning with stopping flag', () => {
+      mockChar.currentActivity = {
+        target: 'forage_bush',
+        phase: 'RETURNING',
+        stopping: true,
+        targetTile: null
+      };
+      mockChar.position = { x: 250, y: 250 };
+      mockChar.activityQueue = [];
+
+      SKILL_DEFINITIONS.FORAGING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity).toBeNull();
+      expect(mockGameState.triggerNotification).toHaveBeenCalledWith('Returned home safely.', 'success');
     });
   });
 

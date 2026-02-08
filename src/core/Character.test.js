@@ -153,8 +153,8 @@ describe("Character Core Logic", () => {
       expect(char.currentActivity).toBeNull();
     });
 
-    it("should stop non-exploring activity immediately", () => {
-      char.startActivity("MINING", "copper_ore");
+    it("should stop non-movement activity immediately", () => {
+      char.startActivity("FIGHTING", "rat");
       char.position = { x: 100, y: 100 };
 
       char.stopActivity();
@@ -163,9 +163,20 @@ describe("Character Core Logic", () => {
       expect(char.activityQueue).toHaveLength(0);
     });
 
+    it("should trigger return trip for movement skills", () => {
+      char.startActivity("MINING", "mine_minerals");
+      char.position = { x: 100, y: 100 };
+
+      char.stopActivity();
+
+      expect(char.currentActivity).not.toBeNull();
+      expect(char.currentActivity.phase).toBe("RETURNING");
+      expect(char.currentActivity.stopping).toBe(true);
+    });
+
     it("should clear activity queue on stop", () => {
-      char.startActivity("MINING", "copper_ore");
-      char.startActivity("MINING", "iron_ore"); // queued
+      char.startActivity("FIGHTING", "rat");
+      char.startActivity("FIGHTING", "goblin"); // queued
       expect(char.activityQueue).toHaveLength(1);
 
       char.stopActivity();
