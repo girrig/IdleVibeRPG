@@ -234,6 +234,57 @@ describe("MapView Zoom Logic", () => {
     });
   });
 
+  describe("Tile Info Popup", () => {
+    const exploredTile = { x: 5, y: 3, type: "FOREST", explored: true, visited: true };
+    const unexploredTile = { x: 6, y: 3, type: "OCEAN", explored: false };
+    const oceanTile = { x: 7, y: 3, type: "OCEAN", explored: true, visited: false };
+    const resourceTile = { x: 8, y: 3, type: "FOREST", explored: true, visited: true, resource: { type: "mineral_node", amount: 15 } };
+
+    it("should show popup when calling showTileInfoPopup with an explored tile", () => {
+      mapView.showTileInfoPopup(exploredTile, 100, 100);
+      const popup = mapView.viewWrapper.querySelector(".tile-info-popup");
+      expect(popup).not.toBeNull();
+      expect(popup.textContent).toContain("Forest");
+      expect(popup.textContent).toContain("(5, 3)");
+    });
+
+    it("should show resource info when tile has a resource", () => {
+      mapView.showTileInfoPopup(resourceTile, 100, 100);
+      const popup = mapView.viewWrapper.querySelector(".tile-info-popup");
+      expect(popup).not.toBeNull();
+      expect(popup.textContent).toContain("Mineral Vein");
+    });
+
+    it("should replace previous popup when showing a new one", () => {
+      mapView.showTileInfoPopup(exploredTile, 100, 100);
+      expect(mapView.viewWrapper.querySelectorAll(".tile-info-popup").length).toBe(1);
+
+      mapView.showTileInfoPopup(oceanTile, 200, 200);
+      expect(mapView.viewWrapper.querySelectorAll(".tile-info-popup").length).toBe(1);
+      expect(mapView.viewWrapper.querySelector(".tile-info-popup").textContent).toContain("Ocean");
+    });
+
+    it("should close popup via close button", () => {
+      mapView.showTileInfoPopup(exploredTile, 100, 100);
+      expect(mapView.viewWrapper.querySelector(".tile-info-popup")).not.toBeNull();
+
+      mapView.viewWrapper.querySelector(".tile-info-close").click();
+      expect(mapView.viewWrapper.querySelector(".tile-info-popup")).toBeNull();
+    });
+
+    it("should close popup via closeTileInfoPopup()", () => {
+      mapView.showTileInfoPopup(exploredTile, 100, 100);
+      expect(mapView.viewWrapper.querySelector(".tile-info-popup")).not.toBeNull();
+
+      mapView.closeTileInfoPopup();
+      expect(mapView.viewWrapper.querySelector(".tile-info-popup")).toBeNull();
+    });
+
+    it("should be a no-op when closing with no popup open", () => {
+      expect(() => mapView.closeTileInfoPopup()).not.toThrow();
+    });
+  });
+
   describe("Sidebar & UI", () => {
     it("should have home button that centers on home", () => {
       const centerSpy = vi.spyOn(mapView, 'centerOnHome');

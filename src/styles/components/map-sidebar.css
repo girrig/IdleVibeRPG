@@ -320,3 +320,72 @@
     min-width: 24px;
     text-align: right;
 }
+
+/* Tile Info Popup (click-to-inspect) */
+.tile-info-popup {
+    position: absolute;
+    z-index: 30;
+    background: rgba(15, 15, 25, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    width: 200px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    pointer-events: auto;
+    font-size: 13px;
+    color: #cbd5e1;
+}
+
+.tile-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tile-info-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.tile-info-color {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.tile-info-close {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+}
+
+.tile-info-close:hover {
+    color: #fff;
+}
+
+.tile-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 10px;
+}
+
+.tile-info-row:last-child {
+    padding-bottom: 8px;
+}
+
+.tile-info-label {
+    color: #64748b;
+}

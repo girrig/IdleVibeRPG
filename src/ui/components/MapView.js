@@ -101,7 +101,7 @@ export class MapView {
 
     // State
     this.zoomLevel = 12; // Start smaller for big map
-    // this.hoverTile = null; // Removed
+    this.selectedTile = null; // Tile currently highlighted by click
 
     // Events
     this.bindEvents();
@@ -112,6 +112,7 @@ export class MapView {
     this.mapContainer.addEventListener("scroll", () => {
       this.lastScrollLeft = this.mapContainer.scrollLeft;
       this.lastScrollTop = this.mapContainer.scrollTop;
+      this.closeTileInfoPopup();
       this.renderMainCanvas();
     });
 
@@ -141,6 +142,8 @@ export class MapView {
       }
 
       if (newZoom === oldZoom) return;
+
+      this.closeTileInfoPopup();
 
       // Calculate center in "World/Tile" coordinates
       // Center of Viewport + Scroll
@@ -195,9 +198,22 @@ export class MapView {
     });
     resizeObserver.observe(this.mapContainer);
 
-    // Handle "click" - REMOVED LOGGING
+    // Handle tile click — show info popup
     this.canvas.addEventListener("click", (e) => {
-      // No-op for now
+      const scrollLeft = this.mapContainer.scrollLeft;
+      const scrollTop = this.mapContainer.scrollTop;
+      const tileX = Math.floor(e.offsetX / this.zoomLevel + scrollLeft / this.zoomLevel);
+      const tileY = Math.floor(e.offsetY / this.zoomLevel + scrollTop / this.zoomLevel);
+      const tile = mapManager.getTile(tileX, tileY);
+
+      if (!tile || !tile.explored) {
+        this.closeTileInfoPopup();
+        return;
+      }
+
+      this.selectedTile = { x: tileX, y: tileY };
+      this.showTileInfoPopup(tile, e.offsetX, e.offsetY);
+      this.renderMainCanvas();
     });
 
     // Prevent native auto-scroll on middle click
@@ -205,9 +221,10 @@ export class MapView {
       if (e.button === 1) e.preventDefault();
     });
 
-    // Disable right-click context menu on the map
+    // Right-click: close popup and prevent context menu
     this.mapContainer.addEventListener("contextmenu", (e) => {
       e.preventDefault();
+      this.closeTileInfoPopup();
     });
   }
 
@@ -373,12 +390,13 @@ export class MapView {
           // Fog of War: Black
           color = { r: 5, g: 5, b: 5 }; // Deep Black/Grey
         } else {
-          // Retrieve from cache or fallback to hot pink to signal error
-          const terrainColor = colorCache[tile.type];
+          // HOME tiles use their original biome color
+          const colorKey = tile.biome || tile.type;
+          const terrainColor = colorCache[colorKey];
           if (terrainColor) {
             color = terrainColor;
           } else {
-            console.warn("Missing color for type:", tile.type);
+            console.warn("Missing color for type:", colorKey);
             color = { r: 255, g: 0, b: 255 }; // Hot Pink
           }
         }
@@ -615,6 +633,89 @@ export class MapView {
           }
         }
       }
+    }
+
+    // --- 4. Draw Selected Tile Highlight ---
+    if (this.selectedTile) {
+      const selScreenX = (this.selectedTile.x - sourceX) * this.zoomLevel;
+      const selScreenY = (this.selectedTile.y - sourceY) * this.zoomLevel;
+      this.ctx.strokeStyle = "#facc15";
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(selScreenX, selScreenY, this.zoomLevel, this.zoomLevel);
+    }
+  }
+
+  showTileInfoPopup(tile, screenX, screenY) {
+    // Remove old popup DOM without clearing selectedTile
+    if (this.tileInfoPopup) {
+      this.tileInfoPopup.remove();
+      this.tileInfoPopup = null;
+    }
+
+    const terrain = Object.values(TERRAIN_TYPES).find(t => t.id === tile.type);
+    const terrainName = terrain ? terrain.name : tile.type;
+    const terrainSymbol = terrain ? terrain.symbol : "";
+    const terrainColor = terrain ? terrain.color : "#888";
+
+    const popup = document.createElement("div");
+    popup.className = "tile-info-popup";
+
+    // Header: color swatch + symbol + name + close button
+    let html = `<div class="tile-info-header">
+      <div class="tile-info-title">
+        <span class="tile-info-color" style="background:${terrainColor}"></span>
+        <span>${terrainSymbol} ${terrainName}</span>
+      </div>
+      <button class="tile-info-close">\u00d7</button>
+    </div>`;
+
+    // Coordinates
+    html += `<div class="tile-info-row"><span class="tile-info-label">Position</span><span>(${tile.x}, ${tile.y})</span></div>`;
+
+    // Resource info
+    if (tile.resource) {
+      const resConfig = RESOURCE_NODES[tile.resource.type];
+      const resName = resConfig ? resConfig.name : tile.resource.type;
+      const resIcon = resConfig ? resConfig.icon : "";
+      html += `<div class="tile-info-row"><span class="tile-info-label">Resource</span><span>${resIcon} ${resName}</span></div>`;
+    }
+
+
+    popup.innerHTML = html;
+
+    // Position near click, offset to bottom-right
+    const wrapperRect = this.viewWrapper.getBoundingClientRect();
+    let left = screenX + 12;
+    let top = screenY + 12;
+
+    // Clamp to stay within viewport (popup is ~200px wide, ~150px tall estimate)
+    const popupW = 200;
+    const popupH = 160;
+    if (left + popupW > wrapperRect.width) left = screenX - popupW - 4;
+    if (top + popupH > wrapperRect.height) top = screenY - popupH - 4;
+    if (left < 0) left = 4;
+    if (top < 0) top = 4;
+
+    popup.style.left = left + "px";
+    popup.style.top = top + "px";
+
+    this.viewWrapper.appendChild(popup);
+    this.tileInfoPopup = popup;
+
+    popup.querySelector(".tile-info-close").addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.closeTileInfoPopup();
+    });
+  }
+
+  closeTileInfoPopup() {
+    if (this.tileInfoPopup) {
+      this.tileInfoPopup.remove();
+      this.tileInfoPopup = null;
+    }
+    if (this.selectedTile) {
+      this.selectedTile = null;
+      this.renderMainCanvas();
     }
   }
 

@@ -118,9 +118,10 @@ export class MapManager {
         }
       }
 
-      // Mark Home
+      // Mark Home — preserve original biome for rendering
       this.tiles[centerY][centerX].explored = true;
       this.tiles[centerY][centerX].visited = true;
+      this.tiles[centerY][centerX].biome = this.tiles[centerY][centerX].type;
       this.tiles[centerY][centerX].type = TERRAIN_TYPES.HOME.id;
       delete this.tiles[centerY][centerX].resource;
 
