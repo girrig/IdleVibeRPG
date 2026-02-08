@@ -285,6 +285,69 @@ describe("MapView Zoom Logic", () => {
     });
   });
 
+  describe("Region Selection Popup", () => {
+    it("should show aggregated terrain breakdown for a region", () => {
+      // Mock getTile to return a mix of explored terrain types
+      mapManager.getTile = vi.fn((x, y) => {
+        if (x === 0 && y === 0) return { x, y, type: "FOREST", explored: true };
+        if (x === 1 && y === 0) return { x, y, type: "FOREST", explored: true };
+        if (x === 0 && y === 1) return { x, y, type: "OCEAN", explored: true };
+        if (x === 1 && y === 1) return { x, y, type: "OCEAN", explored: true };
+        return null;
+      });
+
+      mapView.selectedRegion = { x1: 0, y1: 0, x2: 1, y2: 1 };
+      mapView.showRegionInfoPopup(mapView.selectedRegion, 100, 100);
+
+      const popup = mapView.viewWrapper.querySelector(".tile-info-popup");
+      expect(popup).not.toBeNull();
+      expect(popup.classList.contains("tile-info-region")).toBe(true);
+      // Should show "4 tiles"
+      expect(popup.textContent).toContain("4 tiles");
+      // Should contain both terrain types
+      expect(popup.textContent).toContain("Forest");
+      expect(popup.textContent).toContain("Ocean");
+    });
+
+    it("should show resource counts in region popup", () => {
+      mapManager.getTile = vi.fn((x, y) => {
+        if (x === 0 && y === 0) return { x, y, type: "FOREST", explored: true, resource: { type: "tree_node" } };
+        if (x === 1 && y === 0) return { x, y, type: "FOREST", explored: true, resource: { type: "tree_node" } };
+        if (x === 0 && y === 1) return { x, y, type: "OCEAN", explored: true };
+        return null;
+      });
+
+      mapView.selectedRegion = { x1: 0, y1: 0, x2: 1, y2: 1 };
+      mapView.showRegionInfoPopup(mapView.selectedRegion, 100, 100);
+
+      const popup = mapView.viewWrapper.querySelector(".tile-info-popup");
+      expect(popup).not.toBeNull();
+      expect(popup.textContent).toContain("Resources");
+      expect(popup.textContent).toContain("Forest Patch");
+    });
+
+    it("should not show popup when region has no explored tiles", () => {
+      mapManager.getTile = vi.fn(() => null);
+
+      mapView.selectedRegion = { x1: 0, y1: 0, x2: 2, y2: 2 };
+      mapView.showRegionInfoPopup(mapView.selectedRegion, 100, 100);
+
+      const popup = mapView.viewWrapper.querySelector(".tile-info-popup");
+      expect(popup).toBeNull();
+    });
+
+    it("should clear selectedRegion when closing popup", () => {
+      mapManager.getTile = vi.fn((x, y) => ({ x, y, type: "OCEAN", explored: true }));
+      mapView.selectedRegion = { x1: 0, y1: 0, x2: 1, y2: 1 };
+      mapView.showRegionInfoPopup(mapView.selectedRegion, 100, 100);
+      expect(mapView.viewWrapper.querySelector(".tile-info-popup")).not.toBeNull();
+
+      mapView.closeTileInfoPopup();
+      expect(mapView.selectedRegion).toBeNull();
+      expect(mapView.viewWrapper.querySelector(".tile-info-popup")).toBeNull();
+    });
+  });
+
   describe("Sidebar & UI", () => {
     it("should have home button that centers on home", () => {
       const centerSpy = vi.spyOn(mapView, 'centerOnHome');

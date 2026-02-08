@@ -102,6 +102,9 @@ export class MapView {
     // State
     this.zoomLevel = 12; // Start smaller for big map
     this.selectedTile = null; // Tile currently highlighted by click
+    this.selectedRegion = null; // {x1, y1, x2, y2} for drag selection
+    this.dragStart = null; // {x, y} tile coords of mousedown
+    this.isDragging = false;
 
     // Events
     this.bindEvents();
@@ -198,21 +201,67 @@ export class MapView {
     });
     resizeObserver.observe(this.mapContainer);
 
-    // Handle tile click — show info popup
-    this.canvas.addEventListener("click", (e) => {
+    // --- Drag selection / click ---
+    this.canvas.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return; // Left button only
+      // Clear any existing selection/popup before starting a new one
+      this.closeTileInfoPopup();
       const scrollLeft = this.mapContainer.scrollLeft;
       const scrollTop = this.mapContainer.scrollTop;
       const tileX = Math.floor(e.offsetX / this.zoomLevel + scrollLeft / this.zoomLevel);
       const tileY = Math.floor(e.offsetY / this.zoomLevel + scrollTop / this.zoomLevel);
-      const tile = mapManager.getTile(tileX, tileY);
+      this.dragStart = { x: tileX, y: tileY };
+      this.dragEnd = { x: tileX, y: tileY };
+      this.isDragging = true;
+    });
 
-      if (!tile || !tile.explored) {
-        this.closeTileInfoPopup();
-        return;
+    this.canvas.addEventListener("mousemove", (e) => {
+      if (!this.isDragging) return;
+      const scrollLeft = this.mapContainer.scrollLeft;
+      const scrollTop = this.mapContainer.scrollTop;
+      const tileX = Math.floor(e.offsetX / this.zoomLevel + scrollLeft / this.zoomLevel);
+      const tileY = Math.floor(e.offsetY / this.zoomLevel + scrollTop / this.zoomLevel);
+      this.dragEnd = { x: tileX, y: tileY };
+      this.renderMainCanvas();
+    });
+
+    this.canvas.addEventListener("mouseup", (e) => {
+      if (e.button !== 0 || !this.isDragging) return;
+      this.isDragging = false;
+
+      const scrollLeft = this.mapContainer.scrollLeft;
+      const scrollTop = this.mapContainer.scrollTop;
+      const tileX = Math.floor(e.offsetX / this.zoomLevel + scrollLeft / this.zoomLevel);
+      const tileY = Math.floor(e.offsetY / this.zoomLevel + scrollTop / this.zoomLevel);
+
+      const startX = this.dragStart.x;
+      const startY = this.dragStart.y;
+
+      if (startX === tileX && startY === tileY) {
+        // Single click — existing behavior
+        this.selectedRegion = null;
+        const tile = mapManager.getTile(tileX, tileY);
+        if (!tile || !tile.explored) {
+          this.closeTileInfoPopup();
+          return;
+        }
+        this.selectedTile = { x: tileX, y: tileY };
+        this.showTileInfoPopup(tile, e.offsetX, e.offsetY);
+      } else {
+        // Drag selection — region
+        this.selectedTile = null;
+        const x1 = Math.min(startX, tileX);
+        const y1 = Math.min(startY, tileY);
+        const x2 = Math.max(startX, tileX);
+        const y2 = Math.max(startY, tileY);
+        this.selectedRegion = { x1, y1, x2, y2 };
+
+        // Position popup near the end of the drag
+        this.showRegionInfoPopup(this.selectedRegion, e.offsetX, e.offsetY);
       }
 
-      this.selectedTile = { x: tileX, y: tileY };
-      this.showTileInfoPopup(tile, e.offsetX, e.offsetY);
+      this.dragStart = null;
+      this.dragEnd = null;
       this.renderMainCanvas();
     });
 
@@ -643,6 +692,37 @@ export class MapView {
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(selScreenX, selScreenY, this.zoomLevel, this.zoomLevel);
     }
+
+    // --- 5. Draw Drag Selection Rectangle (while dragging) ---
+    if (this.isDragging && this.dragStart && this.dragEnd) {
+      const rx1 = Math.min(this.dragStart.x, this.dragEnd.x);
+      const ry1 = Math.min(this.dragStart.y, this.dragEnd.y);
+      const rx2 = Math.max(this.dragStart.x, this.dragEnd.x);
+      const ry2 = Math.max(this.dragStart.y, this.dragEnd.y);
+      const dx = (rx1 - sourceX) * this.zoomLevel;
+      const dy = (ry1 - sourceY) * this.zoomLevel;
+      const dw = (rx2 - rx1 + 1) * this.zoomLevel;
+      const dh = (ry2 - ry1 + 1) * this.zoomLevel;
+      this.ctx.fillStyle = "rgba(250, 204, 21, 0.15)";
+      this.ctx.fillRect(dx, dy, dw, dh);
+      this.ctx.strokeStyle = "#facc15";
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(dx, dy, dw, dh);
+    }
+
+    // --- 6. Draw Selected Region Highlight ---
+    if (this.selectedRegion) {
+      const r = this.selectedRegion;
+      const rx = (r.x1 - sourceX) * this.zoomLevel;
+      const ry = (r.y1 - sourceY) * this.zoomLevel;
+      const rw = (r.x2 - r.x1 + 1) * this.zoomLevel;
+      const rh = (r.y2 - r.y1 + 1) * this.zoomLevel;
+      this.ctx.fillStyle = "rgba(250, 204, 21, 0.15)";
+      this.ctx.fillRect(rx, ry, rw, rh);
+      this.ctx.strokeStyle = "#facc15";
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(rx, ry, rw, rh);
+    }
   }
 
   showTileInfoPopup(tile, screenX, screenY) {
@@ -708,15 +788,118 @@ export class MapView {
     });
   }
 
+  showRegionInfoPopup(region, screenX, screenY) {
+    // Remove old popup
+    if (this.tileInfoPopup) {
+      this.tileInfoPopup.remove();
+      this.tileInfoPopup = null;
+    }
+
+    // Aggregate tile data
+    const terrainCounts = {};
+    const resourceCounts = {};
+    let exploredCount = 0;
+
+    for (let y = region.y1; y <= region.y2; y++) {
+      for (let x = region.x1; x <= region.x2; x++) {
+        const tile = mapManager.getTile(x, y);
+        if (!tile || !tile.explored) continue;
+        exploredCount++;
+
+        const tType = tile.type;
+        terrainCounts[tType] = (terrainCounts[tType] || 0) + 1;
+
+        if (tile.resource) {
+          const rType = tile.resource.type;
+          resourceCounts[rType] = (resourceCounts[rType] || 0) + 1;
+        }
+      }
+    }
+
+    if (exploredCount === 0) {
+      this.closeTileInfoPopup();
+      return;
+    }
+
+    const popup = document.createElement("div");
+    popup.className = "tile-info-popup tile-info-region";
+
+    // Header
+    let html = `<div class="tile-info-header">
+      <div class="tile-info-title"><span>${exploredCount} tiles</span></div>
+      <button class="tile-info-close">\u00d7</button>
+    </div>`;
+
+    // Terrain breakdown (sorted by count descending)
+    html += `<div class="tile-info-section-label">Terrain</div>`;
+    const sortedTerrain = Object.entries(terrainCounts).sort((a, b) => b[1] - a[1]);
+    for (const [typeId, count] of sortedTerrain) {
+      const terrain = Object.values(TERRAIN_TYPES).find(t => t.id === typeId);
+      const name = terrain ? terrain.name : typeId;
+      const color = terrain ? terrain.color : "#888";
+      html += `<div class="tile-info-summary-row">
+        <span class="tile-info-color" style="background:${color}"></span>
+        <span class="tile-info-summary-name">${name}</span>
+        <span class="tile-info-summary-count">${count}</span>
+      </div>`;
+    }
+
+    // Resource breakdown (if any)
+    if (Object.keys(resourceCounts).length > 0) {
+      html += `<div class="tile-info-section-label">Resources</div>`;
+      const sortedRes = Object.entries(resourceCounts).sort((a, b) => b[1] - a[1]);
+      for (const [resType, count] of sortedRes) {
+        const resConfig = RESOURCE_NODES[resType];
+        const name = resConfig ? resConfig.name : resType;
+        const icon = resConfig ? resConfig.icon : "";
+        html += `<div class="tile-info-summary-row">
+          <span class="tile-info-summary-icon">${icon}</span>
+          <span class="tile-info-summary-name">${name}</span>
+          <span class="tile-info-summary-count">${count}</span>
+        </div>`;
+      }
+    }
+
+    popup.innerHTML = html;
+
+    // Position near drag end
+    const wrapperRect = this.viewWrapper.getBoundingClientRect();
+    let left = screenX + 12;
+    let top = screenY + 12;
+    const popupW = 260;
+    const popupH = 200;
+    if (left + popupW > wrapperRect.width) left = screenX - popupW - 4;
+    if (top + popupH > wrapperRect.height) top = screenY - popupH - 4;
+    if (left < 0) left = 4;
+    if (top < 0) top = 4;
+
+    popup.style.left = left + "px";
+    popup.style.top = top + "px";
+
+    this.viewWrapper.appendChild(popup);
+    this.tileInfoPopup = popup;
+
+    popup.querySelector(".tile-info-close").addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.closeTileInfoPopup();
+    });
+  }
+
   closeTileInfoPopup() {
     if (this.tileInfoPopup) {
       this.tileInfoPopup.remove();
       this.tileInfoPopup = null;
     }
+    let needsRender = false;
     if (this.selectedTile) {
       this.selectedTile = null;
-      this.renderMainCanvas();
+      needsRender = true;
     }
+    if (this.selectedRegion) {
+      this.selectedRegion = null;
+      needsRender = true;
+    }
+    if (needsRender) this.renderMainCanvas();
   }
 
   renderMapMenu() {
