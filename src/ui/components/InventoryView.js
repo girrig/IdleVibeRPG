@@ -1,9 +1,10 @@
 import { gameState } from "../../core/GameState";
 import { ITEM_DEFINITIONS } from "../../core/ItemRegistry";
+import { ICONS } from "../../core/Icons";
 import { formatNumber } from "../../utils/formatters";
 
 function getItemDefinition(id) {
-  return ITEM_DEFINITIONS[id] || { name: id, icon: "❓" };
+  return ITEM_DEFINITIONS[id] || { name: id, icon: ICONS.misc.locked };
 }
 
 export class InventoryView {
@@ -176,7 +177,7 @@ export class InventoryView {
             </div>
             <!-- Future: Value, Weight, etc. -->
                 <span>Value</span>
-                <span style="color:#fbbf24;">${def.value || 1} 💰</span>
+                <span style="color:#fbbf24;">${def.value || 1} ${ICONS.items.coins}</span>
             </div>
         </div>
         
@@ -193,7 +194,7 @@ export class InventoryView {
                 cursor: pointer; 
                 font-weight: bold;
                 transition: background 0.2s;
-            ">Sell 1 for ${def.value || 1} 💰</button>
+            ">Sell 1 for ${def.value || 1} ${ICONS.items.coins}</button>
             `
                 : ""
             }

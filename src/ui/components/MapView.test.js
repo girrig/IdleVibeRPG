@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MapView } from "./MapView";
 import { mapManager } from "../../core/MapManager";
 import { gameState } from "../../core/GameState";
+import { ICONS } from "../../core/Icons";
 
 // Mock GameState
 vi.mock("../../core/GameState", () => ({
@@ -177,7 +178,7 @@ describe("MapView Zoom Logic", () => {
       // Check fillText calls
       // 2 characters = 2 calls. (Assuming no symbols drawn due to zoom/mock tiles)
       const calls = mapView.ctx.fillText.mock.calls;
-      const charCalls = calls.filter((call) => call[0] === "🧙‍♂️");
+      const charCalls = calls.filter((call) => call[0] === ICONS.misc.character);
 
       expect(charCalls.length).toBe(2);
     });

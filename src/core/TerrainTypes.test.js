@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { TERRAIN_TYPES } from "./TerrainTypes";
+import { ICONS } from "./Icons";
 
 describe("TerrainTypes", () => {
   it("should define at least 10 terrain types", () => {
@@ -38,6 +39,6 @@ describe("TerrainTypes", () => {
 
   it("should have HOME terrain with gold color", () => {
     expect(TERRAIN_TYPES.HOME.color).toBe("#FFD700");
-    expect(TERRAIN_TYPES.HOME.symbol).toBe("🏠");
+    expect(TERRAIN_TYPES.HOME.symbol).toBe(ICONS.biomes.HOME);
   });
 });

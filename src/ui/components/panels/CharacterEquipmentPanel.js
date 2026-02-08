@@ -1,4 +1,5 @@
 import { ITEM_DEFINITIONS } from "../../../core/ItemRegistry";
+import { ICONS } from "../../../core/Icons";
 
 export class CharacterEquipmentPanel {
   static render(container, char) {
@@ -72,18 +73,18 @@ export class CharacterEquipmentPanel {
       } else {
         // Reset to default icon
         const defaultIcons = {
-          head: "🧢",
-          chest: "👕",
-          belt: "🥋",
-          gloves: "🧤",
-          legs: "👖",
-          feet: "👢",
-          mainHand: "⚔️",
-          offHand: "🛡️",
-          ring1: "💍",
-          ring2: "💍",
-          trinket1: "🧿",
-          trinket2: "🧿",
+          head: ICONS.equipSlots.head,
+          chest: ICONS.equipSlots.chest,
+          belt: ICONS.equipSlots.belt,
+          gloves: ICONS.equipSlots.gloves,
+          legs: ICONS.equipSlots.legs,
+          feet: ICONS.equipSlots.feet,
+          mainHand: ICONS.equipSlots.mainHand,
+          offHand: ICONS.equipSlots.offHand,
+          ring1: ICONS.equipSlots.ring,
+          ring2: ICONS.equipSlots.ring,
+          trinket1: ICONS.equipSlots.trinket,
+          trinket2: ICONS.equipSlots.trinket,
         };
         const defaultLabels = {
           head: "Head",
@@ -100,7 +101,7 @@ export class CharacterEquipmentPanel {
           trinket2: "Trinket 2",
         };
 
-        slot.innerText = defaultIcons[slotName] || "❓";
+        slot.innerText = defaultIcons[slotName] || ICONS.misc.locked;
         slot.title = defaultLabels[slotName];
         slot.classList.remove("equipped");
       }

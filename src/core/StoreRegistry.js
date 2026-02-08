@@ -1,7 +1,9 @@
+import { ICONS } from "./Icons.js";
+
 export const STORE_DEFINITIONS = {
   general_store: {
     name: "General Store",
-    icon: "🏪",
+    icon: ICONS.stores.general_store,
     description: "Buy basic resources here.",
     items: [
       { id: "copper_ore", price: 5 },
@@ -13,7 +15,7 @@ export const STORE_DEFINITIONS = {
   },
   blacksmith: {
     name: "Blacksmith",
-    icon: "🔨",
+    icon: ICONS.stores.blacksmith,
     description: "Get your metal bars here!",
     items: [
       { id: "copper_bar", price: 15 },

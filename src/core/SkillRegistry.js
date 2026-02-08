@@ -2,6 +2,7 @@ import { getItemDefinition } from "./ItemRegistry.js";
 import { GAME_CONFIG, RESOURCE_NODES } from "./Constants.js";
 import { mapManager } from "./MapManager.js";
 import { TERRAIN_TYPES } from "./TerrainTypes.js";
+import { ICONS } from "./Icons.js";
 
 // Reverse mapping: itemId → [{ nodeType, biome }]
 // e.g. "maple_log" → [{ nodeType: "tree_node", biome: "TEMPERATE_DECIDUOUS_FOREST" }]
@@ -36,7 +37,7 @@ export const SKILL_DEFINITIONS = {
   MINING: {
     id: "MINING",
     name: "Mining",
-    icon: "⛏️",
+    icon: ICONS.skills.mining,
     color: "#e67e22",
     options: {
       mine_minerals: {
@@ -44,7 +45,7 @@ export const SKILL_DEFINITIONS = {
         name: "Mine Minerals",
         level: 1,
         xp: 15, // Base XP, effectively varied by drop? Or constant? Constant is fine for now.
-        icon: "🌑", // Replaced 🪨
+        icon: ICONS.skillOptions.mine_minerals,
         interval: 3000,
       },
       mine_coal: {
@@ -52,7 +53,7 @@ export const SKILL_DEFINITIONS = {
         name: "Mine Coal",
         level: 5,
         xp: 25,
-        icon: "⚫",
+        icon: ICONS.skillOptions.mine_coal,
         interval: 3500,
       },
       mine_gems: {
@@ -60,7 +61,7 @@ export const SKILL_DEFINITIONS = {
         name: "Crack Geode",
         level: 15,
         xp: 40,
-        icon: "🔮",
+        icon: ICONS.skillOptions.mine_gems,
         interval: 5000,
       },
     },
@@ -156,11 +157,11 @@ export const SKILL_DEFINITIONS = {
   WOODCUTTING: {
     id: "WOODCUTTING",
     name: "Woodcutting",
-    icon: "🪓",
+    icon: ICONS.skills.woodcutting,
     color: "#2ecc71",
     options: {
-      chop_wood: { name: "Chop Wood", resourceId: "tree_node", level: 1, xp: 20, icon: "🌲", interval: 3000 },
-      chop_ancient: { name: "Chop Ancient", resourceId: "ancient_tree", level: 25, xp: 50, icon: "✨", interval: 3000 },
+      chop_wood: { name: "Chop Wood", resourceId: "tree_node", level: 1, xp: 20, icon: ICONS.skillOptions.chop_wood, interval: 3000 },
+      chop_ancient: { name: "Chop Ancient", resourceId: "ancient_tree", level: 25, xp: 50, icon: ICONS.skillOptions.chop_ancient, interval: 3000 },
     },
     continuous: true,
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
@@ -345,10 +346,10 @@ export const SKILL_DEFINITIONS = {
   FISHING: {
     id: "FISHING",
     name: "Fishing",
-    icon: "🎣",
+    icon: ICONS.skills.fishing,
     color: "#3498db",
     options: {
-      fish_spot: { name: "Catch Fish", resourceId: "fishing_spot", level: 1, xp: 15, icon: "🐟", interval: 3000 },
+      fish_spot: { name: "Catch Fish", resourceId: "fishing_spot", level: 1, xp: 15, icon: ICONS.skillOptions.fish_spot, interval: 3000 },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
@@ -426,11 +427,11 @@ export const SKILL_DEFINITIONS = {
   FORAGING: {
     id: "FORAGING",
     name: "Foraging",
-    icon: "🧺",
+    icon: ICONS.skills.foraging,
     color: "#16a34a",
     options: {
-      forage_bush: { name: "Forage Bushes", resourceId: "bush_node", level: 1, xp: 10, icon: "🍒", interval: 2500 },
-      forage_fungi: { name: "Gather Fungi", resourceId: "fungi_node", level: 5, xp: 15, icon: "🍄", interval: 3000 },
+      forage_bush: { name: "Forage Bushes", resourceId: "bush_node", level: 1, xp: 10, icon: ICONS.skillOptions.forage_bush, interval: 2500 },
+      forage_fungi: { name: "Gather Fungi", resourceId: "fungi_node", level: 5, xp: 15, icon: ICONS.skillOptions.forage_fungi, interval: 3000 },
     },
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
@@ -513,11 +514,11 @@ export const SKILL_DEFINITIONS = {
   FIGHTING: {
     id: "FIGHTING",
     name: "Fighting",
-    icon: "⚔️",
+    icon: ICONS.skills.fighting,
     color: "#e74c3c",
     options: {
       rat: {
-        name: "Rat", level: 1, xp: 10, icon: "🐀",
+        name: "Rat", level: 1, xp: 10, icon: ICONS.monsters.rat,
         category: "Outskirts",
         drops: [
           { item: "rat_bones", weight: 80 },
@@ -525,7 +526,7 @@ export const SKILL_DEFINITIONS = {
         ],
       },
       goblin: {
-        name: "Goblin", level: 5, xp: 20, icon: "👹",
+        name: "Goblin", level: 5, xp: 20, icon: ICONS.monsters.goblin,
         category: "Outskirts",
         drops: [
           { item: "goblin_mail", weight: 40 },
@@ -534,7 +535,7 @@ export const SKILL_DEFINITIONS = {
         ],
       },
       wolf: {
-        name: "Wolf", level: 10, xp: 30, icon: "🐺",
+        name: "Wolf", level: 10, xp: 30, icon: ICONS.monsters.wolf,
         category: "Wilderness",
         drops: [
           { item: "wolf_fur", weight: 60 },
@@ -543,7 +544,7 @@ export const SKILL_DEFINITIONS = {
         ],
       },
       skeleton: {
-        name: "Skeleton", level: 20, xp: 45, icon: "💀",
+        name: "Skeleton", level: 20, xp: 45, icon: ICONS.monsters.skeleton,
         category: "Dungeon",
         drops: [
           { item: "bones", weight: 50 },
@@ -552,7 +553,7 @@ export const SKILL_DEFINITIONS = {
         ],
       },
       demon: {
-        name: "Demon", level: 30, xp: 60, icon: "👿",
+        name: "Demon", level: 30, xp: 60, icon: ICONS.monsters.demon,
         category: "Infernal Plane",
         drops: [
           { item: "demon_ashes", weight: 50 },
@@ -590,42 +591,42 @@ export const SKILL_DEFINITIONS = {
   SMITHING: {
     id: "SMITHING",
     name: "Smithing",
-    icon: "🔨",
+    icon: ICONS.skills.smithing,
     color: "#a9a9a9",
     options: {
       copper_bar: {
         name: "Copper Bar",
         level: 1,
         xp: 15,
-        icon: "🟧",
+        icon: ICONS.items.copper_bar,
         cost: { copper_ore: 1 },
       },
       iron_bar: {
         name: "Iron Bar",
         level: 5,
         xp: 30,
-        icon: "⬜",
+        icon: ICONS.items.iron_bar,
         cost: { iron_ore: 1, coal: 1 },
       },
       steel_bar: {
         name: "Steel Bar",
         level: 10,
         xp: 45,
-        icon: "⚙️",
+        icon: ICONS.items.steel_bar,
         cost: { iron_ore: 1, coal: 2 },
       },
       gold_bar: {
         name: "Gold Bar",
         level: 20,
         xp: 60,
-        icon: "🟨",
+        icon: ICONS.items.gold_bar,
         cost: { gold_ore: 1 },
       },
       mithril_bar: {
         name: "Mithril Bar",
         level: 30,
         xp: 80,
-        icon: "🔷",
+        icon: ICONS.items.mithril_bar,
         cost: { mithril_ore: 1, coal: 2 },
       },
     },
@@ -668,7 +669,7 @@ export const SKILL_DEFINITIONS = {
   EXPLORING: {
     id: "EXPLORING",
     name: "Exploring",
-    icon: "🧭",
+    icon: ICONS.skills.exploring,
     color: "#8e44ad",
     continuous: true,
     options: {
@@ -676,7 +677,7 @@ export const SKILL_DEFINITIONS = {
         name: "Expansion",
         level: 1,
         xp: 15,
-        icon: "🏡",
+        icon: ICONS.skillOptions.wander_expansion,
         description: "Reveals new areas near home.",
         risk: "Low",
       },

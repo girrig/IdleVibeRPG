@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ITEM_DEFINITIONS, getItemDefinition } from './ItemRegistry';
+import { ICONS } from './Icons';
 
 describe('ItemRegistry', () => {
     it('should return valid definition for known item', () => {
@@ -13,7 +14,7 @@ describe('ItemRegistry', () => {
         const id = 'unknown_thing';
         const def = getItemDefinition(id);
         expect(def.name).toBe(id);
-        expect(def.icon).toBe('🎒');
+        expect(def.icon).toBe(ICONS.misc.unknown);
         expect(def.value).toBeUndefined();
     });
 

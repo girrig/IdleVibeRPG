@@ -2,9 +2,10 @@ import { gameState } from "../../../core/GameState";
 import { goalManager } from "../../../core/GoalManager";
 import { ITEM_DEFINITIONS } from "../../../core/ItemRegistry";
 import { UI_COLORS } from "../../../core/Constants";
+import { ICONS } from "../../../core/Icons";
 
 function getItemDefinition(id) {
-  return ITEM_DEFINITIONS[id] || { name: id, icon: "❓" };
+  return ITEM_DEFINITIONS[id] || { name: id, icon: ICONS.misc.locked };
 }
 
 export class CharacterTasksPanel {

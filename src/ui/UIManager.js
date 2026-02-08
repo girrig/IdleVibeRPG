@@ -14,11 +14,12 @@ import { ITEM_DEFINITIONS } from "../core/ItemRegistry";
 import { sourceRegistry } from "../core/SourceRegistry";
 import { SKILL_DEFINITIONS } from "../core/SkillRegistry";
 import { goalManager } from "../core/GoalManager";
+import { ICONS } from "../core/Icons";
 import { version } from "../../package.json";
 
 // Helper
 function getItemDefinition(id) {
-  return ITEM_DEFINITIONS[id] || { name: id, icon: "❓" };
+  return ITEM_DEFINITIONS[id] || { name: id, icon: ICONS.misc.locked };
 }
 
 export class UIManager {
@@ -81,14 +82,14 @@ export class UIManager {
     this.sidebar = document.createElement("div");
     this.sidebar.className = "hud-panel sidebar";
     this.sidebar.innerHTML = `
-      <div class="sidebar-item" id="nav-characters" title="Characters" style="font-size: 24px;">🦸</div>
-      <div class="sidebar-item" id="nav-inv" title="Inventory" style="font-size: 24px;">🎒</div>
-      <div class="sidebar-item" id="nav-equip" title="Equipment" style="font-size: 24px;">🛡️</div>
-      <div class="sidebar-item" id="nav-skills" title="Codex" style="font-size: 24px;">📖</div>
-      <div class="sidebar-item" id="nav-talents" title="Talents" style="font-size: 24px;">🌳</div>
-      <div class="sidebar-item" id="nav-store" title="Store" style="font-size: 24px;">🏪</div>
-      <div class="sidebar-item" id="nav-map" title="Map" style="font-size: 24px;">🗺️</div>
-      <div class="sidebar-item" id="nav-settings" title="Settings" style="font-size: 24px;">⚙️</div>
+      <div class="sidebar-item" id="nav-characters" title="Characters" style="font-size: 24px;">${ICONS.nav.characters}</div>
+      <div class="sidebar-item" id="nav-inv" title="Inventory" style="font-size: 24px;">${ICONS.nav.inventory}</div>
+      <div class="sidebar-item" id="nav-equip" title="Equipment" style="font-size: 24px;">${ICONS.nav.equipment}</div>
+      <div class="sidebar-item" id="nav-skills" title="Codex" style="font-size: 24px;">${ICONS.nav.codex}</div>
+      <div class="sidebar-item" id="nav-talents" title="Talents" style="font-size: 24px;">${ICONS.nav.talents}</div>
+      <div class="sidebar-item" id="nav-store" title="Store" style="font-size: 24px;">${ICONS.nav.store}</div>
+      <div class="sidebar-item" id="nav-map" title="Map" style="font-size: 24px;">${ICONS.nav.map}</div>
+      <div class="sidebar-item" id="nav-settings" title="Settings" style="font-size: 24px;">${ICONS.nav.settings}</div>
     `;
     this.container.appendChild(this.sidebar);
 

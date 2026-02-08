@@ -1,3 +1,5 @@
+import { ICONS } from "./Icons.js";
+
 export const UI_COLORS = {
   ATTRIBUTE_POINTS: "#fbbf24", // Gold
   LOCKED: "#ccc",
@@ -35,7 +37,7 @@ export const RESOURCE_NODES = {
     id: "mineral_node",
     name: "Mineral Vein",
     priority: 0,
-    icon: "⛏️",
+    icon: ICONS.nodes.mineral_node,
     scale: 0.1, // Frequent but varied
     threshold: 0.65,
     amount: 25, // Capacity of the node (how many Mining actions)
@@ -106,7 +108,7 @@ export const RESOURCE_NODES = {
     id: "gem_node",
     name: "Crystal Geode",
     priority: 10, // High priority to spawn before standard ores
-    icon: "🔮",
+    icon: ICONS.nodes.gem_node,
     scale: 0.05, // Rare
     threshold: 0.8, // Very specific spots
     amount: 10,
@@ -124,7 +126,7 @@ export const RESOURCE_NODES = {
     id: "coal_vein",
     name: "Coal Deposit",
     priority: 5,
-    icon: "⚫",
+    icon: ICONS.nodes.coal_vein,
     scale: 0.08,
     threshold: 0.7,
     amount: 50,
@@ -137,7 +139,7 @@ export const RESOURCE_NODES = {
     id: "tree_node",
     name: "Forest Patch",
     priority: 0,
-    icon: "🌲",
+    icon: ICONS.nodes.tree_node,
     scale: 0.05,
     threshold: 0.6,
     amount: 50,
@@ -186,7 +188,7 @@ export const RESOURCE_NODES = {
     id: "ancient_tree",
     name: "Ancient Tree",
     priority: 10,
-    icon: "✨",
+    icon: ICONS.nodes.ancient_tree,
     scale: 0.03, // Very Rare
     threshold: 0.85,
     amount: 100, // Massive amount
@@ -199,7 +201,7 @@ export const RESOURCE_NODES = {
     id: "fishing_spot",
     name: "Fishing Spot",
     priority: 0,
-    icon: "🐟",
+    icon: ICONS.nodes.fishing_spot,
     scale: 0.08,
     threshold: 0.6,
     amount: 30, // 30 Fish per spot
@@ -232,7 +234,7 @@ export const RESOURCE_NODES = {
     id: "bush_node",
     name: "Berry Bush",
     priority: 0,
-    icon: "🍒",
+    icon: ICONS.nodes.bush_node,
     scale: 0.15, // Common
     threshold: 0.6,
     amount: 20,
@@ -259,7 +261,7 @@ export const RESOURCE_NODES = {
     id: "fungi_node",
     name: "Fungi Patch",
     priority: 0,
-    icon: "🍄",
+    icon: ICONS.nodes.fungi_node,
     scale: 0.1,
     threshold: 0.65,
     amount: 15,

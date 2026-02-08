@@ -1,6 +1,7 @@
 import { STORE_DEFINITIONS } from "../../core/StoreRegistry";
 import { getItemDefinition } from "../../core/ItemRegistry";
 import { gameState } from "../../core/GameState";
+import { ICONS } from "../../core/Icons";
 
 export class StoreView {
   constructor(uiManager) {
@@ -64,7 +65,7 @@ export class StoreView {
             <span style="color: #aaa; font-size: 14px;">${def.description}</span>
         </div>
         <div class="wallet-display">
-            ${gameState.inventory.getCount("coins")} 💰
+            ${gameState.inventory.getCount("coins")} ${ICONS.items.coins}
         </div>
     `;
     container.appendChild(header);

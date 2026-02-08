@@ -4,13 +4,14 @@ import { ITEM_DEFINITIONS, getItemDefinition } from "../../core/ItemRegistry";
 import { GAME_CONFIG, RESOURCE_NODES } from "../../core/Constants";
 import { TERRAIN_TYPES } from "../../core/TerrainTypes";
 import { sourceRegistry } from "../../core/SourceRegistry";
+import { ICONS } from "../../core/Icons";
 
 const CODEX_CATEGORIES = [
-  { id: "MONSTERS",  name: "Monsters",  icon: "\u2694\uFE0F",  color: "#e74c3c" },
-  { id: "NODES",     name: "Nodes",     icon: "\u26CF\uFE0F",  color: "#2ecc71" },
-  { id: "RECIPES",   name: "Recipes",   icon: "\uD83D\uDD28",  color: "#ff8800" },
-  { id: "BIOMES",    name: "Biomes",    icon: "\uD83C\uDF0D",  color: "#8e44ad" },
-  { id: "ITEMS",     name: "Items",     icon: "\uD83D\uDCE6",  color: "#3498db" },
+  { id: "MONSTERS",  name: "Monsters",  icon: ICONS.codex.monsters,  color: "#e74c3c" },
+  { id: "NODES",     name: "Nodes",     icon: ICONS.codex.nodes,     color: "#2ecc71" },
+  { id: "RECIPES",   name: "Recipes",   icon: ICONS.codex.recipes,   color: "#ff8800" },
+  { id: "BIOMES",    name: "Biomes",    icon: ICONS.codex.biomes,    color: "#8e44ad" },
+  { id: "ITEMS",     name: "Items",     icon: ICONS.codex.items,     color: "#3498db" },
 ];
 
 export class SkillsView {
@@ -279,7 +280,7 @@ export class SkillsView {
   createTile(icon, name, isLocked) {
     const card = document.createElement("div");
     card.className = `skill-action-card ${isLocked ? "locked" : ""}`;
-    const displayIcon = isLocked ? "\u2753" : icon;
+    const displayIcon = isLocked ? ICONS.misc.locked : icon;
     const displayName = isLocked ? "???" : name;
     card.innerHTML = `
       <div class="action-icon">${displayIcon}</div>
@@ -425,7 +426,7 @@ export class SkillsView {
       statRows.push(`<div class="codex-stat-row"><span class="stat-label">Time</span><span class="stat-value">${(data.interval / 1000)}s</span></div>`);
     }
     if (data.value !== undefined) {
-      statRows.push(`<div class="codex-stat-row"><span class="stat-label">Value</span><span class="stat-value">${data.value} \uD83D\uDCB0</span></div>`);
+      statRows.push(`<div class="codex-stat-row"><span class="stat-label">Value</span><span class="stat-value">${data.value} ${ICONS.items.coins}</span></div>`);
     }
     if (statRows.length > 0) {
       body.innerHTML += `<div class="codex-stat-grid">${statRows.join("")}</div>`;
@@ -437,7 +438,7 @@ export class SkillsView {
       Object.entries(data.cost).forEach(([id, qty]) => {
         const iDef = getItemDefinition(id);
         const itemName = iDef ? iDef.name : id;
-        const itemIcon = iDef ? iDef.icon : "\uD83D\uDCE6";
+        const itemIcon = iDef ? iDef.icon : ICONS.misc.package;
         costHtml += `<div class="codex-cost-item">${itemIcon} ${qty} ${itemName}</div>`;
       });
       costHtml += `</div>`;
@@ -451,7 +452,7 @@ export class SkillsView {
       data.drops.forEach((entry) => {
         const itemDef = getItemDefinition(entry.item);
         const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
-        const icon = itemDef ? itemDef.icon : "\uD83D\uDCE6";
+        const icon = itemDef ? itemDef.icon : ICONS.misc.package;
         const name = itemDef ? itemDef.name : entry.item;
         dropsHtml += `
           <div class="codex-drop-row">
@@ -474,7 +475,7 @@ export class SkillsView {
         table.forEach((entry) => {
           const itemDef = getItemDefinition(entry.item);
           const percent = ((entry.weight / totalWeight) * 100).toFixed(0);
-          const icon = itemDef ? itemDef.icon : "\uD83D\uDCE6";
+          const icon = itemDef ? itemDef.icon : ICONS.misc.package;
           const name = itemDef ? itemDef.name : entry.item;
           dropsHtml += `
             <div class="codex-drop-row">

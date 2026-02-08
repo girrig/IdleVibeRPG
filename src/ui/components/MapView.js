@@ -1,6 +1,7 @@
 import { mapManager, TERRAIN_TYPES } from "../../core/MapManager";
 import { RESOURCE_NODES } from "../../core/Constants";
 import { gameState } from "../../core/GameState";
+import { ICONS } from "../../core/Icons";
 
 export class MapView {
   // ... (Constructor remains same)
@@ -543,7 +544,7 @@ export class MapView {
         // Draw Emoji (Tweaked Y explicitly)
         this.ctx.fillStyle = "#fff";
         // "middle" baseline is sometimes slightly high for emojis. adding slight offset.
-        this.ctx.fillText("🧙‍♂️", centerX, centerY + this.zoomLevel * 0.05);
+        this.ctx.fillText(ICONS.misc.character, centerX, centerY + this.zoomLevel * 0.05);
       }
     });
 
@@ -584,7 +585,7 @@ export class MapView {
 
         if (tile.resource) {
           const resConfig = RESOURCE_NODES[tile.resource.type];
-          const symbol = resConfig ? resConfig.icon : "📦";
+          const symbol = resConfig ? resConfig.icon : ICONS.misc.package;
 
           // Calculate Screen Position
           // WorldPos = x * zoom
@@ -600,7 +601,7 @@ export class MapView {
         } else if (tile.type === "HOME") {
           // Always show Home
           const typeInfo = Object.values(TERRAIN_TYPES).find(t => t.id === "HOME");
-          const symbol = typeInfo ? typeInfo.symbol : "🏠";
+          const symbol = typeInfo ? typeInfo.symbol : ICONS.misc.home;
           const screenX = x * this.zoomLevel - scrollLeft;
           const screenY = y * this.zoomLevel - scrollTop;
           this.ctx.fillText(

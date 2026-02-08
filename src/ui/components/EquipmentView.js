@@ -1,9 +1,10 @@
 import { gameState } from "../../core/GameState";
 import { ITEM_DEFINITIONS } from "../../core/ItemRegistry";
+import { ICONS } from "../../core/Icons";
 import { formatNumber } from "../../utils/formatters";
 
 function getItemDefinition(id) {
-  return ITEM_DEFINITIONS[id] || { name: id, icon: "❓" };
+  return ITEM_DEFINITIONS[id] || { name: id, icon: ICONS.misc.locked };
 }
 
 export class EquipmentView {
@@ -26,27 +27,27 @@ export class EquipmentView {
                 <!-- Left Column: Armor -->
                 <div class="equip-column left">
                     <div class="equip-slot-lg" data-slot="head">
-                        <span class="slot-icon">🧢</span>
+                        <span class="slot-icon">${ICONS.equipSlots.head}</span>
                         <span class="slot-label">Head</span>
                     </div>
                     <div class="equip-slot-lg" data-slot="chest">
-                        <span class="slot-icon">👕</span>
+                        <span class="slot-icon">${ICONS.equipSlots.chest}</span>
                         <span class="slot-label">Chest</span>
                     </div>
                      <div class="equip-slot-lg" data-slot="belt">
-                        <span class="slot-icon">🥋</span>
+                        <span class="slot-icon">${ICONS.equipSlots.belt}</span>
                         <span class="slot-label">Belt</span>
                     </div>
                     <div class="equip-slot-lg" data-slot="gloves">
-                        <span class="slot-icon">🧤</span>
+                        <span class="slot-icon">${ICONS.equipSlots.gloves}</span>
                         <span class="slot-label">Gloves</span>
                     </div>
                     <div class="equip-slot-lg" data-slot="legs">
-                        <span class="slot-icon">👖</span>
+                        <span class="slot-icon">${ICONS.equipSlots.legs}</span>
                         <span class="slot-label">Legs</span>
                     </div>
                     <div class="equip-slot-lg" data-slot="feet">
-                        <span class="slot-icon">👢</span>
+                        <span class="slot-icon">${ICONS.equipSlots.feet}</span>
                         <span class="slot-label">Feet</span>
                     </div>
                 </div>
@@ -54,7 +55,7 @@ export class EquipmentView {
                 <!-- Center: Avatar -->
                 <div class="equip-center">
                      <div class="equip-avatar-display">
-                        <div class="equip-avatar-img" style="font-size: 128px; display: flex; justify-content: center; align-items: center;">👤</div>
+                        <div class="equip-avatar-img" style="font-size: 128px; display: flex; justify-content: center; align-items: center;">${ICONS.equipSlots.avatar}</div>
                      </div>
                      <div class="equip-char-name">${char ? char.name : "Hero"}</div>
                 </div>
@@ -62,30 +63,30 @@ export class EquipmentView {
                 <!-- Right Column: Weapons & Jewelry -->
                 <div class="equip-column right">
                     <div class="equip-slot-lg" data-slot="mainHand">
-                        <span class="slot-icon">⚔️</span>
+                        <span class="slot-icon">${ICONS.equipSlots.mainHand}</span>
                         <span class="slot-label">Main Hand</span>
                     </div>
                     <div class="equip-slot-lg" data-slot="offHand">
-                        <span class="slot-icon">🛡️</span>
+                        <span class="slot-icon">${ICONS.equipSlots.offHand}</span>
                         <span class="slot-label">Off Hand</span>
                     </div>
                     <div class="equip-row-dual">
                         <div class="equip-slot-lg" data-slot="ring1">
-                            <span class="slot-icon">💍</span>
+                            <span class="slot-icon">${ICONS.equipSlots.ring}</span>
                             <span class="slot-label">Ring 1</span>
                         </div>
                         <div class="equip-slot-lg" data-slot="ring2">
-                            <span class="slot-icon">💍</span>
+                            <span class="slot-icon">${ICONS.equipSlots.ring}</span>
                             <span class="slot-label">Ring 2</span>
                         </div>
                     </div>
                     <div class="equip-row-dual">
                          <div class="equip-slot-lg" data-slot="trinket1">
-                            <span class="slot-icon">🧿</span>
+                            <span class="slot-icon">${ICONS.equipSlots.trinket}</span>
                             <span class="slot-label">Trinket 1</span>
                         </div>
                          <div class="equip-slot-lg" data-slot="trinket2">
-                            <span class="slot-icon">🧿</span>
+                            <span class="slot-icon">${ICONS.equipSlots.trinket}</span>
                             <span class="slot-label">Trinket 2</span>
                         </div>
                     </div>
