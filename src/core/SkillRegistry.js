@@ -823,16 +823,25 @@ export const SKILL_DEFINITIONS = {
 
         // 1. EXPANSION: Fill gaps near HOME
         if (type === "expansion") {
-          // Find nearest FRONTIER tile spanning out from Home
-          // This prioritizes revealing the Fog of War closest to town.
-          const target = mapManager.findNearestFrontierTile(GAME_CONFIG.STARTING_POSITION.x, GAME_CONFIG.STARTING_POSITION.y);
+          // Pick a waypoint and walk to it. First waypoint is nearest frontier
+          // to HOME; subsequent waypoints are nearest frontier to current pos.
+          if (!char.currentActivity.wanderTarget) {
+            const origin = char.currentActivity.hasWandered
+              ? { x, y }
+              : GAME_CONFIG.STARTING_POSITION;
+            const frontier = mapManager.findNearestFrontierTile(origin.x, origin.y);
+            if (frontier) char.currentActivity.wanderTarget = frontier;
+          }
 
+          const target = char.currentActivity.wanderTarget;
           if (target) {
             const dx = Math.sign(target.x - x);
             const dy = Math.sign(target.y - y);
 
             if (dx === 0 && dy === 0) {
-              // We are AT the frontier (Explored edge).
+              // Arrived at waypoint. Clear it so next tick picks a new one.
+              char.currentActivity.wanderTarget = null;
+              char.currentActivity.hasWandered = true;
               // Step randomly to push into Unexplored
               const neighbors = [
                 { x: x + 1, y: y },
@@ -841,15 +850,12 @@ export const SKILL_DEFINITIONS = {
                 { x: x, y: y - 1 },
               ];
               const unknown = neighbors.find((n) => {
-                if (!isValidMove(n.x, n.y)) return false; // Don't step into water/out of bounds
+                if (!isValidMove(n.x, n.y)) return false;
                 const t = mapManager.getTile(n.x, n.y);
                 return t && !t.explored;
               });
               if (unknown) nextPos = unknown;
               else {
-                // Fallback if surrounded by explored?
-                // Should theoretically find new frontier next tick?
-                // Just random walk to acceptable tile
                 const validNeighbors = neighbors.filter((n) =>
                   isValidMove(n.x, n.y),
                 );

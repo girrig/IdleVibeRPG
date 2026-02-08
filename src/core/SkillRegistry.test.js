@@ -832,8 +832,51 @@ describe('SkillRegistry', () => {
       SKILL_DEFINITIONS.EXPLORING.action(mockGameState, mockChar);
 
       expect(mapManager.findNearestFrontierTile).toHaveBeenCalledWith(250, 250);
-      // Mock moves +1 towards 255
+      // Waypoint stored and character moves towards it
+      expect(mockChar.currentActivity.wanderTarget).toEqual({ x: 255, y: 250 });
       expect(mockChar.position).toEqual({ x: 251, y: 250 });
+    });
+
+    it('should walk toward stored waypoint without recalculating', () => {
+      mockChar.currentActivity = { target: 'wander_expansion', phase: 'WANDERING', wanderTarget: { x: 255, y: 250 } };
+      mockChar.position = { x: 252, y: 250 };
+      mapManager.exploreRadius.mockReturnValue([]);
+
+      SKILL_DEFINITIONS.EXPLORING.action(mockGameState, mockChar);
+
+      // Should NOT call findNearestFrontierTile since waypoint already set
+      expect(mapManager.findNearestFrontierTile).not.toHaveBeenCalled();
+      expect(mockChar.position).toEqual({ x: 253, y: 250 });
+    });
+
+    it('should clear waypoint and set hasWandered on arrival', () => {
+      mockChar.currentActivity = { target: 'wander_expansion', phase: 'WANDERING', wanderTarget: { x: 252, y: 250 } };
+      mockChar.position = { x: 252, y: 250 };
+      mapManager.getTile.mockImplementation((x, y) => {
+        if (x === 252 && y === 250) return { explored: true, type: 'grassland' };
+        if (x === 253 && y === 250) return { explored: false, type: 'grassland' };
+        return { explored: true, type: 'grassland' };
+      });
+      mapManager.exploreRadius.mockReturnValue([]);
+
+      SKILL_DEFINITIONS.EXPLORING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.wanderTarget).toBeNull();
+      expect(mockChar.currentActivity.hasWandered).toBe(true);
+    });
+
+    it('should use current position for next waypoint after first arrival', () => {
+      // hasWandered is set, no waypoint — should search from current position
+      mockChar.currentActivity = { target: 'wander_expansion', phase: 'WANDERING', hasWandered: true };
+      mockChar.position = { x: 260, y: 265 };
+      mapManager.findNearestFrontierTile.mockReturnValue({ x: 263, y: 265 });
+      mapManager.exploreRadius.mockReturnValue([]);
+
+      SKILL_DEFINITIONS.EXPLORING.action(mockGameState, mockChar);
+
+      expect(mapManager.findNearestFrontierTile).toHaveBeenCalledWith(260, 265);
+      expect(mockChar.currentActivity.wanderTarget).toEqual({ x: 263, y: 265 });
+      expect(mockChar.position).toEqual({ x: 261, y: 265 });
     });
 
     it('should NOT wander into water when expanding', () => {
