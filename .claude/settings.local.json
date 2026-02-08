@@ -5,7 +5,8 @@
       "Bash(yarn vitest run:*)",
       "Bash(yarn test:*)",
       "Bash(yarn test:unit:*)",
-      "Bash(npx vitest run:*)"
+      "Bash(npx vitest run:*)",
+      "Bash(find:*)"
     ]
   }
 }

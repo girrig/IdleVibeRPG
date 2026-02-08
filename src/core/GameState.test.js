@@ -502,6 +502,64 @@ describe("GameState", () => {
       gameState.processActivities();
     });
 
+    it("should use TICK_RATE for movement phases instead of skill interval", () => {
+      const now = Date.now();
+      const char = {
+        currentActivity: {
+          type: "MINING",
+          target: "mine_gems",
+          lastActionTime: now - 1500, // 1.5s ago — past TICK_RATE (1s) but within skill interval (5s)
+          phase: "TRAVELING",
+          quantity: 0,
+          progress: 0,
+        },
+      };
+      gameState.characters = [char];
+
+      const mockAction = vi.fn();
+      getSkillDefinition.mockReturnValue({
+        interval: 5000,
+        action: mockAction,
+        options: {
+          mine_gems: { interval: 5000 },
+        },
+      });
+
+      gameState.processActivities();
+
+      // Should fire because TRAVELING uses TICK_RATE (1000ms), not 5000ms
+      expect(mockAction).toHaveBeenCalled();
+    });
+
+    it("should use skill interval for GATHERING phase", () => {
+      const now = Date.now();
+      const char = {
+        currentActivity: {
+          type: "MINING",
+          target: "mine_gems",
+          lastActionTime: now - 1500, // 1.5s ago — past TICK_RATE but within skill interval
+          phase: "GATHERING",
+          quantity: 0,
+          progress: 0,
+        },
+      };
+      gameState.characters = [char];
+
+      const mockAction = vi.fn();
+      getSkillDefinition.mockReturnValue({
+        interval: 5000,
+        action: mockAction,
+        options: {
+          mine_gems: { interval: 5000 },
+        },
+      });
+
+      gameState.processActivities();
+
+      // Should NOT fire because GATHERING uses the skill interval (5000ms)
+      expect(mockAction).not.toHaveBeenCalled();
+    });
+
     it("should not fire action if interval not elapsed", () => {
       const now = Date.now();
       const char = {

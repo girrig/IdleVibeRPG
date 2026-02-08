@@ -426,7 +426,12 @@ class GameState {
             }
           }
 
-          // Build robustness: Ensure lastActionTime exists
+          // Use movement interval for movement phases (1 tile per second)
+          const phase = char.currentActivity.phase;
+          if (phase && phase !== "GATHERING") {
+            interval = GAME_CONFIG.MOVEMENT_INTERVAL;
+          }
+
           if (now - lastTime >= interval) {
             skillDef.action(this, char);
 
