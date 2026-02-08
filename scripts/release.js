@@ -38,17 +38,19 @@ function determineBump(commits) {
 
         // Check for breaking changes
         if (bodyLower.includes("breaking change") || msgLower.includes("breaking change")) {
-            changes.breaking.push(rawMsg);
+            changes.breaking.push({ message: rawMsg, body: commit.body });
             // We return 'major' but keep collecting for the log
         }
 
+        const changeObj = { message: rawMsg, body: commit.body };
+
         if (msgLower.startsWith("feat")) {
-            changes.features.push(rawMsg);
+            changes.features.push(changeObj);
             if (type === "patch") type = "minor";
         } else if (msgLower.startsWith("fix")) {
-            changes.fixes.push(rawMsg);
+            changes.fixes.push(changeObj);
         } else {
-            changes.others.push(rawMsg);
+            changes.others.push(changeObj);
         }
     }
 
@@ -58,51 +60,58 @@ function determineBump(commits) {
 
 function generateReleaseMessage(version, bumpResult) {
     const { type, changes } = bumpResult;
-    const date = new Date().toISOString().split('T')[0];
+    // const date = new Date().toISOString().split('T')[0];
 
     // Title generation
     let title = `chore: release v${version}`;
     if (changes.features.length > 0) {
-        // Use the first feature as part of title if it fits
-        const firstFeat = changes.features[0].replace(/^feat:\s*/i, '').trim();
+        const firstFeat = changes.features[0].message.replace(/^feat:\s*/i, '').trim();
         title += ` - ${firstFeat}`;
         if (changes.features.length > 1) title += ` (+${changes.features.length - 1} features)`;
     } else if (changes.fixes.length > 0) {
-        const firstFix = changes.fixes[0].replace(/^fix:\s*/i, '').trim();
+        const firstFix = changes.fixes[0].message.replace(/^fix:\s*/i, '').trim();
         title += ` - ${firstFix}`;
         if (changes.fixes.length > 1) title += ` (+${changes.fixes.length - 1} fixes)`;
     } else if (changes.others.length > 0) {
-        // Fallback: use the first 'other' change for context if no features/fixes
-        // remove common prefixes for cleaner title
-        const firstOther = changes.others[0].replace(/^(chore|refactor|style|docs|test|perf|ci|build):\s*/i, '').trim();
+        const firstOther = changes.others[0].message.replace(/^(chore|refactor|style|docs|test|perf|ci|build):\s*/i, '').trim();
         title += ` - ${firstOther}`;
         if (changes.others.length > 1) title += ` (+${changes.others.length - 1} others)`;
     }
 
     let body = `${title}\n\n`;
 
+    const formatChange = (change) => {
+        let text = `- ${change.message}`;
+        if (change.body && change.body.trim().length > 0) {
+            // Indent the body description
+            const indentedBody = change.body.trim().split('\n').map(line => `  ${line}`).join('\n');
+            text += `\n${indentedBody}`;
+        }
+        return text + '\n';
+    };
+
     if (changes.breaking.length > 0) {
         body += `## 🚨 Breaking Changes\n`;
-        changes.breaking.forEach(m => body += `- ${m}\n`);
+        changes.breaking.forEach(change => body += formatChange(change));
         body += `\n`;
     }
 
     if (changes.features.length > 0) {
         body += `## ✨ Features\n`;
-        changes.features.forEach(m => body += `- ${m}\n`);
+        changes.features.forEach(change => body += formatChange(change));
         body += `\n`;
     }
 
     if (changes.fixes.length > 0) {
         body += `## 🐛 Bug Fixes\n`;
-        changes.fixes.forEach(m => body += `- ${m}\n`);
+        changes.fixes.forEach(change => body += formatChange(change));
         body += `\n`;
     }
 
     // Only add 'Other' if it's substantial or empty other categories
     if (changes.others.length > 0 && (changes.features.length + changes.fixes.length < 3)) {
         body += `## 🔧 Maintenance & Other\n`;
-        changes.others.forEach(m => body += `- ${m}\n`);
+        changes.others.forEach(change => body += formatChange(change));
     }
 
     return body.trim();
