@@ -29,6 +29,131 @@ canvas {
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
+/* Custom Scrollbars — scoped to scrollable containers only */
+.mw-content,
+.goals-grid,
+.inv-grid-wrapper,
+.store-items,
+.store-grid,
+.talent-tree-container,
+.talent-list,
+.skill-list-container,
+.equip-inv-grid,
+.char-left-col,
+.char-right-col,
+.char-task-panel,
+.char-task-content,
+.map-menu-body,
+.resource-overlay-list,
+.exploration-panel {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
+}
+
+.mw-content::-webkit-scrollbar,
+.goals-grid::-webkit-scrollbar,
+.inv-grid-wrapper::-webkit-scrollbar,
+.store-items::-webkit-scrollbar,
+.store-grid::-webkit-scrollbar,
+.talent-tree-container::-webkit-scrollbar,
+.talent-list::-webkit-scrollbar,
+.skill-list-container::-webkit-scrollbar,
+.equip-inv-grid::-webkit-scrollbar,
+.char-left-col::-webkit-scrollbar,
+.char-right-col::-webkit-scrollbar,
+.char-task-panel::-webkit-scrollbar,
+.char-task-content::-webkit-scrollbar,
+.map-menu-body::-webkit-scrollbar,
+.resource-overlay-list::-webkit-scrollbar,
+.exploration-panel::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+.mw-content::-webkit-scrollbar-track,
+.goals-grid::-webkit-scrollbar-track,
+.inv-grid-wrapper::-webkit-scrollbar-track,
+.store-items::-webkit-scrollbar-track,
+.store-grid::-webkit-scrollbar-track,
+.talent-tree-container::-webkit-scrollbar-track,
+.talent-list::-webkit-scrollbar-track,
+.skill-list-container::-webkit-scrollbar-track,
+.equip-inv-grid::-webkit-scrollbar-track,
+.char-left-col::-webkit-scrollbar-track,
+.char-right-col::-webkit-scrollbar-track,
+.char-task-panel::-webkit-scrollbar-track,
+.char-task-content::-webkit-scrollbar-track,
+.map-menu-body::-webkit-scrollbar-track,
+.resource-overlay-list::-webkit-scrollbar-track,
+.exploration-panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 7px;
+}
+
+.mw-content::-webkit-scrollbar-thumb,
+.goals-grid::-webkit-scrollbar-thumb,
+.inv-grid-wrapper::-webkit-scrollbar-thumb,
+.store-items::-webkit-scrollbar-thumb,
+.store-grid::-webkit-scrollbar-thumb,
+.talent-tree-container::-webkit-scrollbar-thumb,
+.talent-list::-webkit-scrollbar-thumb,
+.skill-list-container::-webkit-scrollbar-thumb,
+.equip-inv-grid::-webkit-scrollbar-thumb,
+.char-left-col::-webkit-scrollbar-thumb,
+.char-right-col::-webkit-scrollbar-thumb,
+.char-task-panel::-webkit-scrollbar-thumb,
+.char-task-content::-webkit-scrollbar-thumb,
+.map-menu-body::-webkit-scrollbar-thumb,
+.resource-overlay-list::-webkit-scrollbar-thumb,
+.exploration-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 7px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.mw-content::-webkit-scrollbar-thumb:hover,
+.goals-grid::-webkit-scrollbar-thumb:hover,
+.inv-grid-wrapper::-webkit-scrollbar-thumb:hover,
+.store-items::-webkit-scrollbar-thumb:hover,
+.store-grid::-webkit-scrollbar-thumb:hover,
+.talent-tree-container::-webkit-scrollbar-thumb:hover,
+.talent-list::-webkit-scrollbar-thumb:hover,
+.skill-list-container::-webkit-scrollbar-thumb:hover,
+.equip-inv-grid::-webkit-scrollbar-thumb:hover,
+.char-left-col::-webkit-scrollbar-thumb:hover,
+.char-right-col::-webkit-scrollbar-thumb:hover,
+.char-task-panel::-webkit-scrollbar-thumb:hover,
+.char-task-content::-webkit-scrollbar-thumb:hover,
+.map-menu-body::-webkit-scrollbar-thumb:hover,
+.resource-overlay-list::-webkit-scrollbar-thumb:hover,
+.exploration-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.mw-content::-webkit-scrollbar-thumb:active,
+.goals-grid::-webkit-scrollbar-thumb:active,
+.inv-grid-wrapper::-webkit-scrollbar-thumb:active,
+.store-items::-webkit-scrollbar-thumb:active,
+.store-grid::-webkit-scrollbar-thumb:active,
+.talent-tree-container::-webkit-scrollbar-thumb:active,
+.talent-list::-webkit-scrollbar-thumb:active,
+.skill-list-container::-webkit-scrollbar-thumb:active,
+.equip-inv-grid::-webkit-scrollbar-thumb:active,
+.char-left-col::-webkit-scrollbar-thumb:active,
+.char-right-col::-webkit-scrollbar-thumb:active,
+.char-task-panel::-webkit-scrollbar-thumb:active,
+.char-task-content::-webkit-scrollbar-thumb:active,
+.map-menu-body::-webkit-scrollbar-thumb:active,
+.resource-overlay-list::-webkit-scrollbar-thumb:active,
+.exploration-panel::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.45);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
 .hud-panel {
   background: rgba(20, 20, 30, 0.7);
   backdrop-filter: blur(10px);

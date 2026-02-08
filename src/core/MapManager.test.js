@@ -129,6 +129,8 @@ describe("MapManager", () => {
       // This test ensures that the createNoise2D call receives a valid argument (function),
       // preventing the "random is not a function" crash.
       const mgr = new MapManager();
+      mgr.width = 50;
+      mgr.height = 50;
       mgr.initialize();
       // resources are generated during initialize -> generateMap -> generateResources
 

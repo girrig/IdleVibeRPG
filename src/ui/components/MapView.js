@@ -199,63 +199,9 @@ export class MapView {
       // No-op for now
     });
 
-    // Drag to Scroll Logic
-    this.isMouseDown = false;
-    this.startX = 0;
-    this.startY = 0;
-    this.scrollLeft = 0;
-    this.scrollTop = 0;
-
+    // Prevent native auto-scroll on middle click
     this.mapContainer.addEventListener("mousedown", (e) => {
-      // Prevent native "Auto-scroll" on middle click
-      if (e.button === 1) {
-        e.preventDefault();
-        return;
-      }
-
-      // Only drag on Left Click (button 0)
-      if (e.button !== 0) return;
-
-      this.isMouseDown = true;
-      this.isDragging = false; // Start as false, become true if moved
-      this.mapContainer.style.cursor = "grabbing";
-      this.startX = e.pageX - this.mapContainer.offsetLeft;
-      this.startY = e.pageY - this.mapContainer.offsetTop;
-      this.scrollLeft = this.mapContainer.scrollLeft;
-      this.scrollTop = this.mapContainer.scrollTop;
-    });
-
-    this.mapContainer.addEventListener("mouseleave", () => {
-      this.isMouseDown = false;
-      this.mapContainer.style.cursor = "crosshair";
-    });
-
-    this.mapContainer.addEventListener("mouseup", () => {
-      this.isMouseDown = false;
-      this.mapContainer.style.cursor = "crosshair";
-      // This resets dragging flag so click handler can fire if it wasn't a drag
-      setTimeout(() => {
-        this.isDragging = false;
-      }, 0);
-    });
-
-    this.mapContainer.addEventListener("mousemove", (e) => {
-      if (!this.isMouseDown) return;
-      e.preventDefault();
-
-      const x = e.pageX - this.mapContainer.offsetLeft;
-      const y = e.pageY - this.mapContainer.offsetTop;
-
-      const walkX = (x - this.startX) * 1; // 1:1 movement
-      const walkY = (y - this.startY) * 1;
-
-      // If moved significantly, mark as dragging
-      if (Math.abs(walkX) > 2 || Math.abs(walkY) > 2) {
-        this.isDragging = true;
-      }
-
-      this.mapContainer.scrollLeft = this.scrollLeft - walkX;
-      this.mapContainer.scrollTop = this.scrollTop - walkY;
+      if (e.button === 1) e.preventDefault();
     });
   }
 

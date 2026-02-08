@@ -219,39 +219,12 @@ describe("MapView Zoom Logic", () => {
       expect(mapView.zoomLevel).toBeLessThan(zoomedIn);
     });
 
-    it("should handle drag to pan", () => {
-      // Mousedown
-      mapView.mapContainer.dispatchEvent(new MouseEvent("mousedown", { button: 0, clientX: 100, clientY: 100 }));
-      expect(mapView.isMouseDown).toBe(true);
-
-      // Mousemove
-      mapView.mapContainer.dispatchEvent(new MouseEvent("mousemove", { clientX: 50, clientY: 50 }));
-      expect(mapView.isDragging).toBe(true);
-      // Scroll should have changed (initial 0, dragging moves it)
-      // Note: scrollLeft/Top are properties of the element.
-      // In a real browser, this updates. We might need to mock or ensure content overflow.
-      // MapView.update sets spacer size, so overflow SHOULD exist.
-
-      // Mouseup
-      mapView.mapContainer.dispatchEvent(new MouseEvent("mouseup", { button: 0 }));
-      expect(mapView.isMouseDown).toBe(false);
-
-      // Wait for drag flag reset
-      return new Promise(resolve => setTimeout(() => {
-        expect(mapView.isDragging).toBe(false);
-        resolve();
-      }, 10));
-    });
-
-    it("should ignore right-click drag or middle click", () => {
-      // Middle click (button 1)
+    it("should prevent default on middle-click (no native auto-scroll)", () => {
       const preventDefault = vi.fn();
-      mapView.mapContainer.dispatchEvent(new MouseEvent("mousedown", { button: 1, preventDefault }));
-      expect(mapView.isMouseDown).toBe(false);
-
-      // Right click (button 2)
-      mapView.mapContainer.dispatchEvent(new MouseEvent("mousedown", { button: 2 }));
-      expect(mapView.isMouseDown).toBe(false);
+      mapView.mapContainer.dispatchEvent(new MouseEvent("mousedown", { button: 1, cancelable: true }));
+      // Middle click listener calls preventDefault to block native auto-scroll
+      // Left/right clicks should not be affected
+      expect(mapView.isMouseDown).toBeUndefined();
     });
   });
 

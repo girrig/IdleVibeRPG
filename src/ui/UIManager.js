@@ -46,6 +46,7 @@ export class UIManager {
 
   initialize() {
     this.createOverlay();
+    this.initMiddleClickDrag();
 
     // Unsubscribe previous listeners if any
     if (this.unsubscribeState) this.unsubscribeState();
@@ -88,9 +89,9 @@ export class UIManager {
       <div class="sidebar-item" id="nav-characters" title="Characters" style="font-size: 24px;">${ICONS.nav.characters}</div>
       <div class="sidebar-item" id="nav-inv" title="Inventory" style="font-size: 24px;">${ICONS.nav.inventory}</div>
       <div class="sidebar-item" id="nav-equip" title="Equipment" style="font-size: 24px;">${ICONS.nav.equipment}</div>
-      <div class="sidebar-item" id="nav-skills" title="Codex" style="font-size: 24px;">${ICONS.nav.codex}</div>
       <div class="sidebar-item" id="nav-talents" title="Talents" style="font-size: 24px;">${ICONS.nav.talents}</div>
       <div class="sidebar-item" id="nav-store" title="Store" style="font-size: 24px;">${ICONS.nav.store}</div>
+      <div class="sidebar-item" id="nav-skills" title="Codex" style="font-size: 24px;">${ICONS.nav.codex}</div>
       <div class="sidebar-item" id="nav-settings" title="Settings" style="font-size: 24px;">${ICONS.nav.settings}</div>
     `;
     this.container.appendChild(this.sidebar);
@@ -275,6 +276,57 @@ export class UIManager {
     // Default Fallback
     char.startActivity(skill, target, quantity);
     this.renderMainWindow();
+  }
+
+  /** Enable middle-click drag-to-scroll on any scrollable element. */
+  initMiddleClickDrag() {
+    let dragState = null;
+
+    // Find the nearest scrollable ancestor of an element
+    const findScrollable = (el) => {
+      while (el && el !== document.documentElement) {
+        const style = getComputedStyle(el);
+        const overflowY = style.overflowY;
+        if (
+          (overflowY === "auto" || overflowY === "scroll") &&
+          el.scrollHeight > el.clientHeight
+        ) {
+          return el;
+        }
+        el = el.parentElement;
+      }
+      return null;
+    };
+
+    document.addEventListener("mousedown", (e) => {
+      if (e.button !== 1) return; // Middle click only
+      const scrollable = findScrollable(e.target);
+      if (!scrollable) return;
+
+      e.preventDefault();
+      dragState = {
+        el: scrollable,
+        startX: e.clientX,
+        startY: e.clientY,
+        scrollLeft: scrollable.scrollLeft,
+        scrollTop: scrollable.scrollTop,
+      };
+      scrollable.style.cursor = "grabbing";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (!dragState) return;
+      const dx = e.clientX - dragState.startX;
+      const dy = e.clientY - dragState.startY;
+      dragState.el.scrollLeft = dragState.scrollLeft - dx;
+      dragState.el.scrollTop = dragState.scrollTop - dy;
+    });
+
+    document.addEventListener("mouseup", (e) => {
+      if (!dragState) return;
+      dragState.el.style.cursor = "";
+      dragState = null;
+    });
   }
 
   update() {

@@ -33,7 +33,7 @@
   width: 60px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   padding: 10px 0;
   justify-content: flex-start;
   align-items: center;
@@ -45,7 +45,7 @@
   /* Above main window content if needed */
 }
 
-#nav-settings {
+#nav-skills {
   margin-top: auto;
 }
 
