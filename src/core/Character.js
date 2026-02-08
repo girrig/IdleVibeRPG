@@ -1,5 +1,6 @@
 import { getTalentDefinition, TALENT_DEFINITIONS } from "./TalentRegistry.js";
 import { SKILL_DEFINITIONS } from "./SkillRegistry.js";
+import { GAME_CONFIG } from "./Constants.js";
 
 // Maps talent column position to skill ID for talent point costs
 const COLUMN_TO_SKILL = {
@@ -55,6 +56,7 @@ export class Character {
     this.position = { x: 250, y: 250 }; // Default starting position
     this.currentActivity = null; // e.g. { type: 'MINING', target: 'copper_ore', startTime: 12345, quantity: 10, progress: 0 }
     this.activityQueue = []; // Array of { type, target, quantity }
+    this.bag = { items: {}, capacity: GAME_CONFIG.BAG_CAPACITY };
     this.activeGoalGroup = null; // Current GoalGroup being executed
     // Non-enumerable so JSON.stringify skips it (avoids circular reference)
     Object.defineProperty(this, "gameContext", {
@@ -66,6 +68,26 @@ export class Character {
 
   setGameContext(ctx) {
     this.gameContext = ctx;
+  }
+
+  bagAddItem(itemId, qty = 1) {
+    if (!this.bag.items[itemId]) this.bag.items[itemId] = 0;
+    this.bag.items[itemId] += qty;
+  }
+
+  isBagFull() {
+    return Object.keys(this.bag.items).length >= this.bag.capacity;
+  }
+
+  bagItemCount() {
+    return Object.keys(this.bag.items).length;
+  }
+
+  depositBag(inventory) {
+    for (const [itemId, qty] of Object.entries(this.bag.items)) {
+      inventory.addItem(itemId, qty);
+    }
+    this.bag.items = {};
   }
 
   static fromData(data) {
@@ -85,6 +107,11 @@ export class Character {
     }
     char.talents = { ...(data.talents || {}) };
     if (data.talentPoints === undefined) char.talentPoints = 3; // Retroactive grant for old saves
+
+    // Ensure bag exists for old saves
+    if (!char.bag) {
+      char.bag = { items: {}, capacity: GAME_CONFIG.BAG_CAPACITY };
+    }
 
     // Position
     char.position = data.position || { x: 250, y: 250 };
@@ -273,6 +300,10 @@ export class Character {
     // Force Cancel / Normal Stop logic
     // If we were on a movement-based skill, ensure we are removed from the map (teleport to home).
     if (isMovementSkill) {
+      // Deposit any carried items on force stop
+      if (Object.keys(this.bag.items).length > 0 && this.gameContext) {
+        this.depositBag(this.gameContext.inventory);
+      }
       this.position = { x: 250, y: 250 };
     }
 

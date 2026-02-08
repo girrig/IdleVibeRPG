@@ -283,6 +283,82 @@ describe("Character Core Logic", () => {
     });
   });
 
+  describe("Bag", () => {
+    it("should initialize with empty bag of capacity 5", () => {
+      expect(char.bag).toBeDefined();
+      expect(char.bag.items).toEqual({});
+      expect(char.bag.capacity).toBe(5);
+    });
+
+    it("should add items to bag and stack same types", () => {
+      char.bagAddItem("copper_ore", 3);
+      expect(char.bag.items.copper_ore).toBe(3);
+
+      char.bagAddItem("copper_ore", 2);
+      expect(char.bag.items.copper_ore).toBe(5);
+    });
+
+    it("should report bag full when unique item types reach capacity", () => {
+      expect(char.isBagFull()).toBe(false);
+
+      char.bagAddItem("item_a", 1);
+      char.bagAddItem("item_b", 1);
+      char.bagAddItem("item_c", 1);
+      char.bagAddItem("item_d", 1);
+      expect(char.isBagFull()).toBe(false);
+
+      char.bagAddItem("item_e", 1);
+      expect(char.isBagFull()).toBe(true);
+    });
+
+    it("should not count stacking as new slot", () => {
+      char.bagAddItem("copper_ore", 10);
+      char.bagAddItem("copper_ore", 20);
+      expect(char.bagItemCount()).toBe(1);
+      expect(char.bag.items.copper_ore).toBe(30);
+    });
+
+    it("should deposit all bag items into inventory and clear bag", () => {
+      const mockInventory = { addItem: vi.fn() };
+
+      char.bagAddItem("copper_ore", 5);
+      char.bagAddItem("iron_ore", 3);
+
+      char.depositBag(mockInventory);
+
+      expect(mockInventory.addItem).toHaveBeenCalledWith("copper_ore", 5);
+      expect(mockInventory.addItem).toHaveBeenCalledWith("iron_ore", 3);
+      expect(char.bag.items).toEqual({});
+    });
+
+    it("should deposit bag items on force-stop of movement skill", () => {
+      const mockInventory = { addItem: vi.fn() };
+      char.setGameContext({ ...mockGameContext, inventory: mockInventory });
+
+      char.startActivity("MINING", "mine_minerals");
+      char.position = { x: 100, y: 100 };
+      char.bagAddItem("copper_ore", 3);
+
+      char.stopActivity(true);
+
+      expect(mockInventory.addItem).toHaveBeenCalledWith("copper_ore", 3);
+      expect(char.bag.items).toEqual({});
+      expect(char.position).toEqual({ x: 250, y: 250 });
+    });
+
+    it("should not deposit bag on stop of non-movement skill", () => {
+      const mockInventory = { addItem: vi.fn() };
+      char.setGameContext({ ...mockGameContext, inventory: mockInventory });
+
+      char.startActivity("FIGHTING", "rat");
+      char.bagAddItem("test_item", 1);
+
+      char.stopActivity(true);
+
+      expect(mockInventory.addItem).not.toHaveBeenCalled();
+    });
+  });
+
   describe("fromData edge cases", () => {
     it("should initialize talentPoints to 0 for skills missing it", () => {
       const data = {
@@ -304,6 +380,24 @@ describe("Character Core Logic", () => {
       };
       const loaded = Character.fromData(data);
       expect(loaded.position).toEqual({ x: 100, y: 200 });
+    });
+
+    it("should restore bag from save data", () => {
+      const data = {
+        id: "c1",
+        name: "Test",
+        bag: { items: { copper_ore: 5 }, capacity: 5 },
+      };
+      const loaded = Character.fromData(data);
+      expect(loaded.bag.items.copper_ore).toBe(5);
+    });
+
+    it("should create default bag for old saves without bag data", () => {
+      const data = { id: "c1", name: "Test" };
+      const loaded = Character.fromData(data);
+      expect(loaded.bag).toBeDefined();
+      expect(loaded.bag.items).toEqual({});
+      expect(loaded.bag.capacity).toBe(5);
     });
 
     it("should restore goalQueue and activeGoalGroup", () => {

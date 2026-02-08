@@ -33,6 +33,227 @@ function buildItemToNodeMap() {
 
 export const ITEM_TO_NODE_MAP = buildItemToNodeMap();
 
+// --- Shared gathering action factory ---
+// MINING, WOODCUTTING, FISHING, and FORAGING all share the same 3-phase loop:
+//   TRAVELING → GATHERING → RETURNING (deposit bag, repeat or complete)
+// Only the per-skill config differs: messages, search method, talent key, etc.
+function createGatheringAction(config) {
+  const {
+    skillId,            // lowercase: "mining", "woodcutting", etc.
+    skillKey,           // uppercase: "MINING", "WOODCUTTING", etc.
+    useAdjacentSearch,  // true for FISHING (stand on shore, resource in water)
+    getMessages,        // (option) => { settingOut, noResource, noResourceForItem(name) }
+  } = config;
+
+  return (gameState, char) => {
+    const targetId = char.currentActivity.target;
+    const option = SKILL_DEFINITIONS[skillKey].options[targetId];
+    if (!option) return;
+
+    const targetItem = char.activeGoal ? char.activeGoal.targetItem : null;
+
+    // --- PHASE INITIALIZATION ---
+    if (!char.currentActivity.phase) {
+      char.position = { x: 250, y: 250 };
+      char.currentActivity.phase = "TRAVELING";
+      char.currentActivity.targetTile = null;
+      const msgs = getMessages(option);
+      gameState.triggerNotification(msgs.settingOut, "activity");
+    }
+
+    const { x, y } = char.position;
+    let nextPos = null;
+
+    const isValidMove = (nx, ny) => {
+      const width = mapManager.width || 500;
+      const height = mapManager.height || 500;
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
+      const t = mapManager.getTile(nx, ny);
+      if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
+      return true;
+    };
+
+    const tryStep = (nx, ny) => {
+      if (isValidMove(nx, ny)) {
+        nextPos = { x: nx, y: ny };
+        return true;
+      }
+      return false;
+    };
+
+    const moveTowards = (tx, ty) => {
+      const dx = Math.sign(tx - x);
+      const dy = Math.sign(ty - y);
+      if (dx !== 0 && dy !== 0) {
+        if (Math.random() < 0.5) {
+          if (!tryStep(x + dx, y)) tryStep(x, y + dy);
+        } else {
+          if (!tryStep(x, y + dy)) tryStep(x + dx, y);
+        }
+      } else if (dx !== 0) {
+        tryStep(x + dx, y);
+      } else if (dy !== 0) {
+        tryStep(x, y + dy);
+      }
+    };
+
+    // --- PHASE 1: TRAVELING ---
+    if (char.currentActivity.phase === "TRAVELING") {
+      if (!char.currentActivity.targetTile) {
+        let validSources;
+        if (targetItem && ITEM_TO_NODE_MAP[targetItem]) {
+          validSources = ITEM_TO_NODE_MAP[targetItem];
+        } else {
+          const nodeDef = RESOURCE_NODES[option.resourceId];
+          validSources = (nodeDef.allowedBiomes || []).map(biome => ({
+            nodeType: option.resourceId,
+            biome
+          }));
+        }
+
+        const target = useAdjacentSearch
+          ? mapManager.findNearestAdjacentResourceTile(validSources, x, y)
+          : mapManager.findNearestExploredResourceTile(validSources, x, y);
+
+        if (!target) {
+          if (char.bagItemCount() > 0) {
+            char.currentActivity.phase = "RETURNING";
+            return;
+          }
+          if (!char.currentActivity.waitingForResources) {
+            const msgs = getMessages(option);
+            gameState.triggerNotification(
+              targetItem
+                ? msgs.noResourceForItem(getItemDefinition(targetItem)?.name || targetItem)
+                : msgs.noResource,
+              "error"
+            );
+            char.currentActivity.waitingForResources = true;
+          }
+          return;
+        }
+
+        char.currentActivity.waitingForResources = false;
+        char.currentActivity.targetTile = target;
+      }
+
+      const target = char.currentActivity.targetTile;
+
+      if (x === target.x && y === target.y) {
+        // Verify resource still exists
+        if (useAdjacentSearch) {
+          const resourceTile = mapManager.getTile(target.resourceX, target.resourceY);
+          if (!resourceTile || !resourceTile.resource || resourceTile.resource.type !== target.nodeType) {
+            char.currentActivity.targetTile = null;
+            return;
+          }
+        } else {
+          const tile = mapManager.getTile(x, y);
+          if (!tile || !tile.resource || tile.resource.type !== target.nodeType) {
+            char.currentActivity.targetTile = null;
+            return;
+          }
+        }
+        char.currentActivity.phase = "GATHERING";
+      } else {
+        moveTowards(target.x, target.y);
+      }
+    }
+
+    // --- PHASE 2: GATHERING ---
+    if (char.currentActivity.phase === "GATHERING") {
+      const target = char.currentActivity.targetTile;
+      const resourceTile = useAdjacentSearch
+        ? mapManager.getTile(target.resourceX, target.resourceY)
+        : mapManager.getTile(x, y);
+
+      let dropItem;
+      if (targetItem) {
+        dropItem = targetItem;
+      } else {
+        const nodeDef = RESOURCE_NODES[option.resourceId];
+        let table = nodeDef.default_drops;
+        if (nodeDef.biome_drops && nodeDef.biome_drops[resourceTile.type]) {
+          table = nodeDef.biome_drops[resourceTile.type];
+        }
+        const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+        let roll = Math.random() * totalWeight;
+        dropItem = table[0].item;
+        for (const entry of table) {
+          if (roll < entry.weight) { dropItem = entry.item; break; }
+          roll -= entry.weight;
+        }
+      }
+
+      const resourceKey = `${resourceTile.resource.type}:${resourceTile.type}`;
+      gameState.consumeAvailableResource(resourceKey, 1);
+      resourceTile.resource = null;
+
+      let amount = 1;
+      if (char.talents[`${skillId}_2`] && Math.random() < 0.1) {
+        amount = 2;
+      }
+
+      char.bagAddItem(dropItem, amount);
+      char.gainXp(skillId, option.xp || 20);
+      char.currentActivity.progress = (char.currentActivity.progress || 0) + amount;
+
+      char.currentActivity.targetTile = null;
+      const qty = char.currentActivity.quantity || 0;
+      const done = qty > 0 && char.currentActivity.progress >= qty;
+      char.currentActivity.phase = (char.isBagFull() || done) ? "RETURNING" : "TRAVELING";
+      return;
+    }
+
+    // --- PHASE 3: RETURNING ---
+    if (char.currentActivity.phase === "RETURNING") {
+      const homeX = 250;
+      const homeY = 250;
+
+      if (x === homeX && y === homeY) {
+        char.depositBag(gameState.inventory);
+
+        if (char.currentActivity.stopping) {
+          char.position = { x: 250, y: 250 };
+          char.currentActivity = null;
+          char.activityQueue = [];
+          gameState.triggerNotification("Returned home safely.", "success");
+          return;
+        }
+        const qty = char.currentActivity.quantity || 0;
+        if (qty > 0 && char.currentActivity.progress >= qty) {
+          char.completeCurrentTask();
+          return;
+        }
+        char.currentActivity.phase = "TRAVELING";
+        return;
+      }
+
+      moveTowards(homeX, homeY);
+    }
+
+    // --- MOVE + FOG REVEAL ---
+    if (nextPos) {
+      char.position = nextPos;
+      mapManager.visitTile(nextPos.x, nextPos.y);
+
+      const sightRadius = char.stats.sightRange || 3;
+      const revealedTiles = mapManager.exploreRadius(nextPos.x, nextPos.y, sightRadius);
+
+      if (revealedTiles.length > 0) {
+        revealedTiles.forEach((tile) => {
+          if (tile.resource) {
+            const key = `${tile.resource.type}:${tile.type}`;
+            gameState.addAvailableResource(key, 1);
+            gameState.addDiscovery(`node:${tile.resource.type}`);
+          }
+          gameState.addDiscovery(`biome:${tile.type}`);
+        });
+      }
+    }
+  };
+}
+
 export const SKILL_DEFINITIONS = {
   MINING: {
     id: "MINING",
@@ -44,7 +265,7 @@ export const SKILL_DEFINITIONS = {
         resourceId: "mineral_node",
         name: "Mine Minerals",
         level: 1,
-        xp: 15, // Base XP, effectively varied by drop? Or constant? Constant is fine for now.
+        xp: 15,
         icon: ICONS.skillOptions.mine_minerals,
         interval: 3000,
       },
@@ -67,184 +288,16 @@ export const SKILL_DEFINITIONS = {
     },
     continuous: true,
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
-    action: (gameState, char) => {
-      const targetId = char.currentActivity.target;
-      const option = SKILL_DEFINITIONS.MINING.options[targetId];
-      if (!option) return;
-
-      const targetItem = char.activeGoal ? char.activeGoal.targetItem : null;
-
-      // --- PHASE INITIALIZATION ---
-      if (!char.currentActivity.phase) {
-        char.position = { x: 250, y: 250 };
-        char.currentActivity.phase = "TRAVELING";
-        char.currentActivity.targetTile = null;
-        gameState.triggerNotification("Setting out to find ore...", "activity");
-      }
-
-      const { x, y } = char.position;
-      let nextPos = null;
-
-      const isValidMove = (nx, ny) => {
-        const width = mapManager.width || 500;
-        const height = mapManager.height || 500;
-        if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
-        const t = mapManager.getTile(nx, ny);
-        if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
-        return true;
-      };
-
-      const tryStep = (nx, ny) => {
-        if (isValidMove(nx, ny)) {
-          nextPos = { x: nx, y: ny };
-          return true;
-        }
-        return false;
-      };
-
-      const moveTowards = (tx, ty) => {
-        const dx = Math.sign(tx - x);
-        const dy = Math.sign(ty - y);
-        if (dx !== 0 && dy !== 0) {
-          if (Math.random() < 0.5) {
-            if (!tryStep(x + dx, y)) tryStep(x, y + dy);
-          } else {
-            if (!tryStep(x, y + dy)) tryStep(x + dx, y);
-          }
-        } else if (dx !== 0) {
-          tryStep(x + dx, y);
-        } else if (dy !== 0) {
-          tryStep(x, y + dy);
-        }
-      };
-
-      // --- PHASE 1: TRAVELING ---
-      if (char.currentActivity.phase === "TRAVELING") {
-        if (!char.currentActivity.targetTile) {
-          let validSources;
-          if (targetItem && ITEM_TO_NODE_MAP[targetItem]) {
-            // Search ALL node types that can drop the target item (e.g. coal from mineral_node OR coal_vein)
-            validSources = ITEM_TO_NODE_MAP[targetItem];
-          } else {
-            const nodeDef = RESOURCE_NODES[option.resourceId];
-            validSources = (nodeDef.allowedBiomes || []).map(biome => ({
-              nodeType: option.resourceId,
-              biome
-            }));
-          }
-
-          const target = mapManager.findNearestExploredResourceTile(validSources, x, y);
-
-          if (!target) {
-            if (!char.currentActivity.waitingForResources) {
-              gameState.triggerNotification(
-                targetItem
-                  ? `No ore found for ${getItemDefinition(targetItem)?.name || targetItem}! Explore more areas.`
-                  : "No ore veins found! Explore more areas.",
-                "error"
-              );
-              char.currentActivity.waitingForResources = true;
-            }
-            return;
-          }
-
-          char.currentActivity.waitingForResources = false;
-          char.currentActivity.targetTile = target;
-        }
-
-        const target = char.currentActivity.targetTile;
-
-        if (x === target.x && y === target.y) {
-          const tile = mapManager.getTile(x, y);
-          if (!tile || !tile.resource || tile.resource.type !== target.nodeType) {
-            char.currentActivity.targetTile = null;
-            return;
-          }
-          char.currentActivity.phase = "MINING";
-        } else {
-          moveTowards(target.x, target.y);
-        }
-      }
-
-      // --- PHASE 2: MINING ---
-      if (char.currentActivity.phase === "MINING") {
-        const tile = mapManager.getTile(x, y);
-
-        let dropItem;
-        if (targetItem) {
-          dropItem = targetItem;
-        } else {
-          const nodeDef = RESOURCE_NODES[option.resourceId];
-          let table = nodeDef.default_drops;
-          if (nodeDef.biome_drops && nodeDef.biome_drops[tile.type]) {
-            table = nodeDef.biome_drops[tile.type];
-          }
-          const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
-          let roll = Math.random() * totalWeight;
-          dropItem = table[0].item;
-          for (const entry of table) {
-            if (roll < entry.weight) { dropItem = entry.item; break; }
-            roll -= entry.weight;
-          }
-        }
-
-        const resourceKey = `${tile.resource.type}:${tile.type}`;
-        gameState.consumeAvailableResource(resourceKey, 1);
-        tile.resource = null;
-
-        let amount = 1;
-        if (char.talents.mining_2 && Math.random() < 0.1) {
-          amount = 2;
-        }
-
-        gameState.inventory.addItem(dropItem, amount);
-        char.gainXp("mining", option.xp || 20);
-
-        char.currentActivity.targetTile = null;
-        char.currentActivity.phase = "RETURNING";
-        return;
-      }
-
-      // --- PHASE 3: RETURNING ---
-      if (char.currentActivity.phase === "RETURNING") {
-        const homeX = 250;
-        const homeY = 250;
-
-        if (x === homeX && y === homeY) {
-          if (char.currentActivity.stopping) {
-            char.position = { x: 250, y: 250 };
-            char.currentActivity = null;
-            char.activityQueue = [];
-            gameState.triggerNotification("Returned home safely.", "success");
-            return;
-          }
-          char.currentActivity.phase = "TRAVELING";
-          return;
-        }
-
-        moveTowards(homeX, homeY);
-      }
-
-      // --- MOVE + FOG REVEAL ---
-      if (nextPos) {
-        char.position = nextPos;
-        mapManager.visitTile(nextPos.x, nextPos.y);
-
-        const sightRadius = char.stats.sightRange || 3;
-        const revealedTiles = mapManager.exploreRadius(nextPos.x, nextPos.y, sightRadius);
-
-        if (revealedTiles.length > 0) {
-          revealedTiles.forEach((tile) => {
-            if (tile.resource) {
-              const key = `${tile.resource.type}:${tile.type}`;
-              gameState.addAvailableResource(key, 1);
-              gameState.addDiscovery(`node:${tile.resource.type}`);
-            }
-            gameState.addDiscovery(`biome:${tile.type}`);
-          });
-        }
-      }
-    },
+    action: createGatheringAction({
+      skillId: "mining",
+      skillKey: "MINING",
+      useAdjacentSearch: false,
+      getMessages: () => ({
+        settingOut: "Setting out to find ore...",
+        noResource: "No ore veins found! Explore more areas.",
+        noResourceForItem: (name) => `No ore found for ${name}! Explore more areas.`,
+      }),
+    }),
   },
   WOODCUTTING: {
     id: "WOODCUTTING",
@@ -257,185 +310,16 @@ export const SKILL_DEFINITIONS = {
     },
     continuous: true,
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
-    action: (gameState, char) => {
-      const targetId = char.currentActivity.target;
-      const option = SKILL_DEFINITIONS.WOODCUTTING.options[targetId];
-      if (!option) return;
-
-      const targetItem = char.activeGoal ? char.activeGoal.targetItem : null;
-
-      // --- PHASE INITIALIZATION ---
-      if (!char.currentActivity.phase) {
-        char.position = { x: 250, y: 250 };
-        char.currentActivity.phase = "TRAVELING";
-        char.currentActivity.targetTile = null;
-        gameState.triggerNotification("Setting out to find trees...", "activity");
-      }
-
-      const { x, y } = char.position;
-      let nextPos = null;
-
-      // --- Movement helpers (same as exploring) ---
-      const isValidMove = (nx, ny) => {
-        const width = mapManager.width || 500;
-        const height = mapManager.height || 500;
-        if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
-        const t = mapManager.getTile(nx, ny);
-        if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
-        return true;
-      };
-
-      const tryStep = (nx, ny) => {
-        if (isValidMove(nx, ny)) {
-          nextPos = { x: nx, y: ny };
-          return true;
-        }
-        return false;
-      };
-
-      const moveTowards = (tx, ty) => {
-        const dx = Math.sign(tx - x);
-        const dy = Math.sign(ty - y);
-        if (dx !== 0 && dy !== 0) {
-          if (Math.random() < 0.5) {
-            if (!tryStep(x + dx, y)) tryStep(x, y + dy);
-          } else {
-            if (!tryStep(x, y + dy)) tryStep(x + dx, y);
-          }
-        } else if (dx !== 0) {
-          tryStep(x + dx, y);
-        } else if (dy !== 0) {
-          tryStep(x, y + dy);
-        }
-      };
-
-      // --- PHASE 1: TRAVELING ---
-      if (char.currentActivity.phase === "TRAVELING") {
-        if (!char.currentActivity.targetTile) {
-          let validSources;
-          if (targetItem && ITEM_TO_NODE_MAP[targetItem]) {
-            validSources = ITEM_TO_NODE_MAP[targetItem];
-          } else {
-            const nodeDef = RESOURCE_NODES[option.resourceId];
-            validSources = (nodeDef.allowedBiomes || []).map(biome => ({
-              nodeType: option.resourceId,
-              biome
-            }));
-          }
-
-          const target = mapManager.findNearestExploredResourceTile(validSources, x, y);
-
-          if (!target) {
-            if (!char.currentActivity.waitingForResources) {
-              gameState.triggerNotification(
-                targetItem
-                  ? `No trees found for ${getItemDefinition(targetItem)?.name || targetItem}! Explore more forests.`
-                  : "No trees found! Explore more forests.",
-                "error"
-              );
-              char.currentActivity.waitingForResources = true;
-            }
-            return;
-          }
-
-          char.currentActivity.waitingForResources = false;
-
-          char.currentActivity.targetTile = target;
-        }
-
-        const target = char.currentActivity.targetTile;
-
-        if (x === target.x && y === target.y) {
-          const tile = mapManager.getTile(x, y);
-          if (!tile || !tile.resource || tile.resource.type !== target.nodeType) {
-            char.currentActivity.targetTile = null;
-            return;
-          }
-          char.currentActivity.phase = "CHOPPING";
-        } else {
-          moveTowards(target.x, target.y);
-        }
-      }
-
-      // --- PHASE 2: CHOPPING ---
-      if (char.currentActivity.phase === "CHOPPING") {
-        const tile = mapManager.getTile(x, y);
-
-        let dropItem;
-        if (targetItem) {
-          dropItem = targetItem;
-        } else {
-          const nodeDef = RESOURCE_NODES[option.resourceId];
-          let table = nodeDef.default_drops;
-          if (nodeDef.biome_drops && nodeDef.biome_drops[tile.type]) {
-            table = nodeDef.biome_drops[tile.type];
-          }
-          const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
-          let roll = Math.random() * totalWeight;
-          dropItem = table[0].item;
-          for (const entry of table) {
-            if (roll < entry.weight) { dropItem = entry.item; break; }
-            roll -= entry.weight;
-          }
-        }
-
-        const resourceKey = `${tile.resource.type}:${tile.type}`;
-        gameState.consumeAvailableResource(resourceKey, 1);
-        tile.resource = null; // Remove from map so icon disappears
-
-        let amount = 1;
-        if (char.talents.woodcutting_2 && Math.random() < 0.1) {
-          amount = 2;
-        }
-
-        gameState.inventory.addItem(dropItem, amount);
-        char.gainXp("woodcutting", option.xp || 20);
-
-        char.currentActivity.targetTile = null;
-        char.currentActivity.phase = "RETURNING";
-        return;
-      }
-
-      // --- PHASE 3: RETURNING ---
-      if (char.currentActivity.phase === "RETURNING") {
-        const homeX = 250;
-        const homeY = 250;
-
-        if (x === homeX && y === homeY) {
-          if (char.currentActivity.stopping) {
-            char.position = { x: 250, y: 250 };
-            char.currentActivity = null;
-            char.activityQueue = [];
-            gameState.triggerNotification("Returned home safely.", "success");
-            return;
-          }
-          char.currentActivity.phase = "TRAVELING";
-          return;
-        }
-
-        moveTowards(homeX, homeY);
-      }
-
-      // --- MOVE + FOG REVEAL ---
-      if (nextPos) {
-        char.position = nextPos;
-        mapManager.visitTile(nextPos.x, nextPos.y);
-
-        const sightRadius = char.stats.sightRange || 3;
-        const revealedTiles = mapManager.exploreRadius(nextPos.x, nextPos.y, sightRadius);
-
-        if (revealedTiles.length > 0) {
-          revealedTiles.forEach((tile) => {
-            if (tile.resource) {
-              const key = `${tile.resource.type}:${tile.type}`;
-              gameState.addAvailableResource(key, 1);
-              gameState.addDiscovery(`node:${tile.resource.type}`);
-            }
-            gameState.addDiscovery(`biome:${tile.type}`);
-          });
-        }
-      }
-    },
+    action: createGatheringAction({
+      skillId: "woodcutting",
+      skillKey: "WOODCUTTING",
+      useAdjacentSearch: false,
+      getMessages: () => ({
+        settingOut: "Setting out to find trees...",
+        noResource: "No trees found! Explore more forests.",
+        noResourceForItem: (name) => `No trees found for ${name}! Explore more forests.`,
+      }),
+    }),
   },
   FISHING: {
     id: "FISHING",
@@ -447,186 +331,16 @@ export const SKILL_DEFINITIONS = {
     },
     continuous: true,
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
-    action: (gameState, char) => {
-      const targetId = char.currentActivity.target;
-      const option = SKILL_DEFINITIONS.FISHING.options[targetId];
-      if (!option) return;
-
-      const targetItem = char.activeGoal ? char.activeGoal.targetItem : null;
-
-      // --- PHASE INITIALIZATION ---
-      if (!char.currentActivity.phase) {
-        char.position = { x: 250, y: 250 };
-        char.currentActivity.phase = "TRAVELING";
-        char.currentActivity.targetTile = null;
-        gameState.triggerNotification("Setting out to find a fishing spot...", "activity");
-      }
-
-      const { x, y } = char.position;
-      let nextPos = null;
-
-      const isValidMove = (nx, ny) => {
-        const width = mapManager.width || 500;
-        const height = mapManager.height || 500;
-        if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
-        const t = mapManager.getTile(nx, ny);
-        if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
-        return true;
-      };
-
-      const tryStep = (nx, ny) => {
-        if (isValidMove(nx, ny)) {
-          nextPos = { x: nx, y: ny };
-          return true;
-        }
-        return false;
-      };
-
-      const moveTowards = (tx, ty) => {
-        const dx = Math.sign(tx - x);
-        const dy = Math.sign(ty - y);
-        if (dx !== 0 && dy !== 0) {
-          if (Math.random() < 0.5) {
-            if (!tryStep(x + dx, y)) tryStep(x, y + dy);
-          } else {
-            if (!tryStep(x, y + dy)) tryStep(x + dx, y);
-          }
-        } else if (dx !== 0) {
-          tryStep(x + dx, y);
-        } else if (dy !== 0) {
-          tryStep(x, y + dy);
-        }
-      };
-
-      // --- PHASE 1: TRAVELING ---
-      if (char.currentActivity.phase === "TRAVELING") {
-        if (!char.currentActivity.targetTile) {
-          let validSources;
-          if (targetItem && ITEM_TO_NODE_MAP[targetItem]) {
-            validSources = ITEM_TO_NODE_MAP[targetItem];
-          } else {
-            const nodeDef = RESOURCE_NODES[option.resourceId];
-            validSources = (nodeDef.allowedBiomes || []).map(biome => ({
-              nodeType: option.resourceId,
-              biome
-            }));
-          }
-
-          // Use adjacent search so we can fish from shore next to ocean spots
-          const target = mapManager.findNearestAdjacentResourceTile(validSources, x, y);
-
-          if (!target) {
-            if (!char.currentActivity.waitingForResources) {
-              gameState.triggerNotification(
-                targetItem
-                  ? `No fishing spots found for ${getItemDefinition(targetItem)?.name || targetItem}! Explore the coast.`
-                  : "No fishing spots found! Explore the coast.",
-                "error"
-              );
-              char.currentActivity.waitingForResources = true;
-            }
-            return;
-          }
-
-          char.currentActivity.waitingForResources = false;
-          char.currentActivity.targetTile = target;
-        }
-
-        const target = char.currentActivity.targetTile;
-
-        if (x === target.x && y === target.y) {
-          // Verify resource still exists at the resource tile
-          const resourceTile = mapManager.getTile(target.resourceX, target.resourceY);
-          if (!resourceTile || !resourceTile.resource || resourceTile.resource.type !== target.nodeType) {
-            char.currentActivity.targetTile = null;
-            return;
-          }
-          char.currentActivity.phase = "FISHING";
-        } else {
-          moveTowards(target.x, target.y);
-        }
-      }
-
-      // --- PHASE 2: FISHING ---
-      if (char.currentActivity.phase === "FISHING") {
-        const target = char.currentActivity.targetTile;
-        const resourceTile = mapManager.getTile(target.resourceX, target.resourceY);
-
-        let dropItem;
-        if (targetItem) {
-          dropItem = targetItem;
-        } else {
-          const nodeDef = RESOURCE_NODES[option.resourceId];
-          let table = nodeDef.default_drops;
-          if (nodeDef.biome_drops && nodeDef.biome_drops[resourceTile.type]) {
-            table = nodeDef.biome_drops[resourceTile.type];
-          }
-          const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
-          let roll = Math.random() * totalWeight;
-          dropItem = table[0].item;
-          for (const entry of table) {
-            if (roll < entry.weight) { dropItem = entry.item; break; }
-            roll -= entry.weight;
-          }
-        }
-
-        const resourceKey = `${resourceTile.resource.type}:${resourceTile.type}`;
-        gameState.consumeAvailableResource(resourceKey, 1);
-        resourceTile.resource = null;
-
-        let amount = 1;
-        if (char.talents.fishing_2 && Math.random() < 0.1) {
-          amount = 2;
-        }
-
-        gameState.inventory.addItem(dropItem, amount);
-        char.gainXp("fishing", option.xp || 20);
-
-        char.currentActivity.targetTile = null;
-        char.currentActivity.phase = "RETURNING";
-        return;
-      }
-
-      // --- PHASE 3: RETURNING ---
-      if (char.currentActivity.phase === "RETURNING") {
-        const homeX = 250;
-        const homeY = 250;
-
-        if (x === homeX && y === homeY) {
-          if (char.currentActivity.stopping) {
-            char.position = { x: 250, y: 250 };
-            char.currentActivity = null;
-            char.activityQueue = [];
-            gameState.triggerNotification("Returned home safely.", "success");
-            return;
-          }
-          char.currentActivity.phase = "TRAVELING";
-          return;
-        }
-
-        moveTowards(homeX, homeY);
-      }
-
-      // --- MOVE + FOG REVEAL ---
-      if (nextPos) {
-        char.position = nextPos;
-        mapManager.visitTile(nextPos.x, nextPos.y);
-
-        const sightRadius = char.stats.sightRange || 3;
-        const revealedTiles = mapManager.exploreRadius(nextPos.x, nextPos.y, sightRadius);
-
-        if (revealedTiles.length > 0) {
-          revealedTiles.forEach((tile) => {
-            if (tile.resource) {
-              const key = `${tile.resource.type}:${tile.type}`;
-              gameState.addAvailableResource(key, 1);
-              gameState.addDiscovery(`node:${tile.resource.type}`);
-            }
-            gameState.addDiscovery(`biome:${tile.type}`);
-          });
-        }
-      }
-    },
+    action: createGatheringAction({
+      skillId: "fishing",
+      skillKey: "FISHING",
+      useAdjacentSearch: true,
+      getMessages: () => ({
+        settingOut: "Setting out to find a fishing spot...",
+        noResource: "No fishing spots found! Explore the coast.",
+        noResourceForItem: (name) => `No fishing spots found for ${name}! Explore the coast.`,
+      }),
+    }),
   },
   FORAGING: {
     id: "FORAGING",
@@ -639,186 +353,18 @@ export const SKILL_DEFINITIONS = {
     },
     continuous: true,
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
-    action: (gameState, char) => {
-      const targetId = char.currentActivity.target;
-      const option = SKILL_DEFINITIONS.FORAGING.options[targetId];
-      if (!option) return;
-
-      const targetItem = char.activeGoal ? char.activeGoal.targetItem : null;
-
-      // --- PHASE INITIALIZATION ---
-      if (!char.currentActivity.phase) {
-        char.position = { x: 250, y: 250 };
-        char.currentActivity.phase = "TRAVELING";
-        char.currentActivity.targetTile = null;
-        gameState.triggerNotification(
-          option.resourceId === "fungi_node"
-            ? "Setting out to gather fungi..."
-            : "Setting out to forage bushes...",
-          "activity"
-        );
-      }
-
-      const { x, y } = char.position;
-      let nextPos = null;
-
-      const isValidMove = (nx, ny) => {
-        const width = mapManager.width || 500;
-        const height = mapManager.height || 500;
-        if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
-        const t = mapManager.getTile(nx, ny);
-        if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
-        return true;
-      };
-
-      const tryStep = (nx, ny) => {
-        if (isValidMove(nx, ny)) {
-          nextPos = { x: nx, y: ny };
-          return true;
-        }
-        return false;
-      };
-
-      const moveTowards = (tx, ty) => {
-        const dx = Math.sign(tx - x);
-        const dy = Math.sign(ty - y);
-        if (dx !== 0 && dy !== 0) {
-          if (Math.random() < 0.5) {
-            if (!tryStep(x + dx, y)) tryStep(x, y + dy);
-          } else {
-            if (!tryStep(x, y + dy)) tryStep(x + dx, y);
-          }
-        } else if (dx !== 0) {
-          tryStep(x + dx, y);
-        } else if (dy !== 0) {
-          tryStep(x, y + dy);
-        }
-      };
-
-      // --- PHASE 1: TRAVELING ---
-      if (char.currentActivity.phase === "TRAVELING") {
-        if (!char.currentActivity.targetTile) {
-          let validSources;
-          if (targetItem && ITEM_TO_NODE_MAP[targetItem]) {
-            validSources = ITEM_TO_NODE_MAP[targetItem];
-          } else {
-            const nodeDef = RESOURCE_NODES[option.resourceId];
-            validSources = (nodeDef.allowedBiomes || []).map(biome => ({
-              nodeType: option.resourceId,
-              biome
-            }));
-          }
-
-          const target = mapManager.findNearestExploredResourceTile(validSources, x, y);
-
-          if (!target) {
-            if (!char.currentActivity.waitingForResources) {
-              gameState.triggerNotification(
-                targetItem
-                  ? `No ${option.resourceId === "fungi_node" ? "fungi" : "bushes"} found for ${getItemDefinition(targetItem)?.name || targetItem}! Explore more.`
-                  : `No ${option.resourceId === "fungi_node" ? "fungi" : "bushes"} found! Explore more.`,
-                "error"
-              );
-              char.currentActivity.waitingForResources = true;
-            }
-            return;
-          }
-
-          char.currentActivity.waitingForResources = false;
-          char.currentActivity.targetTile = target;
-        }
-
-        const target = char.currentActivity.targetTile;
-
-        if (x === target.x && y === target.y) {
-          const tile = mapManager.getTile(x, y);
-          if (!tile || !tile.resource || tile.resource.type !== target.nodeType) {
-            char.currentActivity.targetTile = null;
-            return;
-          }
-          char.currentActivity.phase = "GATHERING";
-        } else {
-          moveTowards(target.x, target.y);
-        }
-      }
-
-      // --- PHASE 2: GATHERING ---
-      if (char.currentActivity.phase === "GATHERING") {
-        const tile = mapManager.getTile(x, y);
-
-        let dropItem;
-        if (targetItem) {
-          dropItem = targetItem;
-        } else {
-          const nodeDef = RESOURCE_NODES[option.resourceId];
-          let table = nodeDef.default_drops;
-          if (nodeDef.biome_drops && nodeDef.biome_drops[tile.type]) {
-            table = nodeDef.biome_drops[tile.type];
-          }
-          const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
-          let roll = Math.random() * totalWeight;
-          dropItem = table[0].item;
-          for (const entry of table) {
-            if (roll < entry.weight) { dropItem = entry.item; break; }
-            roll -= entry.weight;
-          }
-        }
-
-        const resourceKey = `${tile.resource.type}:${tile.type}`;
-        gameState.consumeAvailableResource(resourceKey, 1);
-        tile.resource = null;
-
-        let amount = 1;
-        if (char.talents.foraging_2 && Math.random() < 0.1) amount = 2;
-
-        gameState.inventory.addItem(dropItem, amount);
-        char.gainXp("foraging", option.xp || 10);
-
-        char.currentActivity.targetTile = null;
-        char.currentActivity.phase = "RETURNING";
-        return;
-      }
-
-      // --- PHASE 3: RETURNING ---
-      if (char.currentActivity.phase === "RETURNING") {
-        const homeX = 250;
-        const homeY = 250;
-
-        if (x === homeX && y === homeY) {
-          if (char.currentActivity.stopping) {
-            char.position = { x: 250, y: 250 };
-            char.currentActivity = null;
-            char.activityQueue = [];
-            gameState.triggerNotification("Returned home safely.", "success");
-            return;
-          }
-          char.currentActivity.phase = "TRAVELING";
-          return;
-        }
-
-        moveTowards(homeX, homeY);
-      }
-
-      // --- MOVE + FOG REVEAL ---
-      if (nextPos) {
-        char.position = nextPos;
-        mapManager.visitTile(nextPos.x, nextPos.y);
-
-        const sightRadius = char.stats.sightRange || 3;
-        const revealedTiles = mapManager.exploreRadius(nextPos.x, nextPos.y, sightRadius);
-
-        if (revealedTiles.length > 0) {
-          revealedTiles.forEach((tile) => {
-            if (tile.resource) {
-              const key = `${tile.resource.type}:${tile.type}`;
-              gameState.addAvailableResource(key, 1);
-              gameState.addDiscovery(`node:${tile.resource.type}`);
-            }
-            gameState.addDiscovery(`biome:${tile.type}`);
-          });
-        }
-      }
-    },
+    action: createGatheringAction({
+      skillId: "foraging",
+      skillKey: "FORAGING",
+      useAdjacentSearch: false,
+      getMessages: (option) => ({
+        settingOut: option.resourceId === "fungi_node"
+          ? "Setting out to gather fungi..."
+          : "Setting out to forage bushes...",
+        noResource: `No ${option.resourceId === "fungi_node" ? "fungi" : "bushes"} found! Explore more.`,
+        noResourceForItem: (name) => `No ${option.resourceId === "fungi_node" ? "fungi" : "bushes"} found for ${name}! Explore more.`,
+      }),
+    }),
   },
   FIGHTING: {
     id: "FIGHTING",
