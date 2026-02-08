@@ -183,6 +183,38 @@ describe("Character Core Logic", () => {
       expect(char.currentActivity).toBeNull();
       expect(char.position).toEqual({ x: 250, y: 250 });
     });
+
+    it("should trigger return trip on stopActivity for WOODCUTTING", () => {
+      char.startActivity("WOODCUTTING", "chop_wood");
+      char.position = { x: 260, y: 250 };
+      char.currentActivity.phase = "TRAVELING";
+
+      char.stopActivity();
+
+      expect(char.currentActivity).not.toBeNull();
+      expect(char.currentActivity.phase).toBe("RETURNING");
+      expect(char.currentActivity.stopping).toBe(true);
+    });
+
+    it("should force stop WOODCUTTING and reset position", () => {
+      char.startActivity("WOODCUTTING", "chop_wood");
+      char.position = { x: 260, y: 250 };
+      char.currentActivity.phase = "TRAVELING";
+
+      char.stopActivity(true);
+
+      expect(char.currentActivity).toBeNull();
+      expect(char.position).toEqual({ x: 250, y: 250 });
+    });
+
+    it("should stop WOODCUTTING immediately if already at home", () => {
+      char.startActivity("WOODCUTTING", "chop_wood");
+      char.position = { x: 250, y: 250 };
+
+      char.stopActivity();
+
+      expect(char.currentActivity).toBeNull();
+    });
   });
 
   describe("unlockTalent", () => {

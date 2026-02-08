@@ -245,18 +245,21 @@ export class Character {
   }
 
   stopActivity(force = false) {
-    // If Exploring and NOT Returning and NOT at home, trigger Return Trip first
+    // If movement-based skill and NOT Returning and NOT at home, trigger Return Trip first
     // UNLESS force is true
+    const isMovementSkill = this.currentActivity &&
+      (this.currentActivity.type === "EXPLORING" || this.currentActivity.type === "WOODCUTTING");
+
     if (
       !force &&
-      this.currentActivity &&
-      this.currentActivity.type === "EXPLORING" &&
+      isMovementSkill &&
       this.currentActivity.phase !== "RETURNING"
     ) {
       const homeX = 250;
       const homeY = 250;
       if (this.position.x !== homeX || this.position.y !== homeY) {
         this.currentActivity.phase = "RETURNING";
+        this.currentActivity.stopping = true;
         if (this.gameContext)
           this.gameContext.triggerNotification(
             `${this.name}: "Heading back to town..."`,
@@ -267,9 +270,8 @@ export class Character {
     }
 
     // Force Cancel / Normal Stop logic
-    // If we were exploring, and we are stopping (either forced or finished returning),
-    // ensure we are removed from the map (teleport to home).
-    if (this.currentActivity && this.currentActivity.type === "EXPLORING") {
+    // If we were on a movement-based skill, ensure we are removed from the map (teleport to home).
+    if (isMovementSkill) {
       this.position = { x: 250, y: 250 };
     }
 

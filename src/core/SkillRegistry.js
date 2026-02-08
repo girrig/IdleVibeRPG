@@ -3,6 +3,35 @@ import { GAME_CONFIG, RESOURCE_NODES } from "./Constants.js";
 import { mapManager } from "./MapManager.js";
 import { TERRAIN_TYPES } from "./TerrainTypes.js";
 
+// Reverse mapping: itemId → [{ nodeType, biome }]
+// e.g. "maple_log" → [{ nodeType: "tree_node", biome: "TEMPERATE_DECIDUOUS_FOREST" }]
+function buildItemToNodeMap() {
+  const map = {};
+  Object.entries(RESOURCE_NODES).forEach(([nodeType, nodeDef]) => {
+    if (nodeDef.biome_drops) {
+      Object.entries(nodeDef.biome_drops).forEach(([biome, drops]) => {
+        drops.forEach(({ item }) => {
+          if (!map[item]) map[item] = [];
+          map[item].push({ nodeType, biome });
+        });
+      });
+    }
+    if (nodeDef.default_drops) {
+      nodeDef.default_drops.forEach(({ item }) => {
+        if (!map[item]) map[item] = [];
+        (nodeDef.allowedBiomes || []).forEach((biome) => {
+          if (!nodeDef.biome_drops || !nodeDef.biome_drops[biome]) {
+            map[item].push({ nodeType, biome });
+          }
+        });
+      });
+    }
+  });
+  return map;
+}
+
+export const ITEM_TO_NODE_MAP = buildItemToNodeMap();
+
 export const SKILL_DEFINITIONS = {
   MINING: {
     id: "MINING",
@@ -131,78 +160,186 @@ export const SKILL_DEFINITIONS = {
     color: "#2ecc71",
     options: {
       chop_wood: { name: "Chop Wood", resourceId: "tree_node", level: 1, xp: 20, icon: "🌲", interval: 3000 },
-      chop_ancient: { name: "Chop Ancient", resourceId: "ancient_tree", level: 25, xp: 50, icon: "✨", interval: 6000 },
+      chop_ancient: { name: "Chop Ancient", resourceId: "ancient_tree", level: 25, xp: 50, icon: "✨", interval: 3000 },
     },
+    continuous: true,
     interval: GAME_CONFIG.DEFAULT_SKILL_INTERVAL,
     action: (gameState, char) => {
-      // Find available tree nodes
-      const allResources = gameState.availableResources;
-      const treeKeys = Object.keys(allResources).filter((k) =>
-        k.startsWith("tree_node:")
-      );
+      const targetId = char.currentActivity.target;
+      const option = SKILL_DEFINITIONS.WOODCUTTING.options[targetId];
+      if (!option) return;
 
-      if (treeKeys.length === 0) {
-        gameState.triggerNotification("No forests found! Explore more areas.", "error");
-        char.stopActivity();
+      const targetItem = char.activeGoal ? char.activeGoal.targetItem : null;
+
+      // --- PHASE INITIALIZATION ---
+      if (!char.currentActivity.phase) {
+        char.position = { x: 250, y: 250 };
+        char.currentActivity.phase = "TRAVELING";
+        char.currentActivity.targetTile = null;
+        gameState.triggerNotification("Setting out to find trees...", "activity");
+      }
+
+      const { x, y } = char.position;
+      let nextPos = null;
+
+      // --- Movement helpers (same as exploring) ---
+      const isValidMove = (nx, ny) => {
+        const width = mapManager.width || 500;
+        const height = mapManager.height || 500;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
+        const t = mapManager.getTile(nx, ny);
+        if (t && (t.type === TERRAIN_TYPES.OCEAN.id || t.type === TERRAIN_TYPES.SHALLOW_OCEAN.id)) return false;
+        return true;
+      };
+
+      const tryStep = (nx, ny) => {
+        if (isValidMove(nx, ny)) {
+          nextPos = { x: nx, y: ny };
+          return true;
+        }
+        return false;
+      };
+
+      const moveTowards = (tx, ty) => {
+        const dx = Math.sign(tx - x);
+        const dy = Math.sign(ty - y);
+        if (dx !== 0 && dy !== 0) {
+          if (Math.random() < 0.5) {
+            if (!tryStep(x + dx, y)) tryStep(x, y + dy);
+          } else {
+            if (!tryStep(x, y + dy)) tryStep(x + dx, y);
+          }
+        } else if (dx !== 0) {
+          tryStep(x + dx, y);
+        } else if (dy !== 0) {
+          tryStep(x, y + dy);
+        }
+      };
+
+      // --- PHASE 1: TRAVELING ---
+      if (char.currentActivity.phase === "TRAVELING") {
+        if (!char.currentActivity.targetTile) {
+          let validSources;
+          if (targetItem && ITEM_TO_NODE_MAP[targetItem]) {
+            validSources = ITEM_TO_NODE_MAP[targetItem].filter(
+              s => s.nodeType === option.resourceId
+            );
+          } else {
+            const nodeDef = RESOURCE_NODES[option.resourceId];
+            validSources = (nodeDef.allowedBiomes || []).map(biome => ({
+              nodeType: option.resourceId,
+              biome
+            }));
+          }
+
+          const target = mapManager.findNearestExploredResourceTile(validSources, x, y);
+
+          if (!target) {
+            gameState.triggerNotification(
+              targetItem
+                ? `No trees found for ${getItemDefinition(targetItem)?.name || targetItem}! Explore more forests.`
+                : "No trees found! Explore more forests.",
+              "error"
+            );
+            char.stopActivity();
+            return;
+          }
+
+          char.currentActivity.targetTile = target;
+        }
+
+        const target = char.currentActivity.targetTile;
+
+        if (x === target.x && y === target.y) {
+          const tile = mapManager.getTile(x, y);
+          if (!tile || !tile.resource || tile.resource.type !== target.nodeType) {
+            char.currentActivity.targetTile = null;
+            return;
+          }
+          char.currentActivity.phase = "CHOPPING";
+        } else {
+          moveTowards(target.x, target.y);
+        }
+      }
+
+      // --- PHASE 2: CHOPPING ---
+      if (char.currentActivity.phase === "CHOPPING") {
+        const tile = mapManager.getTile(x, y);
+
+        let dropItem;
+        if (targetItem) {
+          dropItem = targetItem;
+        } else {
+          const nodeDef = RESOURCE_NODES[option.resourceId];
+          let table = nodeDef.default_drops;
+          if (nodeDef.biome_drops && nodeDef.biome_drops[tile.type]) {
+            table = nodeDef.biome_drops[tile.type];
+          }
+          const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+          let roll = Math.random() * totalWeight;
+          dropItem = table[0].item;
+          for (const entry of table) {
+            if (roll < entry.weight) { dropItem = entry.item; break; }
+            roll -= entry.weight;
+          }
+        }
+
+        const resourceKey = `${tile.resource.type}:${tile.type}`;
+        gameState.consumeAvailableResource(resourceKey, 1);
+        tile.resource = null; // Remove from map so icon disappears
+
+        let amount = 1;
+        if (char.talents.woodcutting_2 && Math.random() < 0.1) {
+          amount = 2;
+        }
+
+        gameState.inventory.addItem(dropItem, amount);
+        char.gainXp("woodcutting", option.xp || 20);
+
+        char.currentActivity.targetTile = null;
+        char.currentActivity.phase = "RETURNING";
         return;
       }
 
-      // Weighted Random Selection
-      let totalNodes = 0;
-      const candidates = [];
-      treeKeys.forEach((key) => {
-        const count = allResources[key];
-        if (count > 0) {
-          totalNodes += count;
-          candidates.push({ key, count });
+      // --- PHASE 3: RETURNING ---
+      if (char.currentActivity.phase === "RETURNING") {
+        const homeX = 250;
+        const homeY = 250;
+
+        if (x === homeX && y === homeY) {
+          if (char.currentActivity.stopping) {
+            char.position = { x: 250, y: 250 };
+            char.currentActivity = null;
+            char.activityQueue = [];
+            gameState.triggerNotification("Returned home safely.", "success");
+            return;
+          }
+          char.currentActivity.phase = "TRAVELING";
+          return;
         }
-      });
 
-      if (totalNodes === 0) {
-        char.stopActivity();
-        return;
+        moveTowards(homeX, homeY);
       }
 
-      let r = Math.random() * totalNodes;
-      let selectedKey = candidates[0].key;
-      for (const c of candidates) {
-        if (r < c.count) {
-          selectedKey = c.key;
-          break;
+      // --- MOVE + FOG REVEAL ---
+      if (nextPos) {
+        char.position = nextPos;
+        mapManager.visitTile(nextPos.x, nextPos.y);
+
+        const sightRadius = char.stats.sightRange || 3;
+        const revealedTiles = mapManager.exploreRadius(nextPos.x, nextPos.y, sightRadius);
+
+        if (revealedTiles.length > 0) {
+          revealedTiles.forEach((tile) => {
+            if (tile.resource) {
+              const key = `${tile.resource.type}:${tile.type}`;
+              gameState.addAvailableResource(key, 1);
+              gameState.addDiscovery(`node:${tile.resource.type}`);
+            }
+            gameState.addDiscovery(`biome:${tile.type}`);
+          });
         }
-        r -= c.count;
       }
-
-      // Logic: Biome is suffix
-      const biome = selectedKey.split(":")[1];
-      const nodeDef = RESOURCE_NODES.tree_node;
-
-      let table = nodeDef.default_drops;
-      if (nodeDef.biome_drops && nodeDef.biome_drops[biome]) {
-        table = nodeDef.biome_drops[biome];
-      }
-
-      const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
-      let roll = Math.random() * totalWeight;
-      let dropItem = table[0].item;
-      for (const entry of table) {
-        if (roll < entry.weight) {
-          dropItem = entry.item;
-          break;
-        }
-        roll -= entry.weight;
-      }
-
-      // Action
-      gameState.consumeAvailableResource(selectedKey, 1);
-
-      let amount = 1;
-      if (char.talents.woodcutting_2 && Math.random() < 0.1) {
-        amount = 2;
-      }
-
-      gameState.inventory.addItem(dropItem, amount);
-      char.gainXp("woodcutting", 20);
     },
   },
   FISHING: {

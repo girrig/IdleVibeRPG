@@ -11,6 +11,7 @@ vi.mock('./MapManager', () => ({
     findNearestUnexploredInAdjacentBiome: vi.fn(),
     findNearestFrontierTile: vi.fn(),
     findNearestUnvisitedWalkableTile: vi.fn(),
+    findNearestExploredResourceTile: vi.fn(),
     visitTile: vi.fn(),
     exploreRadius: vi.fn(),
     width: 500,
@@ -89,15 +90,162 @@ describe('SkillRegistry', () => {
   });
 
   describe('WOODCUTTING', () => {
-    it('should chop wood and gain XP', () => {
-      mockChar.currentActivity.target = 'chop_wood';
-      mockGameState.availableResources = { 'tree_node:TEMPERATE_DECIDUOUS_FOREST': 20 };
+    it('should initialize to TRAVELING phase on first tick', () => {
+      mockChar.currentActivity = { target: 'chop_wood' };
+      mockChar.activeGoal = { targetItem: 'maple_log' };
+      mapManager.findNearestExploredResourceTile.mockReturnValue(
+        { x: 255, y: 250, nodeType: 'tree_node', biome: 'TEMPERATE_DECIDUOUS_FOREST' }
+      );
+      mapManager.getTile.mockReturnValue({ type: 'grassland' });
+      mapManager.exploreRadius.mockReturnValue([]);
 
       SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
 
+      expect(mockChar.currentActivity.phase).toBe('TRAVELING');
+      expect(mockChar.currentActivity.targetTile).toBeDefined();
+      expect(mockChar.currentActivity.targetTile.x).toBe(255);
+    });
+
+    it('should move toward target tree during TRAVELING', () => {
+      mockChar.currentActivity = {
+        target: 'chop_wood',
+        phase: 'TRAVELING',
+        targetTile: { x: 255, y: 250, nodeType: 'tree_node', biome: 'TEMPERATE_DECIDUOUS_FOREST' }
+      };
+      mockChar.position = { x: 252, y: 250 };
+      mockChar.activeGoal = { targetItem: 'maple_log' };
+      mapManager.getTile.mockReturnValue({ type: 'grassland' });
+      mapManager.exploreRadius.mockReturnValue([]);
+
+      SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
+
+      expect(mockChar.position.x).toBe(253);
+      expect(mockChar.position.y).toBe(250);
+    });
+
+    it('should chop and transition to RETURNING on arrival', () => {
+      mockChar.currentActivity = {
+        target: 'chop_wood',
+        phase: 'TRAVELING',
+        targetTile: { x: 250, y: 250, nodeType: 'tree_node', biome: 'TEMPERATE_DECIDUOUS_FOREST' }
+      };
+      mockChar.position = { x: 250, y: 250 };
+      mockChar.activeGoal = { targetItem: 'maple_log' };
+      const mockTile = {
+        type: 'TEMPERATE_DECIDUOUS_FOREST',
+        resource: { type: 'tree_node' }
+      };
+      mapManager.getTile.mockReturnValue(mockTile);
+
+      SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.phase).toBe('RETURNING');
+      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('maple_log', 1);
       expect(mockGameState.consumeAvailableResource).toHaveBeenCalledWith('tree_node:TEMPERATE_DECIDUOUS_FOREST', 1);
-      expect(mockGameState.inventory.addItem).toHaveBeenCalled();
       expect(mockChar.gainXp).toHaveBeenCalledWith('woodcutting', 20);
+      expect(mockTile.resource).toBeNull(); // Resource removed from tile
+    });
+
+    it('should stop if no trees found', () => {
+      mockChar.currentActivity = { target: 'chop_wood', phase: 'TRAVELING' };
+      mockChar.activeGoal = { targetItem: 'maple_log' };
+      mockChar.position = { x: 250, y: 250 };
+      mapManager.findNearestExploredResourceTile.mockReturnValue(null);
+
+      SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
+
+      expect(mockChar.stopActivity).toHaveBeenCalled();
+      expect(mockGameState.triggerNotification).toHaveBeenCalledWith(
+        expect.stringContaining('No trees found'),
+        'error'
+      );
+    });
+
+    it('should return home and loop to TRAVELING', () => {
+      mockChar.currentActivity = {
+        target: 'chop_wood',
+        phase: 'RETURNING',
+        targetTile: null
+      };
+      mockChar.position = { x: 250, y: 250 };
+      mockChar.activeGoal = { targetItem: 'maple_log' };
+
+      SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.phase).toBe('TRAVELING');
+    });
+
+    it('should re-search if tree depleted on arrival', () => {
+      mockChar.currentActivity = {
+        target: 'chop_wood',
+        phase: 'TRAVELING',
+        targetTile: { x: 250, y: 250, nodeType: 'tree_node', biome: 'TEMPERATE_DECIDUOUS_FOREST' }
+      };
+      mockChar.position = { x: 250, y: 250 };
+      mockChar.activeGoal = { targetItem: 'maple_log' };
+      mapManager.getTile.mockReturnValue({ type: 'TEMPERATE_DECIDUOUS_FOREST' }); // No resource
+
+      SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity.targetTile).toBeNull();
+      expect(mockGameState.inventory.addItem).not.toHaveBeenCalled();
+    });
+
+    it('should reveal fog of war while traveling', () => {
+      mockChar.currentActivity = {
+        target: 'chop_wood',
+        phase: 'TRAVELING',
+        targetTile: { x: 255, y: 250, nodeType: 'tree_node', biome: 'TEMPERATE_DECIDUOUS_FOREST' }
+      };
+      mockChar.position = { x: 252, y: 250 };
+      mockChar.activeGoal = { targetItem: 'maple_log' };
+      mapManager.getTile.mockReturnValue({ type: 'grassland' });
+      mapManager.exploreRadius.mockReturnValue([
+        { type: 'grassland', resource: { type: 'tree_node' } }
+      ]);
+
+      SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
+
+      expect(mapManager.exploreRadius).toHaveBeenCalled();
+      expect(mapManager.visitTile).toHaveBeenCalled();
+      expect(mockGameState.addAvailableResource).toHaveBeenCalled();
+      expect(mockGameState.addDiscovery).toHaveBeenCalledWith('node:tree_node');
+    });
+
+    it('should fully stop when returning with stopping flag', () => {
+      mockChar.currentActivity = {
+        target: 'chop_wood',
+        phase: 'RETURNING',
+        stopping: true,
+        targetTile: null
+      };
+      mockChar.position = { x: 250, y: 250 };
+      mockChar.activityQueue = [];
+
+      SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
+
+      expect(mockChar.currentActivity).toBeNull();
+      expect(mockGameState.triggerNotification).toHaveBeenCalledWith('Returned home safely.', 'success');
+    });
+
+    it('should apply double drop talent', () => {
+      mockChar.currentActivity = {
+        target: 'chop_wood',
+        phase: 'TRAVELING',
+        targetTile: { x: 250, y: 250, nodeType: 'tree_node', biome: 'TEMPERATE_DECIDUOUS_FOREST' }
+      };
+      mockChar.position = { x: 250, y: 250 };
+      mockChar.activeGoal = { targetItem: 'oak_log' };
+      mockChar.talents.woodcutting_2 = true;
+      vi.spyOn(Math, 'random').mockReturnValue(0.01); // < 0.1
+      mapManager.getTile.mockReturnValue({
+        type: 'TEMPERATE_DECIDUOUS_FOREST',
+        resource: { type: 'tree_node' }
+      });
+
+      SKILL_DEFINITIONS.WOODCUTTING.action(mockGameState, mockChar);
+
+      expect(mockGameState.inventory.addItem).toHaveBeenCalledWith('oak_log', 2);
     });
   });
 

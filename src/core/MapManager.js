@@ -219,6 +219,10 @@ export class MapManager {
     return this.pathfinder.findNearestUnvisitedWalkableTile(startX, startY);
   }
 
+  findNearestExploredResourceTile(validSources, startX, startY) {
+    return this.pathfinder.findNearestExploredResourceTile(validSources, startX, startY);
+  }
+
   findNearestExploredUnvisitedTile(typeId, startX, startY) {
     return this.pathfinder.findNearestExploredUnvisitedTile(typeId, startX, startY);
   }

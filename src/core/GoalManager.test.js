@@ -236,6 +236,74 @@ describe("GoalManager", () => {
     });
   });
 
+  describe("Movement Skill Return Trip", () => {
+    it("should let movement skill character walk home on goal completion", () => {
+      const group = {
+        steps: [{ itemId: "maple_log" }],
+        currentStepIndex: 0,
+        mainGoal: { itemId: "maple_log", quantity: 1 },
+      };
+      mockChar.activeGoalGroup = group;
+      mockChar.activeGoal = group.steps[0];
+      mockChar.currentActivity = { type: "WOODCUTTING", target: "chop_wood", phase: "RETURNING" };
+      mockChar.position = { x: 260, y: 250 }; // Away from home
+
+      taskRunner.checkProgress.mockReturnValue("COMPLETED");
+
+      goalManager.checkGoalProgress(mockGameState, mockChar);
+
+      // Should NOT call stopActivity — character should walk home
+      expect(mockChar.stopActivity).not.toHaveBeenCalled();
+      expect(mockChar.currentActivity).not.toBeNull();
+      expect(mockChar.currentActivity.stopping).toBe(true);
+      expect(mockChar.currentActivity.phase).toBe("RETURNING");
+    });
+
+    it("should stop immediately if movement skill character is at home", () => {
+      const group = {
+        steps: [{ itemId: "maple_log" }],
+        currentStepIndex: 0,
+        mainGoal: { itemId: "maple_log", quantity: 1 },
+      };
+      mockChar.activeGoalGroup = group;
+      mockChar.activeGoal = group.steps[0];
+      mockChar.currentActivity = { type: "WOODCUTTING", target: "chop_wood", phase: "RETURNING" };
+      mockChar.position = { x: 250, y: 250 }; // Already at home
+
+      taskRunner.checkProgress.mockReturnValue("COMPLETED");
+
+      goalManager.checkGoalProgress(mockGameState, mockChar);
+
+      // At home — should call stopActivity normally
+      expect(mockChar.stopActivity).toHaveBeenCalled();
+    });
+
+    it("should check queue when idle character finishes returning", () => {
+      // Character has no active goal/group but has queued goals
+      mockChar.activeGoal = null;
+      mockChar.activeGoalGroup = null;
+      mockChar.currentActivity = null;
+      mockChar.goalQueue = [{
+        id: 2,
+        mainGoal: { itemId: "wood", quantity: 1 },
+        steps: [{ itemId: "wood", quantity: 1, status: "PENDING" }],
+        currentStepIndex: 0,
+      }];
+
+      mockGameState.characters = [mockChar];
+      taskPlanner.resolveDependencies.mockReturnValue([
+        { itemId: "wood", quantity: 1, status: "PENDING" },
+      ]);
+
+      goalManager.update(mockGameState);
+
+      // Should have started the queued goal
+      expect(mockChar.activeGoalGroup).not.toBeNull();
+      expect(mockChar.activeGoalGroup.id).toBe(2);
+      expect(taskRunner.startTask).toHaveBeenCalled();
+    });
+  });
+
   describe("Regression Tests", () => {
     // Tests migrated from test_dependency_logic_v2.js
 

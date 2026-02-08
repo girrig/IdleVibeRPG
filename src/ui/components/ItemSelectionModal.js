@@ -1,11 +1,12 @@
 import { ITEM_DEFINITIONS } from "../../core/ItemRegistry";
 import { sourceRegistry } from "../../core/SourceRegistry";
-import { SKILL_DEFINITIONS } from "../../core/SkillRegistry";
+import { SKILL_DEFINITIONS, ITEM_TO_NODE_MAP } from "../../core/SkillRegistry";
 
 export class ItemSelectionModal {
-    constructor(character, onSelect) {
+    constructor(character, onSelect, gameState) {
         this.character = character;
         this.onSelect = onSelect;
+        this.gameState = gameState;
         this.modal = null;
         this.activeTab = "ITEMS";
         this.searchTerm = "";
@@ -72,6 +73,15 @@ export class ItemSelectionModal {
                         const charSkill = this.character.skills[skillId];
                         const charLevel = charSkill ? charSkill.level : 0;
                         if (charLevel < reqLevel) return false;
+                    }
+                    // Hide resource-gathered items if no matching nodes are explored
+                    const nodeSources = ITEM_TO_NODE_MAP[id];
+                    if (nodeSources && nodeSources.length > 0 && this.gameState) {
+                        const hasAvailable = nodeSources.some(({ nodeType, biome }) => {
+                            const key = `${nodeType}:${biome}`;
+                            return (this.gameState.availableResources[key] || 0) > 0;
+                        });
+                        if (!hasAvailable) return false;
                     }
                     return def.name.toLowerCase().includes(this.searchTerm.toLowerCase());
                 })

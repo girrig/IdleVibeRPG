@@ -209,6 +209,14 @@ export class GoalManager {
     gameState.characters.forEach((char) => {
       if (char.activeGoal) {
         this.checkGoalProgress(gameState, char);
+      } else if (
+        !char.activeGoalGroup &&
+        !char.currentActivity &&
+        char.goalQueue &&
+        char.goalQueue.length > 0
+      ) {
+        // Character finished returning home — start next queued goal
+        this.checkQueue(gameState, char);
       }
     });
   }
@@ -312,9 +320,23 @@ export class GoalManager {
         );
         char.activeGoal = null;
         char.activeGoalGroup = null;
-        char.stopActivity();
 
-        this.checkQueue(gameState, char);
+        // For movement skills away from home, let the character walk back
+        // instead of teleporting. The queue will be checked once they arrive.
+        const isMovementSkill = char.currentActivity &&
+          (char.currentActivity.type === "EXPLORING" || char.currentActivity.type === "WOODCUTTING");
+        const isAwayFromHome = char.position &&
+          (char.position.x !== 250 || char.position.y !== 250);
+
+        if (isMovementSkill && isAwayFromHome) {
+          char.currentActivity.stopping = true;
+          if (char.currentActivity.phase !== "RETURNING") {
+            char.currentActivity.phase = "RETURNING";
+          }
+        } else {
+          char.stopActivity();
+          this.checkQueue(gameState, char);
+        }
       }
     }
   }

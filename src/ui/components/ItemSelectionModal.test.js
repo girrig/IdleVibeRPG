@@ -27,6 +27,9 @@ vi.mock("../../core/SkillRegistry", () => ({
                 "find_forest": { name: "Find Forest", level: 5, icon: "🌲" }
             }
         }
+    },
+    ITEM_TO_NODE_MAP: {
+        "wood": [{ nodeType: "tree_node", biome: "TEMPERATE_DECIDUOUS_FOREST" }],
     }
 }));
 
@@ -92,6 +95,34 @@ describe("ItemSelectionModal", () => {
         card.click();
 
         expect(onSelect).toHaveBeenCalledWith({ type: "ITEM", id: "wood", qty: 1 });
+    });
+
+    it("should hide resource items when no nodes are available", () => {
+        const mockGameState = {
+            availableResources: {}
+        };
+        modal = new ItemSelectionModal(character, onSelect, mockGameState);
+        modal.show();
+
+        const items = document.querySelectorAll(".goal-item-card");
+        const names = Array.from(items).map(el => el.querySelector(".goal-item-name").textContent);
+        // Wood requires tree_node:TEMPERATE_DECIDUOUS_FOREST but none available
+        expect(names).not.toContain("Wood");
+        // Stone has no node sources, so it should still show
+        expect(names).toContain("Stone");
+    });
+
+    it("should show resource items when nodes are available", () => {
+        const mockGameState = {
+            availableResources: { "tree_node:TEMPERATE_DECIDUOUS_FOREST": 5 }
+        };
+        modal = new ItemSelectionModal(character, onSelect, mockGameState);
+        modal.show();
+
+        const items = document.querySelectorAll(".goal-item-card");
+        const names = Array.from(items).map(el => el.querySelector(".goal-item-name").textContent);
+        expect(names).toContain("Wood");
+        expect(names).toContain("Stone");
     });
 
     // Cleanup

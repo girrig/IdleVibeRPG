@@ -3,7 +3,8 @@
     "allow": [
       "Bash(yarn test)",
       "Bash(yarn vitest run:*)",
-      "Bash(yarn test:*)"
+      "Bash(yarn test:*)",
+      "Bash(yarn test:unit:*)"
     ]
   }
 }

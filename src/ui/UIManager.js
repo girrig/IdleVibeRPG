@@ -254,7 +254,7 @@ export class UIManager {
       } else {
         onSelectCallback(result.id, result.qty);
       }
-    });
+    }, gameState);
     modal.show();
   }
 
