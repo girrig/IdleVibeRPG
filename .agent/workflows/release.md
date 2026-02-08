@@ -6,8 +6,8 @@ description: Release the game with a single commit including version bump and ch
    - If the latest commit is a feature, fix, or other meaningful change (and NOT already a release commit), plan to use **Single Commit Release**.
 
 2. **Run Release Command**:
-   - **Standard Release**: `yarn release:prepare --commit`
-   - **Single Commit Release** (Preferred for clean history): `yarn release:prepare --commit --amend`
+   - **Standard Release**: `yarn release --commit`
+   - **Single Commit Release** (Preferred for clean history): `yarn release --commit --amend`
      - Use this if you just made a commit and want to attach the version bump to it.
 
 3. **Push to Remote**:

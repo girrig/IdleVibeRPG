@@ -12,8 +12,7 @@
     "test:browser": "vitest run src/ui/components/MapView.test.js src/scenes/MainScene.test.js --browser",
     "test:watch": "vitest",
     "prepare": "husky",
-    "release": "npm version patch && git push",
-    "release:prepare": "node scripts/release.js"
+    "release": "node scripts/release.js"
   },
   "devDependencies": {
     "@vitest/browser": "4.0.4",
