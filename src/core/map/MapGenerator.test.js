@@ -175,9 +175,35 @@ describe("MapGenerator", () => {
         });
 
         it("should return SWAMP for low elevation, high moisture, warm temperature", () => {
-            // seaLevel=-0.2: beach < -0.15, swamp < -0.05
+            // seaLevel=-0.2: swamp < -0.05
             const tile = generator.generateTile(0, 0, -0.1, 0.5, 0.1, -0.2, 0);
             expect(tile.type).toBe(TERRAIN_TYPES.SWAMP.id);
+        });
+
+        it("should return SWAMP instead of BEACH in wet warm coastal zones", () => {
+            // elevation -0.18 is in the beach band (seaLevel to seaLevel+0.05)
+            // but high moisture + warm temp should produce swamp instead
+            const tile = generator.generateTile(0, 0, -0.18, 0.5, 0.1, -0.2, 0);
+            expect(tile.type).toBe(TERRAIN_TYPES.SWAMP.id);
+        });
+
+        it("should return BEACH in moderate-moisture warm coastal zones", () => {
+            // Coastal elevation, moderate moisture, warm → beach
+            const tile = generator.generateTile(0, 0, -0.18, -0.1, 0.1, -0.2, 0);
+            expect(tile.type).toBe(TERRAIN_TYPES.BEACH.id);
+        });
+
+        it("should skip BEACH on cold coasts and fall through to land biome", () => {
+            // Coastal elevation but cold → no beach, falls to land biome
+            const tile = generator.generateTile(0, 0, -0.18, 0, -0.5, -0.2, 0);
+            expect(tile.type).not.toBe(TERRAIN_TYPES.BEACH.id);
+            expect(tile.type).not.toBe(TERRAIN_TYPES.OCEAN.id);
+        });
+
+        it("should skip BEACH on very dry coasts and fall through to land biome", () => {
+            // Coastal elevation but very dry → no beach, falls to desert/land biome
+            const tile = generator.generateTile(0, 0, -0.18, -0.5, 0.1, -0.2, 0);
+            expect(tile.type).not.toBe(TERRAIN_TYPES.BEACH.id);
         });
 
         it("should NOT return SWAMP for low elevation, high moisture, cold temperature", () => {
@@ -258,6 +284,73 @@ describe("MapGenerator", () => {
             ]);
 
             expect(tiles[5][5].type).toBe("TEMPERATE_GRASSLAND");
+        });
+    });
+
+    describe("cleanupResources", () => {
+        it("should merge small resource patches into dominant neighbor", () => {
+            const gen = new MapGenerator(10, 10);
+            const tiles = [];
+            for (let y = 0; y < 10; y++) {
+                const row = [];
+                for (let x = 0; x < 10; x++) {
+                    row.push({ x, y, type: "TEST_BIOME", resource: { type: "iron", amount: 1 } });
+                }
+                tiles.push(row);
+            }
+            // Place a small isolated copper patch (2 tiles) inside the iron field
+            tiles[5][5].resource = { type: "copper", amount: 1 };
+            tiles[5][6].resource = { type: "copper", amount: 1 };
+
+            gen.cleanupResources(tiles, 4);
+
+            // Small copper patch should be absorbed into surrounding iron
+            expect(tiles[5][5].resource.type).toBe("iron");
+            expect(tiles[5][6].resource.type).toBe("iron");
+        });
+
+        it("should keep resource patches at or above minSize", () => {
+            const gen = new MapGenerator(10, 10);
+            const tiles = [];
+            for (let y = 0; y < 10; y++) {
+                const row = [];
+                for (let x = 0; x < 10; x++) {
+                    row.push({ x, y, type: "TEST_BIOME", resource: { type: "iron", amount: 1 } });
+                }
+                tiles.push(row);
+            }
+            // Place a copper patch of exactly 4 tiles (meets minSize=4)
+            tiles[5][5].resource = { type: "copper", amount: 1 };
+            tiles[5][6].resource = { type: "copper", amount: 1 };
+            tiles[6][5].resource = { type: "copper", amount: 1 };
+            tiles[6][6].resource = { type: "copper", amount: 1 };
+
+            gen.cleanupResources(tiles, 4);
+
+            // Should remain copper — meets the minimum
+            expect(tiles[5][5].resource.type).toBe("copper");
+            expect(tiles[5][6].resource.type).toBe("copper");
+            expect(tiles[6][5].resource.type).toBe("copper");
+            expect(tiles[6][6].resource.type).toBe("copper");
+        });
+
+        it("should remove isolated resource nodes with no resource neighbors", () => {
+            const gen = new MapGenerator(5, 5);
+            const tiles = [];
+            for (let y = 0; y < 5; y++) {
+                const row = [];
+                for (let x = 0; x < 5; x++) {
+                    row.push({ x, y, type: "TEST_BIOME", resource: null });
+                }
+                tiles.push(row);
+            }
+            // Place a single isolated resource node
+            tiles[2][2].resource = { type: "copper", amount: 1 };
+
+            gen.cleanupResources(tiles, 4);
+
+            // Should be removed — no resource neighbors to absorb into
+            expect(tiles[2][2].resource).toBeNull();
         });
     });
 });

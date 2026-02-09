@@ -78,6 +78,9 @@ export class MapGenerator {
     // Generate Resources
     this.generateResources(tiles, seed);
 
+    // Post-processing: Remove isolated resource patches
+    this.cleanupResources(tiles, options.minResourcePatch || 4);
+
     return tiles;
   }
 
@@ -91,13 +94,14 @@ export class MapGenerator {
     if (elevation < seaLevel) {
       return { x, y, type: TERRAIN_TYPES.SHALLOW_OCEAN.id, explored: false, visited: false };
     }
-    if (elevation < seaLevel + 0.05) {
-      return { x, y, type: TERRAIN_TYPES.BEACH.id, explored: false, visited: false };
-    }
 
-    // --- SWAMP: low-lying wet areas ---
+    // --- SWAMP: low-lying wet areas (checked before beach so swamps can border ocean) ---
     if (elevation < seaLevel + 0.15 && adjMoisture > 0.3 && temperature >= -0.3) {
       return { x, y, type: TERRAIN_TYPES.SWAMP.id, explored: false, visited: false };
+    }
+    // Beach only in warm/temperate, moderate-moisture coasts; otherwise land biomes meet the ocean
+    if (elevation < seaLevel + 0.05 && temperature >= -0.3 && adjMoisture <= 0.3 && adjMoisture >= -0.3) {
+      return { x, y, type: TERRAIN_TYPES.BEACH.id, explored: false, visited: false };
     }
 
     // --- MOUNTAINS ---
@@ -285,6 +289,80 @@ export class MapGenerator {
             } else if (candidates.length > 1) {
               const pick = Math.floor(tiebreakRng() * candidates.length);
               tile.resource = { type: candidates[pick].id, amount: candidates[pick].amount };
+            }
+          }
+        }
+      }
+    }
+  }
+
+  cleanupResources(tiles, minSize) {
+    const visited = new Set();
+
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const key = `${x},${y}`;
+        if (visited.has(key)) continue;
+
+        const tile = tiles[y][x];
+        if (!tile.resource) {
+          visited.add(key);
+          continue;
+        }
+
+        const resourceType = tile.resource.type;
+        const region = [];
+        const queue = [{ x, y }];
+        visited.add(key);
+
+        let head = 0;
+        while (head < queue.length) {
+          const curr = queue[head++];
+          region.push(curr);
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const nx = curr.x + dx, ny = curr.y + dy;
+            const nk = `${nx},${ny}`;
+            if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height
+                && !visited.has(nk)
+                && tiles[ny][nx].resource
+                && tiles[ny][nx].resource.type === resourceType) {
+              visited.add(nk);
+              queue.push({ x: nx, y: ny });
+            }
+          }
+        }
+
+        if (region.length < minSize) {
+          // Find the most common neighboring resource type
+          const neighborTypes = {};
+          for (const t of region) {
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+              const nx = t.x + dx, ny = t.y + dy;
+              if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                const neighbor = tiles[ny][nx].resource;
+                if (neighbor && neighbor.type !== resourceType) {
+                  neighborTypes[neighbor.type] = (neighborTypes[neighbor.type] || 0) + 1;
+                }
+              }
+            }
+          }
+
+          let bestType = null;
+          let maxCount = 0;
+          for (const [type, count] of Object.entries(neighborTypes)) {
+            if (count > maxCount) {
+              maxCount = count;
+              bestType = type;
+            }
+          }
+
+          for (const t of region) {
+            if (bestType) {
+              // Absorb into the dominant neighbor patch
+              tiles[t.y][t.x].resource.type = bestType;
+            } else {
+              // No resource neighbors — isolated node, remove it
+              tiles[t.y][t.x].resource = null;
             }
           }
         }
