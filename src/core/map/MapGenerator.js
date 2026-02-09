@@ -11,6 +11,16 @@ function mulberry32(a) {
   };
 }
 
+function fbm(noiseFn, x, y, octaves = 3) {
+  let value = 0, amplitude = 0.5, totalAmp = 0;
+  for (let i = 0; i < octaves; i++) {
+    value += noiseFn(x, y) * amplitude;
+    totalAmp += amplitude;
+    x *= 2; y *= 2; amplitude *= 0.5;
+  }
+  return value / totalAmp;
+}
+
 export class MapGenerator {
   constructor(width, height) {
     this.width = width;
@@ -24,15 +34,21 @@ export class MapGenerator {
     const rngElevation = mulberry32(seed);
     const rngMoisture = mulberry32(seed + 1);
     const rngTemperature = mulberry32(seed + 2);
+    const rngContinent = mulberry32(seed + 3);
 
     const noise2D_elevation = createNoise2D(rngElevation);
     const noise2D_moisture = createNoise2D(rngMoisture);
     const noise2D_temperature = createNoise2D(rngTemperature);
+    const noise2D_continent = createNoise2D(rngContinent);
+
+    const continentScale = scale * 0.2;
 
     for (let y = 0; y < this.height; y++) {
       const row = [];
       for (let x = 0; x < this.width; x++) {
-        const elevation = noise2D_elevation(x * scale, y * scale);
+        const continentalness = noise2D_continent(x * continentScale, y * continentScale);
+        const detail = fbm(noise2D_elevation, x * scale, y * scale);
+        const elevation = continentalness * 0.7 + detail * 0.3;
         const moisture = noise2D_moisture(x * scale, y * scale);
         const temperature = noise2D_temperature(x * scale, y * scale);
 

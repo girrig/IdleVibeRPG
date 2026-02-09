@@ -69,6 +69,50 @@ describe("MapGenerator", () => {
             expect(tiles[0][0]).toHaveProperty("y");
             expect(tiles[0][0]).toHaveProperty("type");
         });
+
+        it("should produce large coherent ocean regions via continentalness", () => {
+            const largeGen = new MapGenerator(100, 100);
+            const tiles = largeGen.generateMap(42);
+
+            // Flood-fill to find all ocean regions
+            const waterTypes = [TERRAIN_TYPES.OCEAN.id, TERRAIN_TYPES.SHALLOW_OCEAN.id];
+            const visited = new Set();
+            const regionSizes = [];
+
+            for (let y = 0; y < 100; y++) {
+                for (let x = 0; x < 100; x++) {
+                    const key = `${x},${y}`;
+                    if (visited.has(key) || !waterTypes.includes(tiles[y][x].type)) continue;
+
+                    // BFS flood-fill
+                    let size = 0;
+                    const queue = [{ x, y }];
+                    visited.add(key);
+
+                    let head = 0;
+                    while (head < queue.length) {
+                        const curr = queue[head++];
+                        size++;
+                        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                            const nx = curr.x + dx, ny = curr.y + dy;
+                            const nk = `${nx},${ny}`;
+                            if (nx >= 0 && nx < 100 && ny >= 0 && ny < 100
+                                && !visited.has(nk) && waterTypes.includes(tiles[ny][nx].type)) {
+                                visited.add(nk);
+                                queue.push({ x: nx, y: ny });
+                            }
+                        }
+                    }
+                    regionSizes.push(size);
+                }
+            }
+
+            // The largest ocean region should be substantial (>100 tiles on a 100x100 map)
+            if (regionSizes.length > 0) {
+                const largest = Math.max(...regionSizes);
+                expect(largest).toBeGreaterThan(100);
+            }
+        });
     });
 
     describe("generateResources", () => {
