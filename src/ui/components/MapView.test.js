@@ -424,6 +424,22 @@ describe("MapView Zoom Logic", () => {
       expect(mapView.resourceOverlay.querySelector(".resource-overlay-list")).not.toBeNull();
     });
 
+    it("should have reveal button that toggles revealAll", () => {
+      expect(mapView.revealAll).toBe(false);
+      expect(mapView.revealButton).toBeDefined();
+
+      const updateSpy = vi.spyOn(mapView, 'update').mockImplementation(() => {});
+
+      mapView.revealButton.click();
+      expect(mapView.revealAll).toBe(true);
+      expect(mapView.revealButton.classList.contains("active")).toBe(true);
+      expect(updateSpy).toHaveBeenCalled();
+
+      mapView.revealButton.click();
+      expect(mapView.revealAll).toBe(false);
+      expect(mapView.revealButton.classList.contains("active")).toBe(false);
+    });
+
     it("should toggle terrain menu open/closed", () => {
       mapView.renderMapMenu();
 

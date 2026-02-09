@@ -52,7 +52,12 @@ export class MapGenerator {
     }
 
     // Post-processing: Remove small biomes
-    this.cleanupBiomes(tiles, options.minBiomeSize || 50, [TERRAIN_TYPES.BEACH.id]);
+    this.cleanupBiomes(tiles, options.minBiomeSize || 50, [
+      TERRAIN_TYPES.BEACH.id,
+      TERRAIN_TYPES.SWAMP.id,
+      TERRAIN_TYPES.ALPINE_TUNDRA.id,
+      TERRAIN_TYPES.SHRUBLAND.id,
+    ]);
 
     // Generate Resources
     this.generateResources(tiles, seed);
@@ -74,11 +79,21 @@ export class MapGenerator {
       return { x, y, type: TERRAIN_TYPES.BEACH.id, explored: false, visited: false };
     }
 
+    // --- SWAMP: low-lying wet areas ---
+    if (elevation < seaLevel + 0.15 && adjMoisture > 0.3 && temperature >= -0.3) {
+      return { x, y, type: TERRAIN_TYPES.SWAMP.id, explored: false, visited: false };
+    }
+
     // --- MOUNTAINS ---
     if (elevation > 0.8) {
       if (temperature < 0)
         return { x, y, type: TERRAIN_TYPES.ICE_SHEET.id, explored: false, visited: false };
       return { x, y, type: TERRAIN_TYPES.ALPINE.id, explored: false, visited: false };
+    }
+
+    // --- ALPINE TUNDRA: mountain transition zone ---
+    if (elevation > 0.6 && temperature < -0.3) {
+      return { x, y, type: TERRAIN_TYPES.ALPINE_TUNDRA.id, explored: false, visited: false };
     }
 
     // --- LAND BIOMES ---
@@ -88,6 +103,7 @@ export class MapGenerator {
       return { x, y, type: TERRAIN_TYPES.BOREAL_FOREST.id, explored: false, visited: false };
     } else if (temperature < 0.3) {
       if (adjMoisture < -0.4) return { x, y, type: TERRAIN_TYPES.TEMPERATE_DESERT.id, explored: false, visited: false };
+      if (adjMoisture < -0.15) return { x, y, type: TERRAIN_TYPES.SHRUBLAND.id, explored: false, visited: false };
       if (adjMoisture < 0.2) return { x, y, type: TERRAIN_TYPES.TEMPERATE_GRASSLAND.id, explored: false, visited: false };
       if (adjMoisture < 0.6) return { x, y, type: TERRAIN_TYPES.TEMPERATE_DECIDUOUS_FOREST.id, explored: false, visited: false };
       return { x, y, type: TERRAIN_TYPES.TEMPERATE_RAINFOREST.id, explored: false, visited: false };
@@ -186,35 +202,77 @@ export class MapGenerator {
   generateResources(tiles, seed) {
     // Sort Configs by Priority (High to Low)
     const sortedConfigs = Object.values(RESOURCE_NODES).sort((a, b) => {
-      const pA = a.priority || 0;
-      const pB = b.priority || 0;
-      return pB - pA;
+      return (b.priority || 0) - (a.priority || 0);
     });
 
-    sortedConfigs.forEach((config) => {
+    // Group configs by priority level
+    const priorityGroups = [];
+    let currentGroup = null;
+    for (const config of sortedConfigs) {
+      const p = config.priority || 0;
+      if (!currentGroup || currentGroup.priority !== p) {
+        currentGroup = { priority: p, configs: [] };
+        priorityGroups.push(currentGroup);
+      }
+      currentGroup.configs.push(config);
+    }
+
+    // Deterministic RNG for tiebreaking same-priority conflicts
+    const tiebreakRng = mulberry32(seed + 99999);
+
+    // Pre-create noise functions for every config
+    const noiseMap = {};
+    for (const config of sortedConfigs) {
       let param = 0;
       for (let i = 0; i < config.id.length; i++) {
         param += config.id.charCodeAt(i);
       }
+      noiseMap[config.id] = createNoise2D(mulberry32(seed + param));
+    }
 
-      const rng = mulberry32(seed + param);
-      const noise = createNoise2D(rng);
+    // Process each priority group (high to low)
+    for (const group of priorityGroups) {
+      if (group.configs.length === 1) {
+        // Single config at this priority — fast path
+        const config = group.configs[0];
+        const noise = noiseMap[config.id];
+        for (let y = 0; y < this.height; y++) {
+          for (let x = 0; x < this.width; x++) {
+            const tile = tiles[y][x];
+            if (!tile.resource && config.allowedBiomes.includes(tile.type)) {
+              const val = (noise(x * config.scale, y * config.scale) + 1) / 2;
+              if (val > config.threshold) {
+                tile.resource = { type: config.id, amount: config.amount };
+              }
+            }
+          }
+        }
+      } else {
+        // Multiple configs at same priority — resolve conflicts randomly
+        for (let y = 0; y < this.height; y++) {
+          for (let x = 0; x < this.width; x++) {
+            const tile = tiles[y][x];
+            if (tile.resource) continue;
 
-      for (let y = 0; y < this.height; y++) {
-        for (let x = 0; x < this.width; x++) {
-          const tile = tiles[y][x];
-          // Only attempt spawn if Biome matches AND NO RESOURCE EXISTS YET
-          if (!tile.resource && config.allowedBiomes.includes(tile.type)) {
-            const val = (noise(x * config.scale, y * config.scale) + 1) / 2;
-            if (val > config.threshold) {
-              tile.resource = {
-                type: config.id,
-                amount: config.amount,
-              };
+            const candidates = [];
+            for (const config of group.configs) {
+              if (!config.allowedBiomes.includes(tile.type)) continue;
+              const noise = noiseMap[config.id];
+              const val = (noise(x * config.scale, y * config.scale) + 1) / 2;
+              if (val > config.threshold) {
+                candidates.push(config);
+              }
+            }
+
+            if (candidates.length === 1) {
+              tile.resource = { type: candidates[0].id, amount: candidates[0].amount };
+            } else if (candidates.length > 1) {
+              const pick = Math.floor(tiebreakRng() * candidates.length);
+              tile.resource = { type: candidates[pick].id, amount: candidates[pick].amount };
             }
           }
         }
       }
-    });
+    }
   }
 }

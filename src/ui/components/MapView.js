@@ -91,6 +91,20 @@ export class MapView {
     this.homeButton.onclick = () => this.centerOnHome();
     this.viewWrapper.appendChild(this.homeButton);
 
+    // Reveal All button (bottom-left, above home)
+    this.revealAll = false;
+    this.revealButton = document.createElement("div");
+    this.revealButton.className = "map-reveal-btn";
+    this.revealButton.innerText = "\u{1F441}";
+    this.revealButton.title = "Reveal Full Map";
+    this.revealButton.onclick = () => {
+      this.revealAll = !this.revealAll;
+      this.revealButton.classList.toggle("active", this.revealAll);
+      this.mapDataDirty = true;
+      this.update();
+    };
+    this.viewWrapper.appendChild(this.revealButton);
+
     // Legend overlay (bottom-right)
     this.mapMenu = document.createElement("div");
     this.mapMenu.className = "map-overlay-panel map-overlay-bottom-right";
@@ -241,7 +255,7 @@ export class MapView {
         // Single click — existing behavior
         this.selectedRegion = null;
         const tile = mapManager.getTile(tileX, tileY);
-        if (!tile || !tile.explored) {
+        if (!tile || (!tile.explored && !this.revealAll)) {
           this.closeTileInfoPopup();
           return;
         }
@@ -435,7 +449,7 @@ export class MapView {
         if (!tile) continue;
 
         let color; // Declare color variable
-        if (!tile.explored) {
+        if (!tile.explored && !this.revealAll) {
           // Fog of War: Black
           color = { r: 5, g: 5, b: 5 }; // Deep Black/Grey
         } else {
@@ -602,7 +616,7 @@ export class MapView {
       for (let x = validStartX; x < validEndX; x++) {
         // console.log(`Rendering tile ${x},${y}`); // DEBUG
         const tile = tiles[y][x];
-        if (!tile || !tile.explored) continue;
+        if (!tile || (!tile.explored && !this.revealAll)) continue;
 
         // REDESIGN: Only draw symbols for RESOURCES (Factorio style clumps)
         // Standard terrain is just color.
@@ -803,7 +817,7 @@ export class MapView {
     for (let y = region.y1; y <= region.y2; y++) {
       for (let x = region.x1; x <= region.x2; x++) {
         const tile = mapManager.getTile(x, y);
-        if (!tile || !tile.explored) continue;
+        if (!tile || (!tile.explored && !this.revealAll)) continue;
         exploredCount++;
 
         const tType = tile.type;

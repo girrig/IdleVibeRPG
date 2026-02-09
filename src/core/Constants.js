@@ -44,7 +44,7 @@ export const RESOURCE_NODES = {
     icon: ICONS.nodes.mineral_node,
     scale: 0.1, // Frequent but varied
     threshold: 0.65,
-    amount: 25, // Capacity of the node (how many Mining actions)
+    amount: 1,
     allowedBiomes: [
       "TEMPERATE_DESERT", "SUBTROPICAL_DESERT", // Hot
       "ALPINE", "ALPINE_TUNDRA", // Mountains
@@ -115,7 +115,7 @@ export const RESOURCE_NODES = {
     icon: ICONS.nodes.gem_node,
     scale: 0.05, // Rare
     threshold: 0.8, // Very specific spots
-    amount: 10,
+    amount: 1,
     allowedBiomes: ["TEMPERATE_DESERT", "SUBTROPICAL_DESERT", "ALPINE", "ICE_SHEET"],
     default_drops: [{ item: "stone", weight: 100 }],
     biome_drops: {
@@ -133,7 +133,7 @@ export const RESOURCE_NODES = {
     icon: ICONS.nodes.coal_vein,
     scale: 0.08,
     threshold: 0.7,
-    amount: 50,
+    amount: 1,
     allowedBiomes: ["ALPINE", "ALPINE_TUNDRA", "BOREAL_FOREST"],
     default_drops: [{ item: "coal", weight: 100 }]
   },
@@ -146,7 +146,7 @@ export const RESOURCE_NODES = {
     icon: ICONS.nodes.tree_node,
     scale: 0.05,
     threshold: 0.6,
-    amount: 50,
+    amount: 1,
     allowedBiomes: [
       "TEMPERATE_DECIDUOUS_FOREST", "TEMPERATE_RAINFOREST",
       "BOREAL_FOREST", "TROPICAL_RAINFOREST", "TROPICAL_SAVANNA", "SWAMP"
@@ -195,7 +195,7 @@ export const RESOURCE_NODES = {
     icon: ICONS.nodes.ancient_tree,
     scale: 0.03, // Very Rare
     threshold: 0.85,
-    amount: 100, // Massive amount
+    amount: 1,
     allowedBiomes: ["TROPICAL_RAINFOREST", "TEMPERATE_DECIDUOUS_FOREST"],
     default_drops: [{ item: "magic_log", weight: 50 }, { item: "yew_log", weight: 50 }]
   },
@@ -208,7 +208,7 @@ export const RESOURCE_NODES = {
     icon: ICONS.nodes.fishing_spot,
     scale: 0.08,
     threshold: 0.6,
-    amount: 30, // 30 Fish per spot
+    amount: 1,
     allowedBiomes: ["OCEAN", "SHALLOW_OCEAN", "BEACH", "SWAMP"],
     default_drops: [{ item: "raw_trout", weight: 100 }],
     biome_drops: {
@@ -241,7 +241,7 @@ export const RESOURCE_NODES = {
     icon: ICONS.nodes.bush_node,
     scale: 0.15, // Common
     threshold: 0.6,
-    amount: 20,
+    amount: 1,
     allowedBiomes: [
       "TEMPERATE_GRASSLAND", "SHRUBLAND", "TEMPERATE_DECIDUOUS_FOREST"
     ],
@@ -268,7 +268,7 @@ export const RESOURCE_NODES = {
     icon: ICONS.nodes.fungi_node,
     scale: 0.1,
     threshold: 0.65,
-    amount: 15,
+    amount: 1,
     allowedBiomes: ["TEMPERATE_RAINFOREST", "SWAMP", "BOREAL_FOREST"],
     default_drops: [{ item: "mushroom", weight: 100 }],
     biome_drops: {
