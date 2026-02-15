@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "vite preview",
     "preview": "vite preview",
     "test": "yarn test:unit && yarn test:browser",
     "test:unit": "vitest run --exclude src/ui/components/MapView.test.js --exclude src/scenes/MainScene.test.js",
